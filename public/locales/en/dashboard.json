@@ -393,7 +393,9 @@
       "profile_applied": "Profile Applied",
       "profile_failed": "Profile Failed",
       "profile_deactivated": "Profile Deactivated",
-      "tower_failover": "Tower Lock Failover"
+      "tower_failover": "Tower Lock Failover",
+      "suspicious_cell": "Suspicious Cell",
+      "new_cell": "New Cell"
     }
   },
   "connection_quality": {

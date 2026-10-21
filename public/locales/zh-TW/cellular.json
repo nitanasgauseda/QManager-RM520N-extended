@@ -2574,5 +2574,85 @@
       "applying": "正在套用 {{leg}} 基站鎖定…",
       "refreshing": "正在重新讀取基站鎖定狀態…"
     }
+  },
+  "tower_map": {
+    "page": {
+      "title": "基地台地圖",
+      "description": "目前服務基地台的位置、距離，以及天線應朝向的方向。"
+    },
+    "map": {
+      "title": "地圖",
+      "description": "你的位置、服務基地台以及你的電信業者在附近的基地台。",
+      "layer_label": "地圖樣式",
+      "layer_map": "地圖",
+      "layer_satellite": "衛星",
+      "aria": "基地台地圖",
+      "set_home": "設定我的位置",
+      "move_tower": "移動基地台",
+      "place_tower": "放置基地台",
+      "reset_tower": "使用資料庫位置",
+      "hint_home": "在地圖上點選數據機或天線所在的位置。",
+      "hint_move": "將藍色基地台圓點拖到鐵塔上，或點選鐵塔所在位置。衛星視圖通常能看到鐵塔。",
+      "hint_place": "資料庫中沒有此基地台。請在地圖上點選鐵塔所在的位置。",
+      "hint_no_home": "設定你的位置後即可查看距離和方向。"
+    },
+    "serving": {
+      "title": "服務基地台",
+      "description": "數據機目前連線的基地台。",
+      "no_cell": "數據機尚未回報服務細胞。",
+      "tower": "基地台",
+      "position": "位置",
+      "distance": "地圖上的距離",
+      "measured": "數據機測得",
+      "check": "位置核對",
+      "azimuth": "方向（真北）",
+      "compass": "羅盤讀數",
+      "source": {
+        "yours": "你的修正",
+        "database": "來自資料庫",
+        "missing": "不在資料庫中"
+      },
+      "agreement": {
+        "agrees": "與測量一致",
+        "off": "與測量不符"
+      },
+      "off_hint": "數據機測得的距離與地圖不同，資料庫中的位置可能有誤。切換到衛星視圖，在虛線圓環附近找到鐵塔，並將基地台移到其上。",
+      "cellmapper": "在 CellMapper 上查看"
+    },
+    "db": {
+      "title": "基地台資料庫",
+      "description": "你所在國家的 OpenCelliD 基地台資料，儲存在數據機上。",
+      "towers": "基地台",
+      "updated": "資料日期",
+      "corrections": "你的修正",
+      "none": "未下載",
+      "download": "下載",
+      "update": "更新",
+      "updating": "正在下載…",
+      "coverage_note": "此資料庫由群眾外包收集，只包含部分基地台，位置可能偏差數百公尺。你的修正儲存在數據機上，並優先使用。",
+      "errors": {
+        "download_failed": "無法下載基地台資料庫。請檢查網際網路連線。",
+        "checksum_mismatch": "下載的檔案已損毀，已保留舊資料庫。請重試。",
+        "mcc_not_found": "目前沒有你所在國家的基地台資料。",
+        "no_downloader": "數據機上沒有安裝下載工具。",
+        "build_failed": "無法讀取下載的資料。",
+        "write_failed": "無法在數據機上儲存基地台資料庫。",
+        "invalid_mcc": "無法讀取 SIM 卡的國家代碼。"
+      }
+    },
+    "toast": {
+      "home_saved": "位置已儲存。",
+      "tower_saved": "基地台位置已儲存。",
+      "tower_reset": "基地台已恢復使用資料庫位置。",
+      "db_updated": "基地台資料庫已更新。",
+      "save_failed": "儲存失敗，請重試。"
+    },
+    "condition": {
+      "load_failed_title": "無法載入基地台地圖",
+      "load_failed_desc": "數據機沒有回應。請檢查連線後重試。",
+      "retry": "重試",
+      "no_sim_title": "未偵測到 SIM 卡",
+      "no_sim_desc": "請插入 SIM 卡，讓數據機知道要顯示哪家電信業者的基地台。"
+    }
   }
 }

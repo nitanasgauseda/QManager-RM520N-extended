@@ -110,6 +110,9 @@ www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_email_send
 # Telegram test send: one literal verb, canned text; root only to read the bot token.
 www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_telegram_send
 
+# Rayhunter (optional): fixed verbs, pinned release, sha256-verified download.
+www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_rayhunter_mgr
+
 # Tailscale VPN management
 www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_tailscale_mgr
 www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale

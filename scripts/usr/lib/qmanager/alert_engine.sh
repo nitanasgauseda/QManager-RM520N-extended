@@ -86,7 +86,7 @@ _AE_MAX_DISCORD_LOG=100     # same cap as the SMS and email logs
 _AE_DISCORD_TRIM_EVERY=150  # cycles between Discord-log size checks (~10 min at ~4 s/cycle)
 
 # Applied verbatim whenever alert_routing.json is missing or fails to parse.
-_AE_ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true}}'
+_AE_ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true},"suspicious_cell":{"sms":true,"email":true,"discord":true,"telegram":true}}'
 
 # --- State (poller-lifetime only — not persisted across a poller restart,
 #     matching the pre-existing per-channel timers this engine replaces) ----
@@ -218,7 +218,7 @@ _ae_capable() {
         connection_lost)
             [ "$2" = "sms" ]
             ;;
-        connection_restored|reboot)
+        connection_restored|reboot|suspicious_cell)
             case "$2" in sms|email|discord|telegram) return 0 ;; *) return 1 ;; esac
             ;;
         *)
@@ -243,8 +243,10 @@ _ae_effective_send() {
         *)       return 1 ;;
     esac
 
+    # A cell missing from an older routing file falls back to the built-in default.
     routed=$(printf '%s' "$_ae_routing_json" | jq -r --arg e "$event" --arg c "$channel" \
-        '(.[$e][$c]) | if . == null then false else . end' 2>/dev/null)
+        --argjson d "$_AE_ROUTING_DEFAULT" \
+        '(.[$e][$c]) as $v | if $v == null then ($d[$e][$c] // false) else $v end' 2>/dev/null)
     [ "$routed" = "true" ]
 }
 
@@ -368,6 +370,7 @@ _ae_resolve_held_reboot() {
 
 _ae_email_subject() {
     case "$1" in
+        suspicious_cell)      printf '%s' "Suspicious Cell Detected" ;;
         connection_restored) printf '%s' "Connection Recovered" ;;
         reboot)               printf '%s' "Device Rebooted" ;;
         *)                    printf '%s' "Alert" ;;

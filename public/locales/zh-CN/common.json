@@ -1061,6 +1061,9 @@
         },
         "reboot": {
           "name": "调制解调器已重启"
+        },
+        "suspicious_cell": {
+          "name": "可疑小区"
         }
       },
       "loading": "正在加载覆盖范围",
@@ -1633,6 +1636,87 @@
     "band": {
       "title": "支持本项目",
       "body": "QManager 是一个业余维护、完全免费的项目。如果它对你的设备有帮助，一点小小的支持就能让它继续走下去——无论如何都不会有付费墙。"
+    }
+  },
+  "cellGuard": {
+    "page": {
+      "title": "Cell Guard",
+      "description": "当调制解调器连接到行为类似伪基站（IMSI 捕获器）的小区时发出警告。",
+      "refresh": "刷新",
+      "retry": "重试"
+    },
+    "detection": {
+      "title": "检测",
+      "description": "将每个新的服务小区与此位置以前见过的小区以及基站数据库进行比较。",
+      "enabled": "检测",
+      "learn": "学习期",
+      "learn_0": "无",
+      "learn_24": "24 小时",
+      "learn_72": "72 小时",
+      "state": "状态",
+      "state_off": "关闭",
+      "state_learning": "正在学习你的小区",
+      "state_learning_until": "学习至 {{time}}",
+      "state_watching": "监视中",
+      "known": "已知小区",
+      "protect_tip": "大多数 IMSI 捕获器会迫使调制解调器降到 2G 或 3G。将网络模式设为仅 LTE 和 5G 即可阻止这种情况。",
+      "protect_link": "打开蜂窝设置",
+      "unsaved": "有未保存的更改",
+      "reset": "忘记已知小区",
+      "save": "保存"
+    },
+    "findings": {
+      "title": "发现",
+      "description": "最新的在前。发现只是需要进一步查看的理由，并不是攻击的证据。",
+      "none": "目前没有可疑情况",
+      "warning": "警告",
+      "info": "信息"
+    },
+    "rayhunter": {
+      "title": "Rayhunter (EFF)",
+      "description": "可选的深度检查：EFF 的 Rayhunter 读取调制解调器自身的信令，标记伪基站会发出的请求，例如索取你的 IMSI 或强制降到 2G。",
+      "installed": "已安装",
+      "yes": "是",
+      "not_installed": "未安装",
+      "diag": "诊断接口",
+      "diag_yes": "可用",
+      "diag_no": "未找到",
+      "diag_note": "Rayhunter 需要调制解调器的 Qualcomm 诊断接口。此调制解调器未提供该接口，因此 Rayhunter 无法在此录制。其他检查仍然有效。",
+      "service": "服务",
+      "running": "运行中",
+      "stopped": "已停止",
+      "recording": "录制",
+      "no_recording": "未录制",
+      "warnings": "Rayhunter 警告",
+      "no_warnings": "当前录制中没有警告。",
+      "not_running_hint": "开启 Rayhunter 后即可在此查看其警告。",
+      "log": "显示 Rayhunter 日志",
+      "foot": "下载约 21 MB，运行前会先校验。警告也会作为 Cell Guard 提醒发送。",
+      "install": "下载并安装",
+      "installing": "正在安装…",
+      "uninstall": "移除",
+      "enable": "开启",
+      "disable": "关闭",
+      "errors": {
+        "failed": "操作失败，请重试。",
+        "already_running": "已有安装正在进行。",
+        "not_installed": "未安装 Rayhunter。",
+        "start_failed": "无法启动 Rayhunter。",
+        "unit_missing": "缺少 Rayhunter 服务。请重新安装 QManager。",
+        "no_diag": "Rayhunter 无法在此运行：调制解调器没有诊断接口。"
+      }
+    },
+    "toast": {
+      "saved": "Cell Guard 设置已保存。",
+      "baseline_reset": "已忘记已知小区，重新开始学习。",
+      "install_started": "已开始下载 Rayhunter。",
+      "uninstalled": "已移除 Rayhunter。",
+      "enabled": "已开启 Rayhunter。",
+      "disabled": "已关闭 Rayhunter。"
+    },
+    "errors": {
+      "load_failed": "无法加载 Cell Guard。",
+      "save_failed": "保存失败，请重试。"
     }
   }
 }

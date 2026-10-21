@@ -393,7 +393,9 @@
       "profile_applied": "配置文件已应用",
       "profile_failed": "配置文件应用失败",
       "profile_deactivated": "配置文件已停用",
-      "tower_failover": "基站锁定故障切换"
+      "tower_failover": "基站锁定故障切换",
+      "suspicious_cell": "可疑小区",
+      "new_cell": "新小区"
     }
   },
   "connection_quality": {

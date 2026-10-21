@@ -1061,6 +1061,9 @@
         },
         "reboot": {
           "name": "Modem riavviato"
+        },
+        "suspicious_cell": {
+          "name": "Cella sospetta"
         }
       },
       "loading": "Caricamento della copertura…",
@@ -1633,6 +1636,87 @@
     "band": {
       "title": "Sostieni il progetto",
       "body": "QManager è un progetto personale, mantenuto gratuitamente. Se ti è stato utile, un contributo lo tiene in vita — e in ogni caso non arriverà alcun paywall."
+    }
+  },
+  "cellGuard": {
+    "page": {
+      "title": "Cell Guard",
+      "description": "Avvisa quando il modem si collega a una cella che si comporta come una falsa stazione base (IMSI catcher).",
+      "refresh": "Aggiorna",
+      "retry": "Riprova"
+    },
+    "detection": {
+      "title": "Rilevamento",
+      "description": "Confronta ogni nuova cella servente con quelle già viste in questo luogo e con il database delle torri.",
+      "enabled": "Rilevamento",
+      "learn": "Periodo di apprendimento",
+      "learn_0": "Nessuno",
+      "learn_24": "24 h",
+      "learn_72": "72 h",
+      "state": "Stato",
+      "state_off": "Spento",
+      "state_learning": "Apprendimento delle tue celle",
+      "state_learning_until": "Apprendimento fino a {{time}}",
+      "state_watching": "In osservazione",
+      "known": "Celle conosciute",
+      "protect_tip": "La maggior parte degli IMSI catcher funziona spingendo il modem su 2G o 3G. Impostare la modalità di rete solo su LTE e 5G lo impedisce.",
+      "protect_link": "Apri Impostazioni cellulare",
+      "unsaved": "Modifiche non salvate",
+      "reset": "Dimentica celle conosciute",
+      "save": "Salva"
+    },
+    "findings": {
+      "title": "Rilevazioni",
+      "description": "Le più recenti per prime. Una rilevazione è un motivo per controllare, non la prova di un attacco.",
+      "none": "Nulla di sospetto finora",
+      "warning": "Avviso",
+      "info": "Informazione"
+    },
+    "rayhunter": {
+      "title": "Rayhunter (EFF)",
+      "description": "Controllo approfondito opzionale: Rayhunter di EFF legge la segnalazione del modem e segnala le richieste tipiche di una falsa stazione, come la richiesta del tuo IMSI o il passaggio forzato al 2G.",
+      "installed": "Installato",
+      "yes": "Sì",
+      "not_installed": "Non installato",
+      "diag": "Interfaccia diagnostica",
+      "diag_yes": "Disponibile",
+      "diag_no": "Non trovata",
+      "diag_note": "Rayhunter richiede l'interfaccia diagnostica Qualcomm del modem. Questo modem non la mostra, quindi Rayhunter non potrà registrare qui. Gli altri controlli funzionano comunque.",
+      "service": "Servizio",
+      "running": "In esecuzione",
+      "stopped": "Fermo",
+      "recording": "Registrazione",
+      "no_recording": "Non in registrazione",
+      "warnings": "Avvisi di Rayhunter",
+      "no_warnings": "Nessun avviso nella registrazione corrente.",
+      "not_running_hint": "Attiva Rayhunter per vedere qui i suoi avvisi.",
+      "log": "Mostra il log di Rayhunter",
+      "foot": "Download di circa 21 MB, verificato prima dell'esecuzione. Gli avvisi arrivano anche come avvisi di Cell Guard.",
+      "install": "Scarica e installa",
+      "installing": "Installazione…",
+      "uninstall": "Rimuovi",
+      "enable": "Attiva",
+      "disable": "Disattiva",
+      "errors": {
+        "failed": "Non ha funzionato. Riprova.",
+        "already_running": "Un'installazione è già in corso.",
+        "not_installed": "Rayhunter non è installato.",
+        "start_failed": "Impossibile avviare Rayhunter.",
+        "unit_missing": "Il servizio Rayhunter manca. Reinstalla QManager.",
+        "no_diag": "Rayhunter non può funzionare qui: il modem non ha un'interfaccia diagnostica."
+      }
+    },
+    "toast": {
+      "saved": "Impostazioni di Cell Guard salvate.",
+      "baseline_reset": "Celle conosciute dimenticate. L'apprendimento ricomincia.",
+      "install_started": "Download di Rayhunter avviato.",
+      "uninstalled": "Rayhunter rimosso.",
+      "enabled": "Rayhunter attivato.",
+      "disabled": "Rayhunter disattivato."
+    },
+    "errors": {
+      "load_failed": "Impossibile caricare Cell Guard.",
+      "save_failed": "Salvataggio non riuscito. Riprova."
     }
   }
 }

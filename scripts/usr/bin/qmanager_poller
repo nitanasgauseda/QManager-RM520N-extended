@@ -465,6 +465,15 @@ fi
     alert_engine_init() { :; }
 }
 
+# Fake base station heuristics (optional). Guarded with -f: a missing file must not abort the poller.
+cg_legacy_rat=""
+if [ -f /usr/lib/qmanager/cell_guard.sh ]; then
+    . /usr/lib/qmanager/cell_guard.sh
+else
+    qlog_warn "cell_guard.sh not found, fake cell detection disabled"
+    cell_guard_check() { :; }
+fi
+
 # Shared ping.json reader + staleness rule. Fail-closed stub: no lib = always stale.
 # Guarded with -f: BusyBox ash exits when `.` cannot find its file.
 if [ -f /usr/lib/qmanager/conn_state.sh ]; then
@@ -1321,6 +1330,11 @@ poll_serving_cell() {
         local prev_lte_state="$lte_state"
         local prev_nr_state="$nr_state"
         parse_serving_cell "$result"
+        case "$result" in
+            *'"WCDMA"'*) cg_legacy_rat="3G (WCDMA)" ;;
+            *'"GSM"'*)   cg_legacy_rat="2G (GSM)" ;;
+            *)           cg_legacy_rat="" ;;
+        esac
         # Log state transitions
         qlog_state_change "network_type" "$prev_network_type" "$network_type"
         qlog_state_change "lte_state" "$prev_lte_state" "$lte_state"
@@ -2447,6 +2461,7 @@ poll_cycle() {
     update_conn_uptime
     determine_service_status
     detect_events
+    cell_guard_check
     write_cache
 
     cycle_count=$((cycle_count + 1))

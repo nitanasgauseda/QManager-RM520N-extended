@@ -123,7 +123,7 @@ SSH_BOOTSTRAP_STATUS="not_run"
 LOG_FILE="/tmp/qmanager_install.log"
 
 # Services gated on config: only re-enable if they were already enabled.
-UCI_GATED_SERVICES="qmanager-watchcat qmanager-tower-failover qmanager-discord qmanager-sms-forward"
+UCI_GATED_SERVICES="qmanager-watchcat qmanager-tower-failover qmanager-discord qmanager-sms-forward qmanager-rayhunter"
 
 # Conflict packages that must be removed before installing
 CONFLICT_PACKAGES="socat socat-at-bridge"
@@ -3768,6 +3768,11 @@ enable_services() {
     # here yet, which _apply_gated_symlink already treats as "leave alone".
     if [ -x "$BIN_DIR/qmanager_sms_forward" ]; then
         _apply_gated_symlink /etc/qmanager/sms_forwarding.json '.enabled' qmanager-sms-forward "SMS forwarding service"
+    fi
+
+    # Rayhunter is downloaded on demand from Monitoring -> Cell Guard; no daemon, nothing to gate.
+    if [ -x /usrdata/rayhunter/rayhunter-daemon ]; then
+        _apply_gated_symlink /etc/qmanager/cell_guard.json '.rayhunter' qmanager-rayhunter "Rayhunter service"
     fi
 
     sync

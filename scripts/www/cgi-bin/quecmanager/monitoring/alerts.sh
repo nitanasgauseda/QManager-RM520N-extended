@@ -93,7 +93,7 @@ MSMTP_INSTALL_PID="/tmp/qmanager_msmtp_install.pid"
 # exactly, since that's the backend truth the engine enforces regardless of
 # what's written here. Enforcing it again here just keeps the persisted
 # routing file honest for the GET response / future engine changes.
-ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true}}'
+ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true},"suspicious_cell":{"sms":true,"email":true,"discord":true,"telegram":true}}'
 
 TELEGRAM_CONFIG="/etc/qmanager/telegram_alerts.json"
 TELEGRAM_RELOAD="/tmp/qmanager_telegram_reload"
@@ -249,6 +249,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --argjson msmtp_installed "$msmtp_installed" \
         --argjson discord_connected "$discord_connected" \
         --argjson routing "$routing_json" \
+        --argjson def_routing "$ROUTING_DEFAULT" \
         --argjson reboots "$reboots_json" \
         '($sms.phone // "") as $sms_phone
         | ($email.sender // "") as $email_sender
@@ -294,7 +295,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                     configured: ($telegram_chat != "" and $telegram_token_set)
                 }
             },
-            routing: { events: $routing },
+            routing: { events: ($def_routing * $routing) },
             capabilities: {
                 connection_lost: {
                     sms: true,
@@ -303,7 +304,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                     telegram: false, telegram_reason: "telegram_needs_internet"
                 },
                 connection_restored: { sms: true, email: true, discord: true, telegram: true },
-                reboot: { sms: true, email: true, discord: true, telegram: true }
+                reboot: { sms: true, email: true, discord: true, telegram: true },
+                suspicious_cell: { sms: true, email: true, discord: true, telegram: true }
             },
             reboots: $reboots
         }'

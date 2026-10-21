@@ -851,6 +851,9 @@
         },
         "reboot": {
           "name": "Modem rebooted"
+        },
+        "suspicious_cell": {
+          "name": "Suspicious cell"
         }
       },
       "reason": {
@@ -1633,6 +1636,87 @@
     "band": {
       "title": "Support the project",
       "body": "QManager is a side project, maintained for free. If it has been useful on your setup, a tip keeps it going — and there is no paywall coming either way."
+    }
+  },
+  "cellGuard": {
+    "page": {
+      "title": "Cell Guard",
+      "description": "Warns when the modem connects to a cell that behaves like a fake base station (IMSI catcher).",
+      "refresh": "Refresh",
+      "retry": "Try again"
+    },
+    "detection": {
+      "title": "Detection",
+      "description": "Checks every new serving cell against what this location has seen before and the tower database.",
+      "enabled": "Detection",
+      "learn": "Learning period",
+      "learn_0": "None",
+      "learn_24": "24 h",
+      "learn_72": "72 h",
+      "state": "State",
+      "state_off": "Off",
+      "state_learning": "Learning your cells",
+      "state_learning_until": "Learning until {{time}}",
+      "state_watching": "Watching",
+      "known": "Known cells",
+      "protect_tip": "Most IMSI catchers work by pushing the modem down to 2G or 3G. Setting the network mode to LTE and 5G only blocks that.",
+      "protect_link": "Open Cellular Settings",
+      "unsaved": "Unsaved changes",
+      "reset": "Forget known cells",
+      "save": "Save"
+    },
+    "findings": {
+      "title": "Findings",
+      "description": "Newest first. A finding is a reason to look closer, not proof of an attack.",
+      "none": "Nothing suspicious so far",
+      "warning": "Warning",
+      "info": "Information"
+    },
+    "rayhunter": {
+      "title": "Rayhunter (EFF)",
+      "description": "Optional deep check: EFF's Rayhunter reads the modem's own signalling and flags requests a fake station makes, such as asking for your IMSI or forcing a 2G downgrade.",
+      "installed": "Installed",
+      "yes": "Yes",
+      "not_installed": "Not installed",
+      "diag": "Diagnostic interface",
+      "diag_yes": "Available",
+      "diag_no": "Not found",
+      "diag_note": "Rayhunter needs the modem's Qualcomm diagnostic interface. This modem does not show it, so Rayhunter will not be able to record here. The other checks still work.",
+      "service": "Service",
+      "running": "Running",
+      "stopped": "Stopped",
+      "recording": "Recording",
+      "no_recording": "Not recording",
+      "warnings": "Rayhunter warnings",
+      "no_warnings": "No warnings in the current recording.",
+      "not_running_hint": "Turn Rayhunter on to see its warnings here.",
+      "log": "Show Rayhunter log",
+      "foot": "About 21 MB download, verified before it runs. Warnings also arrive as Cell Guard alerts.",
+      "install": "Download and install",
+      "installing": "Installing…",
+      "uninstall": "Remove",
+      "enable": "Turn on",
+      "disable": "Turn off",
+      "errors": {
+        "failed": "That did not work. Try again.",
+        "already_running": "An installation is already running.",
+        "not_installed": "Rayhunter is not installed.",
+        "start_failed": "Rayhunter could not be started.",
+        "unit_missing": "The Rayhunter service is missing. Reinstall QManager.",
+        "no_diag": "Rayhunter cannot run here: the modem has no diagnostic interface."
+      }
+    },
+    "toast": {
+      "saved": "Cell Guard settings saved.",
+      "baseline_reset": "Known cells forgotten. Learning starts again.",
+      "install_started": "Rayhunter download started.",
+      "uninstalled": "Rayhunter removed.",
+      "enabled": "Rayhunter turned on.",
+      "disabled": "Rayhunter turned off."
+    },
+    "errors": {
+      "load_failed": "Cell Guard could not load.",
+      "save_failed": "Could not save. Try again."
     }
   }
 }

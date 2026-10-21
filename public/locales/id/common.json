@@ -1061,6 +1061,9 @@
         },
         "reboot": {
           "name": "Modem reboot"
+        },
+        "suspicious_cell": {
+          "name": "Sel mencurigakan"
         }
       },
       "loading": "Memuat cakupan",
@@ -1633,6 +1636,87 @@
     "band": {
       "title": "Dukung proyek ini",
       "body": "QManager adalah proyek sampingan yang dikelola secara gratis. Jika bermanfaat untuk perangkat Anda, sedikit dukungan membuatnya terus berjalan — dan tidak akan ada fitur berbayar apa pun."
+    }
+  },
+  "cellGuard": {
+    "page": {
+      "title": "Cell Guard",
+      "description": "Memberi peringatan saat modem terhubung ke sel yang berperilaku seperti stasiun pangkalan palsu (IMSI catcher).",
+      "refresh": "Muat ulang",
+      "retry": "Coba lagi"
+    },
+    "detection": {
+      "title": "Deteksi",
+      "description": "Membandingkan setiap sel baru dengan sel yang pernah terlihat di lokasi ini dan dengan basis data menara.",
+      "enabled": "Deteksi",
+      "learn": "Masa belajar",
+      "learn_0": "Tidak ada",
+      "learn_24": "24 jam",
+      "learn_72": "72 jam",
+      "state": "Status",
+      "state_off": "Mati",
+      "state_learning": "Mempelajari sel Anda",
+      "state_learning_until": "Belajar sampai {{time}}",
+      "state_watching": "Memantau",
+      "known": "Sel yang dikenal",
+      "protect_tip": "Kebanyakan IMSI catcher bekerja dengan memaksa modem turun ke 2G atau 3G. Mengatur mode jaringan hanya LTE dan 5G mencegahnya.",
+      "protect_link": "Buka Pengaturan Seluler",
+      "unsaved": "Perubahan belum disimpan",
+      "reset": "Lupakan sel yang dikenal",
+      "save": "Simpan"
+    },
+    "findings": {
+      "title": "Temuan",
+      "description": "Terbaru lebih dulu. Temuan adalah alasan untuk memeriksa, bukan bukti serangan.",
+      "none": "Belum ada yang mencurigakan",
+      "warning": "Peringatan",
+      "info": "Informasi"
+    },
+    "rayhunter": {
+      "title": "Rayhunter (EFF)",
+      "description": "Pemeriksaan mendalam opsional: Rayhunter dari EFF membaca pensinyalan modem sendiri dan menandai permintaan khas stasiun palsu, seperti meminta IMSI Anda atau memaksa turun ke 2G.",
+      "installed": "Terpasang",
+      "yes": "Ya",
+      "not_installed": "Belum terpasang",
+      "diag": "Antarmuka diagnostik",
+      "diag_yes": "Tersedia",
+      "diag_no": "Tidak ditemukan",
+      "diag_note": "Rayhunter memerlukan antarmuka diagnostik Qualcomm milik modem. Modem ini tidak menampilkannya, jadi Rayhunter tidak dapat merekam di sini. Pemeriksaan lain tetap berjalan.",
+      "service": "Layanan",
+      "running": "Berjalan",
+      "stopped": "Berhenti",
+      "recording": "Rekaman",
+      "no_recording": "Tidak merekam",
+      "warnings": "Peringatan Rayhunter",
+      "no_warnings": "Tidak ada peringatan di rekaman saat ini.",
+      "not_running_hint": "Nyalakan Rayhunter untuk melihat peringatannya di sini.",
+      "log": "Tampilkan log Rayhunter",
+      "foot": "Unduhan sekitar 21 MB, diverifikasi sebelum dijalankan. Peringatan juga dikirim sebagai peringatan Cell Guard.",
+      "install": "Unduh dan pasang",
+      "installing": "Memasang…",
+      "uninstall": "Hapus",
+      "enable": "Nyalakan",
+      "disable": "Matikan",
+      "errors": {
+        "failed": "Gagal. Coba lagi.",
+        "already_running": "Pemasangan sedang berjalan.",
+        "not_installed": "Rayhunter belum terpasang.",
+        "start_failed": "Rayhunter tidak dapat dijalankan.",
+        "unit_missing": "Layanan Rayhunter tidak ada. Pasang ulang QManager.",
+        "no_diag": "Rayhunter tidak dapat berjalan di sini: modem tidak memiliki antarmuka diagnostik."
+      }
+    },
+    "toast": {
+      "saved": "Pengaturan Cell Guard disimpan.",
+      "baseline_reset": "Sel yang dikenal dilupakan. Masa belajar dimulai lagi.",
+      "install_started": "Unduhan Rayhunter dimulai.",
+      "uninstalled": "Rayhunter dihapus.",
+      "enabled": "Rayhunter dinyalakan.",
+      "disabled": "Rayhunter dimatikan."
+    },
+    "errors": {
+      "load_failed": "Cell Guard tidak dapat dimuat.",
+      "save_failed": "Gagal menyimpan. Coba lagi."
     }
   }
 }

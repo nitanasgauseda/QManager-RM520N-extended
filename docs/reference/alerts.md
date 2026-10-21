@@ -577,7 +577,8 @@ Added as a fourth channel with the same contract as Discord: transport only, cap
 - **The token never reaches argv.** `telegram_send_raw` pipes `url = "https://api.telegram.org/bot<token>/sendMessage"` into `curl -K -`; only `chat_id` and the text are on the command line.
 - **curl is required.** No wget fallback: BusyBox wget would need the token in the URL on argv. GET reports `channels.telegram.curl_installed`; the test returns `curl_missing`.
 - **Old clients.** A `save_settings` body without a `telegram` key keeps the saved Telegram settings instead of switching the channel off.
-- **Routing.** An `alert_routing.json` written before the channel existed has no `telegram` cells; the engine and the page both read them as false until the next save.
+- **Routing.** A cell missing from an older `alert_routing.json` (a new channel or event) falls back to the built-in default in both the engine (`_ae_effective_send`) and the GET (`$def_routing * $routing`). An explicit `false` is kept.
+- **`suspicious_cell`** is a fourth event (Cell Guard, see [cell-guard.md](cell-guard.md)); every channel is capable and routed by default.
 
 ## Frontend anatomy
 

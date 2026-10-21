@@ -862,7 +862,9 @@ export type NetworkEventType =
   | "profile_applied"     // Custom SIM Profile applied (complete or partial)
   | "profile_failed"      // Custom SIM Profile apply failed (all steps)
   | "profile_deactivated" // Custom SIM Profile deactivated by user
-  | "tower_failover";     // Tower lock failover activated (signal below threshold)
+  | "tower_failover"      // Tower lock failover activated (signal below threshold)
+  | "suspicious_cell"     // Cell Guard finding (possible fake base station)
+  | "new_cell";           // Cell Guard: first time this cell was seen
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";

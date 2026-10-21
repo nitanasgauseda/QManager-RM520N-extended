@@ -1,0 +1,177 @@
+#!/bin/sh
+# qmanager_rayhunter_mgr — root helper for the optional EFF Rayhunter daemon.
+# Verbs: install | install-status | enable | disable | uninstall | firewall-on | firewall-off
+# Downloads one pinned release, verifies the zip and the daemon by sha256, never runs unverified code.
+# Called via sudoers: www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_rayhunter_mgr
+
+PATH=/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH
+
+RH_VERSION="v0.13.0"
+RH_ZIP="rayhunter-${RH_VERSION}-linux-armv7.zip"
+RH_URL="https://github.com/EFForg/rayhunter/releases/download/${RH_VERSION}/${RH_ZIP}"
+RH_ZIP_SHA256="${QM_RH_ZIP_SHA256:-7cfee39a7ca5a867909c6871079792d96181a2e778a95ea1cbd7664d1ac82492}"
+RH_DAEMON_SHA256="90960d07f67bf41f1a196df3034fb00ddcdeef36b35a5e284209425f46792fd1"
+RH_DAEMON_MEMBER="rayhunter-${RH_VERSION}-linux-armv7/rayhunter-daemon/rayhunter-daemon"
+: "${RH_URL_OVERRIDE:=}"
+
+RH_DIR="/usrdata/rayhunter"
+RH_BIN="$RH_DIR/rayhunter-daemon"
+RH_CONF="$RH_DIR/config.toml"
+RH_PORT=8686
+UNIT="qmanager-rayhunter"
+WANTS="/lib/systemd/system/multi-user.target.wants"
+STATUS="/tmp/qmanager_rayhunter_install.json"
+PIDFILE="/tmp/qmanager_rayhunter_install.pid"
+
+ok()   { printf '{"success":true%s}\n' "${1:+,$1}"; exit 0; }
+fail() { printf '{"success":false,"error":"%s","detail":"%s"}\n' "$1" "$2"; exit 1; }
+progress() { printf '{"success":%s,"status":"%s","message":"%s"}\n' "$1" "$2" "$3" > "$STATUS.tmp" && mv "$STATUS.tmp" "$STATUS"; }
+
+[ "$#" -eq 1 ] || fail "invalid_action" "exactly one verb is required"
+
+fw_rule() { "$1" "$2" INPUT -p tcp --dport "$RH_PORT" ! -i lo -j DROP 2>/dev/null; }
+firewall_on() {
+    for t in iptables ip6tables; do
+        command -v "$t" >/dev/null 2>&1 || continue
+        fw_rule "$t" -C || fw_rule "$t" -I
+    done
+}
+firewall_off() {
+    for t in iptables ip6tables; do
+        command -v "$t" >/dev/null 2>&1 || continue
+        while fw_rule "$t" -C; do fw_rule "$t" -D || break; done
+    done
+}
+
+write_config() {
+    # Recording stops before the shared /usrdata partition gets tight.
+    cat > "$RH_CONF.tmp" <<EOF
+qmdl_store_path = "$RH_DIR/qmdl"
+port = $RH_PORT
+debug_mode = false
+device = "pinephone"
+ui_level = 0
+key_input_mode = 0
+enabled_notifications = ["Warning"]
+auto_check_updates = false
+clock_sync_mode = 0
+min_space_to_start_recording_mb = 120
+min_space_to_continue_recording_mb = 80
+wifi_enabled = false
+
+[analyzers]
+imsi_requested = true
+connection_redirect_2g_downgrade = true
+lte_sib6_and_7_downgrade = true
+null_cipher = true
+nas_null_cipher = true
+incomplete_sib = true
+test_analyzer = false
+diagnostic_analyzer = true
+no_nas_messages = false
+EOF
+    mv "$RH_CONF.tmp" "$RH_CONF"
+}
+
+free_mb() { df -k "$1" 2>/dev/null | awk 'NR==2 { print int($4 / 1024) }'; }
+
+do_install_worker() {
+    trap 'rm -f "$PIDFILE"' EXIT
+    progress true running "Preparing"
+    mkdir -p "$RH_DIR" || { progress false error "Cannot create $RH_DIR"; exit 1; }
+    work=""
+    for d in /tmp "$RH_DIR"; do
+        f=$(free_mb "$d"); case "$f" in ''|*[!0-9]*) f=0 ;; esac
+        if [ "$f" -ge 40 ]; then work="$d/.rh_dl.$$"; break; fi
+    done
+    [ -n "$work" ] || { progress false error "Not enough free space (need about 40 MB)"; exit 1; }
+    mkdir -p "$work" || { progress false error "Cannot create a work directory"; exit 1; }
+    trap 'rm -rf "$work"; rm -f "$PIDFILE"' EXIT
+
+    if ! command -v unzip >/dev/null 2>&1; then
+        progress true running "Installing unzip"
+        opkg update >/dev/null 2>&1; opkg install unzip >/dev/null 2>&1
+        command -v unzip >/dev/null 2>&1 || { progress false error "unzip is not available"; exit 1; }
+    fi
+
+    progress true running "Downloading Rayhunter $RH_VERSION (about 21 MB)"
+    url="${RH_URL_OVERRIDE:-$RH_URL}"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL --max-time 900 -o "$work/rh.zip" "$url" || { progress false error "Download failed"; exit 1; }
+    else
+        wget -q -T 900 -O "$work/rh.zip" "$url" || { progress false error "Download failed"; exit 1; }
+    fi
+
+    progress true running "Verifying"
+    got=$(sha256sum "$work/rh.zip" | awk '{print $1}')
+    [ "$got" = "$RH_ZIP_SHA256" ] || { progress false error "Download checksum did not match"; exit 1; }
+
+    unzip -p "$work/rh.zip" "$RH_DAEMON_MEMBER" > "$work/rayhunter-daemon" 2>/dev/null
+    got=$(sha256sum "$work/rayhunter-daemon" | awk '{print $1}')
+    if [ "$got" != "$RH_DAEMON_SHA256" ]; then
+        # Older BusyBox unzip may lack -p: extract to a directory instead.
+        mkdir -p "$work/x" && unzip -o -q "$work/rh.zip" "$RH_DAEMON_MEMBER" -d "$work/x" >/dev/null 2>&1
+        cp "$work/x/$RH_DAEMON_MEMBER" "$work/rayhunter-daemon" 2>/dev/null
+        got=$(sha256sum "$work/rayhunter-daemon" 2>/dev/null | awk '{print $1}')
+    fi
+    [ "$got" = "$RH_DAEMON_SHA256" ] || { progress false error "Daemon checksum did not match the pinned release"; exit 1; }
+
+    progress true running "Installing"
+    mkdir -p "$RH_DIR/qmdl"
+    [ -f "$RH_DIR/qmdl/manifest.toml" ] || printf 'entries = []\n' > "$RH_DIR/qmdl/manifest.toml"
+    cp "$work/rayhunter-daemon" "$RH_BIN.tmp" && chmod 755 "$RH_BIN.tmp" && mv "$RH_BIN.tmp" "$RH_BIN" \
+        || { progress false error "Could not write the daemon"; exit 1; }
+    chown root:root "$RH_BIN" 2>/dev/null
+    write_config
+    printf '%s\n' "$RH_VERSION" > "$RH_DIR/VERSION"
+    sync
+    progress true complete "Rayhunter $RH_VERSION installed"
+}
+
+case "$1" in
+    install)
+        if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+            fail "already_running" "An installation is already in progress"
+        fi
+        rm -f "$STATUS"
+        # Double fork so the worker outlives sudo and the CGI request.
+        ( ( do_install_worker ) </dev/null >/dev/null 2>&1 & echo $! > "$PIDFILE" ) </dev/null >/dev/null 2>&1
+        progress true running "Starting"
+        ok '"status":"running"'
+        ;;
+    install-status)
+        if [ -f "$STATUS" ]; then cat "$STATUS"; else printf '{"success":true,"status":"idle"}\n'; fi
+        exit 0
+        ;;
+    enable)
+        [ -x "$RH_BIN" ] || fail "not_installed" "Rayhunter is not installed"
+        [ -e /dev/diag ] || fail "no_diag" "This modem does not expose /dev/diag"
+        [ -f "/lib/systemd/system/$UNIT.service" ] || fail "unit_missing" "The service unit is missing"
+        [ -f "$RH_CONF" ] || write_config
+        mount -o remount,rw / 2>/dev/null
+        ln -sf "/lib/systemd/system/$UNIT.service" "$WANTS/$UNIT.service" 2>/dev/null
+        systemctl reset-failed "$UNIT" 2>/dev/null
+        systemctl start "$UNIT" 2>/dev/null || fail "start_failed" "The service could not be started"
+        ok
+        ;;
+    disable)
+        systemctl stop "$UNIT" 2>/dev/null
+        mount -o remount,rw / 2>/dev/null
+        rm -f "$WANTS/$UNIT.service"
+        firewall_off
+        ok
+        ;;
+    uninstall)
+        systemctl stop "$UNIT" 2>/dev/null
+        mount -o remount,rw / 2>/dev/null
+        rm -f "$WANTS/$UNIT.service"
+        firewall_off
+        rm -rf "$RH_DIR"
+        rm -f "$STATUS" /tmp/qmanager_rayhunter.log
+        ok
+        ;;
+    firewall-on)  firewall_on;  ok ;;
+    firewall-off) firewall_off; ok ;;
+    *) fail "invalid_action" "unknown verb" ;;
+esac

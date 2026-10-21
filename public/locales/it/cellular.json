@@ -2574,5 +2574,85 @@
       "applying": "Applicazione del blocco BTS {{leg}}…",
       "refreshing": "Rilettura dello stato del blocco BTS…"
     }
+  },
+  "tower_map": {
+    "page": {
+      "title": "Mappa torri",
+      "description": "Dove si trova la tua cella, quanto è lontana e dove puntare l'antenna."
+    },
+    "map": {
+      "title": "Mappa",
+      "description": "La tua posizione, la cella servente e le celle vicine del tuo operatore.",
+      "layer_label": "Stile mappa",
+      "layer_map": "Mappa",
+      "layer_satellite": "Satellite",
+      "aria": "Mappa delle torri",
+      "set_home": "Imposta la mia posizione",
+      "move_tower": "Sposta torre",
+      "place_tower": "Posiziona torre",
+      "reset_tower": "Usa posizione del database",
+      "hint_home": "Tocca la mappa dove si trovano il modem o l'antenna.",
+      "hint_move": "Trascina il punto blu della torre sul traliccio, o tocca dove si trova. La vista satellite spesso lo mostra.",
+      "hint_place": "Questa torre non è nel database. Tocca la mappa dove si trova il traliccio.",
+      "hint_no_home": "Imposta la tua posizione per vedere distanza e direzione."
+    },
+    "serving": {
+      "title": "Torre servente",
+      "description": "La torre a cui il modem è collegato ora.",
+      "no_cell": "Il modem non segnala ancora una cella servente.",
+      "tower": "Torre",
+      "position": "Posizione",
+      "distance": "Distanza sulla mappa",
+      "measured": "Misurata dal modem",
+      "check": "Verifica posizione",
+      "azimuth": "Direzione (nord geografico)",
+      "compass": "Sulla bussola",
+      "source": {
+        "yours": "Tua correzione",
+        "database": "Dal database",
+        "missing": "Non nel database"
+      },
+      "agreement": {
+        "agrees": "Coincide con la misura",
+        "off": "Non coincide"
+      },
+      "off_hint": "Il modem misura una distanza diversa da quella sulla mappa, quindi la posizione del database è probabilmente errata. Passa a Satellite, trova il traliccio vicino all'anello tratteggiato e sposta la torre su di esso.",
+      "cellmapper": "Verifica su CellMapper"
+    },
+    "db": {
+      "title": "Database torri",
+      "description": "Torri OpenCelliD del tuo paese, salvate sul modem.",
+      "towers": "Torri",
+      "updated": "Dati del",
+      "corrections": "Tue correzioni",
+      "none": "Non scaricato",
+      "download": "Scarica",
+      "update": "Aggiorna",
+      "updating": "Download in corso…",
+      "coverage_note": "Il database è collaborativo, elenca solo alcune torri e le posizioni possono sbagliare di qualche centinaio di metri. Le tue correzioni restano sul modem e hanno la precedenza.",
+      "errors": {
+        "download_failed": "Impossibile scaricare il database delle torri. Controlla la connessione internet.",
+        "checksum_mismatch": "Il download era danneggiato, quindi è stato mantenuto il database precedente. Riprova.",
+        "mcc_not_found": "Non ci sono ancora dati sulle torri per il tuo paese.",
+        "no_downloader": "Sul modem non è installato alcuno strumento di download.",
+        "build_failed": "Impossibile leggere i dati scaricati.",
+        "write_failed": "Impossibile salvare il database delle torri sul modem.",
+        "invalid_mcc": "Impossibile leggere il prefisso nazionale della SIM."
+      }
+    },
+    "toast": {
+      "home_saved": "Posizione salvata.",
+      "tower_saved": "Posizione della torre salvata.",
+      "tower_reset": "La torre usa di nuovo la posizione del database.",
+      "db_updated": "Database delle torri aggiornato.",
+      "save_failed": "Salvataggio non riuscito. Riprova."
+    },
+    "condition": {
+      "load_failed_title": "Impossibile caricare la mappa",
+      "load_failed_desc": "Il modem non ha risposto. Controlla la connessione e riprova.",
+      "retry": "Riprova",
+      "no_sim_title": "Nessuna SIM rilevata",
+      "no_sim_desc": "Inserisci una SIM così il modem sa di quale operatore mostrare le torri."
+    }
   }
 }

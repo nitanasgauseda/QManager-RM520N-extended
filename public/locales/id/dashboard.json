@@ -393,7 +393,9 @@
       "profile_applied": "Profil Diterapkan",
       "profile_failed": "Profil Gagal",
       "profile_deactivated": "Profil Dinonaktifkan",
-      "tower_failover": "Failover Penguncian Tower"
+      "tower_failover": "Failover Penguncian Tower",
+      "suspicious_cell": "Sel Mencurigakan",
+      "new_cell": "Sel Baru"
     }
   },
   "connection_quality": {

@@ -7,6 +7,7 @@ import {
   MessageSquareIcon,
   RotateCcwIcon,
   SendHorizontalIcon,
+  ShieldAlertIcon,
   WifiIcon,
   WifiOffIcon,
   type LucideIcon,
@@ -24,6 +25,7 @@ export const EVENT_GLYPH: Record<AlertEventKey, LucideIcon> = {
   connection_lost: WifiOffIcon,
   connection_restored: WifiIcon,
   reboot: RotateCcwIcon,
+  suspicious_cell: ShieldAlertIcon,
 };
 
 export const channelNameKey = (channel: AlertChannel) =>

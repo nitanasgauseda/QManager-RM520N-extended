@@ -24,6 +24,8 @@ export const EVENT_LABELS: Record<NetworkEventType, string> = {
   profile_failed: "Profile Failed",
   profile_deactivated: "Profile Deactivated",
   tower_failover: "Tower Lock Failover",
+  suspicious_cell: "Suspicious Cell",
+  new_cell: "New Cell",
 };
 
 /** Tab categories used by the monitoring Network Events card */
@@ -54,6 +56,8 @@ export const EVENT_TAB_CATEGORIES: Record<NetworkEventType, EventTabCategory> =
     profile_failed: "dataConnection",
     profile_deactivated: "dataConnection",
     tower_failover: "dataConnection",
+    suspicious_cell: "networkMode",
+    new_cell: "bandChanges",
   };
 
 /** The filter rail on `/monitoring`, in render order. `all` is not a category. */

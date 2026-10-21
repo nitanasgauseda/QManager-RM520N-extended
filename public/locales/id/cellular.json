@@ -2574,5 +2574,85 @@
       "applying": "Menerapkan kunci tower {{leg}}…",
       "refreshing": "Membaca ulang status kunci tower…"
     }
+  },
+  "tower_map": {
+    "page": {
+      "title": "Peta menara",
+      "description": "Di mana menara yang melayani Anda, seberapa jauh, dan ke arah mana antena diarahkan."
+    },
+    "map": {
+      "title": "Peta",
+      "description": "Lokasi Anda, menara yang melayani, dan menara operator Anda di sekitar.",
+      "layer_label": "Gaya peta",
+      "layer_map": "Peta",
+      "layer_satellite": "Satelit",
+      "aria": "Peta menara",
+      "set_home": "Atur lokasi saya",
+      "move_tower": "Pindahkan menara",
+      "place_tower": "Tempatkan menara",
+      "reset_tower": "Gunakan posisi basis data",
+      "hint_home": "Ketuk peta di tempat modem atau antena berada.",
+      "hint_move": "Seret titik biru menara ke tiangnya, atau ketuk tempatnya berdiri. Tampilan satelit sering memperlihatkannya.",
+      "hint_place": "Menara ini tidak ada di basis data. Ketuk peta di tempat tiangnya berdiri.",
+      "hint_no_home": "Atur lokasi Anda untuk melihat jarak dan arah."
+    },
+    "serving": {
+      "title": "Menara yang melayani",
+      "description": "Menara yang saat ini terhubung dengan modem.",
+      "no_cell": "Modem belum melaporkan sel yang melayani.",
+      "tower": "Menara",
+      "position": "Posisi",
+      "distance": "Jarak di peta",
+      "measured": "Diukur oleh modem",
+      "check": "Pemeriksaan posisi",
+      "azimuth": "Arah (utara sejati)",
+      "compass": "Di kompas",
+      "source": {
+        "yours": "Koreksi Anda",
+        "database": "Dari basis data",
+        "missing": "Tidak ada di basis data"
+      },
+      "agreement": {
+        "agrees": "Sesuai pengukuran",
+        "off": "Tidak sesuai"
+      },
+      "off_hint": "Modem mengukur jarak yang berbeda dari peta, jadi posisi di basis data kemungkinan meleset. Beralih ke Satelit, cari tiang di dekat lingkaran putus-putus, lalu pindahkan menara ke sana.",
+      "cellmapper": "Periksa di CellMapper"
+    },
+    "db": {
+      "title": "Basis data menara",
+      "description": "Menara OpenCelliD untuk negara Anda, disimpan di modem.",
+      "towers": "Menara",
+      "updated": "Data dari",
+      "corrections": "Koreksi Anda",
+      "none": "Belum diunduh",
+      "download": "Unduh",
+      "update": "Perbarui",
+      "updating": "Mengunduh…",
+      "coverage_note": "Basis data ini hasil kontribusi publik, hanya memuat sebagian menara, dan posisinya bisa meleset beberapa ratus meter. Koreksi Anda tersimpan di modem dan diutamakan.",
+      "errors": {
+        "download_failed": "Basis data menara tidak dapat diunduh. Periksa koneksi internet.",
+        "checksum_mismatch": "Unduhan rusak, jadi basis data lama dipertahankan. Coba lagi.",
+        "mcc_not_found": "Belum ada data menara untuk negara Anda.",
+        "no_downloader": "Modem tidak memiliki alat unduh.",
+        "build_failed": "Data yang diunduh tidak dapat dibaca.",
+        "write_failed": "Basis data menara tidak dapat disimpan di modem.",
+        "invalid_mcc": "Kode negara SIM Anda tidak dapat dibaca."
+      }
+    },
+    "toast": {
+      "home_saved": "Lokasi disimpan.",
+      "tower_saved": "Posisi menara disimpan.",
+      "tower_reset": "Menara kembali memakai posisi basis data.",
+      "db_updated": "Basis data menara diperbarui.",
+      "save_failed": "Gagal menyimpan. Coba lagi."
+    },
+    "condition": {
+      "load_failed_title": "Peta menara tidak dapat dimuat",
+      "load_failed_desc": "Modem tidak menjawab. Periksa koneksi lalu coba lagi.",
+      "retry": "Coba lagi",
+      "no_sim_title": "SIM tidak terdeteksi",
+      "no_sim_desc": "Pasang SIM agar modem tahu menara operator mana yang ditampilkan."
+    }
   }
 }

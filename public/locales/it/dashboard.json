@@ -393,7 +393,9 @@
       "profile_applied": "Profilo applicato",
       "profile_failed": "Profilo non riuscito",
       "profile_deactivated": "Profilo disattivato",
-      "tower_failover": "Failover blocco BTS"
+      "tower_failover": "Failover blocco BTS",
+      "suspicious_cell": "Cella sospetta",
+      "new_cell": "Nuova cella"
     }
   },
   "connection_quality": {

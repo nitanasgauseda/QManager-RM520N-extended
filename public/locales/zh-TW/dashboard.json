@@ -393,7 +393,9 @@
       "profile_applied": "設定檔已套用",
       "profile_failed": "設定檔套用失敗",
       "profile_deactivated": "設定檔已停用",
-      "tower_failover": "基站鎖定容錯移轉"
+      "tower_failover": "基站鎖定容錯移轉",
+      "suspicious_cell": "可疑細胞",
+      "new_cell": "新細胞"
     }
   },
   "connection_quality": {

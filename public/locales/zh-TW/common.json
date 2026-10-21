@@ -1061,6 +1061,9 @@
         },
         "reboot": {
           "name": "數據機已重新啟動"
+        },
+        "suspicious_cell": {
+          "name": "可疑細胞"
         }
       },
       "loading": "正在載入涵蓋範圍",
@@ -1633,6 +1636,87 @@
     "band": {
       "title": "支持本專案",
       "body": "QManager 是一個業餘維護、完全免費的專案。如果它對你的裝置有幫助，一點小小的支持就能讓它繼續走下去——無論如何都不會有付費牆。"
+    }
+  },
+  "cellGuard": {
+    "page": {
+      "title": "Cell Guard",
+      "description": "當數據機連線到行為類似偽基地台（IMSI 擷取器）的細胞時發出警告。",
+      "refresh": "重新整理",
+      "retry": "重試"
+    },
+    "detection": {
+      "title": "偵測",
+      "description": "將每個新的服務細胞與此位置以前見過的細胞以及基地台資料庫進行比較。",
+      "enabled": "偵測",
+      "learn": "學習期",
+      "learn_0": "無",
+      "learn_24": "24 小時",
+      "learn_72": "72 小時",
+      "state": "狀態",
+      "state_off": "關閉",
+      "state_learning": "正在學習你的細胞",
+      "state_learning_until": "學習至 {{time}}",
+      "state_watching": "監視中",
+      "known": "已知細胞",
+      "protect_tip": "大多數 IMSI 擷取器會迫使數據機降到 2G 或 3G。將網路模式設為僅 LTE 和 5G 即可阻止這種情況。",
+      "protect_link": "開啟行動網路設定",
+      "unsaved": "有未儲存的變更",
+      "reset": "忘記已知細胞",
+      "save": "儲存"
+    },
+    "findings": {
+      "title": "發現",
+      "description": "最新的在前。發現只是需要進一步查看的理由，並不是攻擊的證據。",
+      "none": "目前沒有可疑情況",
+      "warning": "警告",
+      "info": "資訊"
+    },
+    "rayhunter": {
+      "title": "Rayhunter (EFF)",
+      "description": "選用的深度檢查：EFF 的 Rayhunter 讀取數據機本身的信令，標記偽基地台會發出的請求，例如索取你的 IMSI 或強制降到 2G。",
+      "installed": "已安裝",
+      "yes": "是",
+      "not_installed": "未安裝",
+      "diag": "診斷介面",
+      "diag_yes": "可用",
+      "diag_no": "找不到",
+      "diag_note": "Rayhunter 需要數據機的 Qualcomm 診斷介面。此數據機未提供該介面，因此 Rayhunter 無法在此錄製。其他檢查仍然有效。",
+      "service": "服務",
+      "running": "執行中",
+      "stopped": "已停止",
+      "recording": "錄製",
+      "no_recording": "未錄製",
+      "warnings": "Rayhunter 警告",
+      "no_warnings": "目前錄製中沒有警告。",
+      "not_running_hint": "開啟 Rayhunter 後即可在此查看其警告。",
+      "log": "顯示 Rayhunter 日誌",
+      "foot": "下載約 21 MB，執行前會先驗證。警告也會作為 Cell Guard 提醒傳送。",
+      "install": "下載並安裝",
+      "installing": "正在安裝…",
+      "uninstall": "移除",
+      "enable": "開啟",
+      "disable": "關閉",
+      "errors": {
+        "failed": "操作失敗，請重試。",
+        "already_running": "已有安裝正在進行。",
+        "not_installed": "尚未安裝 Rayhunter。",
+        "start_failed": "無法啟動 Rayhunter。",
+        "unit_missing": "缺少 Rayhunter 服務。請重新安裝 QManager。",
+        "no_diag": "Rayhunter 無法在此執行：數據機沒有診斷介面。"
+      }
+    },
+    "toast": {
+      "saved": "Cell Guard 設定已儲存。",
+      "baseline_reset": "已忘記已知細胞，重新開始學習。",
+      "install_started": "已開始下載 Rayhunter。",
+      "uninstalled": "已移除 Rayhunter。",
+      "enabled": "已開啟 Rayhunter。",
+      "disabled": "已關閉 Rayhunter。"
+    },
+    "errors": {
+      "load_failed": "無法載入 Cell Guard。",
+      "save_failed": "儲存失敗，請重試。"
     }
   }
 }

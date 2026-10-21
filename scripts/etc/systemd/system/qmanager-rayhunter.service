@@ -1,0 +1,20 @@
+# /lib/systemd/system/qmanager-rayhunter.service
+# Optional EFF Rayhunter daemon; enabled from Monitoring -> Cell Guard. Gated by cell_guard.json .rayhunter.
+[Unit]
+Description=Rayhunter IMSI catcher detector (EFF)
+After=network.target qmanager-setup.service
+ConditionPathExists=/usrdata/rayhunter/rayhunter-daemon
+StartLimitIntervalSec=3600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/qmanager_rayhunter_mgr firewall-on
+ExecStart=/bin/sh -c 'RUST_LOG=warn exec /usrdata/rayhunter/rayhunter-daemon /usrdata/rayhunter/config.toml >> /tmp/qmanager_rayhunter.log 2>&1'
+ExecStopPost=/usr/bin/qmanager_rayhunter_mgr firewall-off
+Restart=on-failure
+RestartSec=30
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

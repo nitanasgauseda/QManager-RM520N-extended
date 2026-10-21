@@ -40,6 +40,7 @@ const navCellular: NavItem[] = [
     items: [
       { t_key: "antenna_statistics", url: "/cellular/antenna-statistics" },
       { t_key: "antenna_alignment", url: "/cellular/antenna-alignment" },
+      { t_key: "tower_map", url: "/cellular/tower-map" },
     ],
   },
   {
@@ -185,6 +186,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               }
           : undefined,
       },
+      { t_key: "cell_guard", url: "/monitoring/cell-guard", icon: "shield" },
       { t_key: "tailscale", url: "/monitoring/tailscale", icon: "vpn_lock" },
     ],
     [watchdog, t],

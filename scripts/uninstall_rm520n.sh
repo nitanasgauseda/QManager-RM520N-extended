@@ -369,6 +369,10 @@ info "Systemd units and boot symlinks removed"
 
 step "Removing binaries and shared libraries"
 
+# Optional Rayhunter daemon (recordings in /usrdata/rayhunter/qmdl stay unless --purge)
+rm -f /usrdata/rayhunter/rayhunter-daemon /usrdata/rayhunter/config.toml /tmp/qmanager_rayhunter.log
+[ "$PURGE" = "1" ] && rm -rf /usrdata/rayhunter
+
 # QManager daemons and utilities
 rm -f "$BIN_DIR"/qmanager_*
 info "Removed /usr/bin/qmanager_*"

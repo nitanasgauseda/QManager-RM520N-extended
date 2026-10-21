@@ -2574,5 +2574,85 @@
       "applying": "Applying the {{leg}} tower lock…",
       "refreshing": "Re-reading tower lock state…"
     }
+  },
+  "tower_map": {
+    "page": {
+      "title": "Tower Map",
+      "description": "Where your serving tower is, how far away, and which way to point the antenna."
+    },
+    "map": {
+      "title": "Map",
+      "description": "Your location, the serving tower and nearby towers of your operator.",
+      "layer_label": "Map style",
+      "layer_map": "Map",
+      "layer_satellite": "Satellite",
+      "aria": "Tower map",
+      "set_home": "Set my location",
+      "move_tower": "Move tower",
+      "place_tower": "Place tower",
+      "reset_tower": "Use database position",
+      "hint_home": "Tap the map where the modem or antenna is.",
+      "hint_move": "Drag the blue tower dot onto the mast, or tap where it stands. The satellite view often shows it.",
+      "hint_place": "This tower is not in the database. Tap the map where its mast stands.",
+      "hint_no_home": "Set your location to see distance and direction."
+    },
+    "serving": {
+      "title": "Serving tower",
+      "description": "The tower the modem is connected to right now.",
+      "no_cell": "The modem is not reporting a serving cell yet.",
+      "tower": "Tower",
+      "position": "Position",
+      "distance": "Distance on the map",
+      "measured": "Measured by the modem",
+      "check": "Position check",
+      "azimuth": "Direction (true north)",
+      "compass": "On a compass",
+      "source": {
+        "yours": "Your correction",
+        "database": "From the database",
+        "missing": "Not in the database"
+      },
+      "agreement": {
+        "agrees": "Matches the measurement",
+        "off": "Does not match"
+      },
+      "off_hint": "The modem measures a different distance than the map shows, so the database position is probably off. Switch to Satellite, find the mast near the dashed ring and move the tower onto it.",
+      "cellmapper": "Check on CellMapper"
+    },
+    "db": {
+      "title": "Tower database",
+      "description": "OpenCelliD towers for your country, stored on the modem.",
+      "towers": "Towers",
+      "updated": "Data from",
+      "corrections": "Your corrections",
+      "none": "Not downloaded",
+      "download": "Download",
+      "update": "Update",
+      "updating": "Downloading…",
+      "coverage_note": "The database is crowd-sourced and lists only some towers, and its positions can be a few hundred metres off. Your corrections stay on the modem and win over it.",
+      "errors": {
+        "download_failed": "The tower database could not be downloaded. Check the internet connection.",
+        "checksum_mismatch": "The download was damaged, so the old database was kept. Try again.",
+        "mcc_not_found": "There is no tower data for your country yet.",
+        "no_downloader": "The modem has no download tool installed.",
+        "build_failed": "The downloaded data could not be read.",
+        "write_failed": "The tower database could not be saved on the modem.",
+        "invalid_mcc": "Your SIM's country code could not be read."
+      }
+    },
+    "toast": {
+      "home_saved": "Location saved.",
+      "tower_saved": "Tower position saved.",
+      "tower_reset": "Tower uses the database position again.",
+      "db_updated": "Tower database updated.",
+      "save_failed": "Could not save. Try again."
+    },
+    "condition": {
+      "load_failed_title": "Tower Map could not load",
+      "load_failed_desc": "The modem did not answer. Check the connection and try again.",
+      "retry": "Try again",
+      "no_sim_title": "No SIM detected",
+      "no_sim_desc": "Insert a SIM so the modem knows which operator's towers to show."
+    }
   }
 }

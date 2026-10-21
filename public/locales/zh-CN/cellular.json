@@ -2574,5 +2574,85 @@
       "applying": "正在应用 {{leg}} 基站锁定…",
       "refreshing": "正在重新读取基站锁定状态…"
     }
+  },
+  "tower_map": {
+    "page": {
+      "title": "基站地图",
+      "description": "当前服务基站的位置、距离，以及天线应朝向的方向。"
+    },
+    "map": {
+      "title": "地图",
+      "description": "你的位置、服务基站以及你的运营商在附近的基站。",
+      "layer_label": "地图样式",
+      "layer_map": "地图",
+      "layer_satellite": "卫星",
+      "aria": "基站地图",
+      "set_home": "设置我的位置",
+      "move_tower": "移动基站",
+      "place_tower": "放置基站",
+      "reset_tower": "使用数据库位置",
+      "hint_home": "在地图上点击调制解调器或天线所在的位置。",
+      "hint_move": "将蓝色基站圆点拖到铁塔上，或点击铁塔所在位置。卫星视图通常能看到铁塔。",
+      "hint_place": "数据库中没有此基站。请在地图上点击铁塔所在的位置。",
+      "hint_no_home": "设置你的位置后即可查看距离和方向。"
+    },
+    "serving": {
+      "title": "服务基站",
+      "description": "调制解调器当前连接的基站。",
+      "no_cell": "调制解调器尚未报告服务小区。",
+      "tower": "基站",
+      "position": "位置",
+      "distance": "地图上的距离",
+      "measured": "调制解调器测得",
+      "check": "位置核对",
+      "azimuth": "方向（真北）",
+      "compass": "罗盘读数",
+      "source": {
+        "yours": "你的修正",
+        "database": "来自数据库",
+        "missing": "不在数据库中"
+      },
+      "agreement": {
+        "agrees": "与测量一致",
+        "off": "与测量不符"
+      },
+      "off_hint": "调制解调器测得的距离与地图不同，数据库中的位置可能有误。切换到卫星视图，在虚线圆环附近找到铁塔，并将基站移到其上。",
+      "cellmapper": "在 CellMapper 上查看"
+    },
+    "db": {
+      "title": "基站数据库",
+      "description": "你所在国家的 OpenCelliD 基站数据，保存在调制解调器上。",
+      "towers": "基站",
+      "updated": "数据日期",
+      "corrections": "你的修正",
+      "none": "未下载",
+      "download": "下载",
+      "update": "更新",
+      "updating": "正在下载…",
+      "coverage_note": "该数据库由众包收集，只包含部分基站，位置可能偏差数百米。你的修正保存在调制解调器上，并优先使用。",
+      "errors": {
+        "download_failed": "无法下载基站数据库。请检查互联网连接。",
+        "checksum_mismatch": "下载的文件已损坏，已保留旧数据库。请重试。",
+        "mcc_not_found": "暂时没有你所在国家的基站数据。",
+        "no_downloader": "调制解调器上没有安装下载工具。",
+        "build_failed": "无法读取下载的数据。",
+        "write_failed": "无法在调制解调器上保存基站数据库。",
+        "invalid_mcc": "无法读取 SIM 卡的国家代码。"
+      }
+    },
+    "toast": {
+      "home_saved": "位置已保存。",
+      "tower_saved": "基站位置已保存。",
+      "tower_reset": "基站已恢复使用数据库位置。",
+      "db_updated": "基站数据库已更新。",
+      "save_failed": "保存失败，请重试。"
+    },
+    "condition": {
+      "load_failed_title": "无法加载基站地图",
+      "load_failed_desc": "调制解调器没有响应。请检查连接后重试。",
+      "retry": "重试",
+      "no_sim_title": "未检测到 SIM 卡",
+      "no_sim_desc": "请插入 SIM 卡，以便调制解调器知道要显示哪家运营商的基站。"
+    }
   }
 }
