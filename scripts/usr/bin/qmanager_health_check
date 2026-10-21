@@ -896,7 +896,7 @@ _collect_configs() {
 # the primary control is that nothing above collects these files.
 _purge_raw_secrets() {
     local dir="$1"
-    find "$dir" -type f \( -name 'discord_bot_token' -o -name 'email_app_password' \) \
+    find "$dir" -type f \( -name 'discord_bot_token' -o -name 'email_app_password' -o -name 'telegram_bot_token' \) \
         -exec rm -f {} + 2>/dev/null || true
 }
 

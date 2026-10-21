@@ -100,6 +100,7 @@ export function AlertsSettingsCard({ state, hook, onTested }: AlertsSettingsCard
     sms: t("alerts.channels.name.sms"),
     email: t("alerts.channels.name.email"),
     discord: t("alerts.channels.name.discord"),
+    telegram: t("alerts.channels.name.telegram"),
   };
 
   const railItems: ChannelRailItem[] = ALERT_CHANNEL_ORDER.map((ch) => ({
@@ -129,6 +130,7 @@ export function AlertsSettingsCard({ state, hook, onTested }: AlertsSettingsCard
     // GET never returns a secret, so a rotation moves no watched value: clearing is what settles `isDirty`.
     form.setAppPassword("");
     form.setBotToken("");
+    form.setTelegramToken("");
     form.markSaved();
     toast.success(t("alerts.channels.save.succeeded"));
   };
@@ -156,6 +158,8 @@ export function AlertsSettingsCard({ state, hook, onTested }: AlertsSettingsCard
       return t("alerts.channels.test.blocked_mailer");
     if (ch === "discord" && !state.channels.discord.connected)
       return t("alerts.channels.test.blocked_offline");
+    if (ch === "telegram" && !state.channels.telegram.curl_installed)
+      return t("alerts.channels.test.blocked_curl");
     if (form.isDirty) return t("alerts.channels.test.blocked_dirty");
     if (hook.testingChannel !== null) return t("alerts.channels.test.blocked_busy");
     return null;
@@ -218,6 +222,8 @@ export function AlertsSettingsCard({ state, hook, onTested }: AlertsSettingsCard
                   <SmsFields form={form} />
                 ) : channel === "email" ? (
                   <EmailFields form={form} state={state} hook={hook} />
+                ) : channel === "telegram" ? (
+                  <TelegramFields form={form} />
                 ) : (
                   <DiscordFields form={form} />
                 )}
@@ -308,12 +314,14 @@ function ChannelsHeader() {
 function enabledOf(form: AlertsForm, channel: AlertChannel): boolean {
   if (channel === "sms") return form.smsEnabled;
   if (channel === "email") return form.emailEnabled;
+  if (channel === "telegram") return form.telegramEnabled;
   return form.discordEnabled;
 }
 
 function setEnabled(form: AlertsForm, channel: AlertChannel, v: boolean) {
   if (channel === "sms") form.setSmsEnabled(v);
   else if (channel === "email") form.setEmailEnabled(v);
+  else if (channel === "telegram") form.setTelegramEnabled(v);
   else form.setDiscordEnabled(v);
 }
 
@@ -579,6 +587,68 @@ function DiscordFields({ form }: { form: AlertsForm }) {
         autoComplete="off"
         showLabel={t("alerts.channels.discord.token_show")}
         hideLabel={t("alerts.channels.discord.token_hide")}
+      />
+    </>
+  );
+}
+
+function TelegramFields({ form }: { form: AlertsForm }) {
+  const { t } = useTranslation("common");
+  const on = form.telegramEnabled;
+  return (
+    <>
+      <ChannelSecretField
+        id="telegram-token"
+        label={t("alerts.channels.telegram.token_label")}
+        hint={
+          <ExternalHint
+            text={t("alerts.channels.telegram.token_hint")}
+            href="https://t.me/BotFather"
+            linkLabel={t("alerts.channels.telegram.token_link")}
+          />
+        }
+        error={
+          form.missing.telegramToken
+            ? t("alerts.channels.telegram.token_missing")
+            : on && form.errors.telegramToken
+              ? t("alerts.channels.telegram.token_error")
+              : undefined
+        }
+        value={form.telegramToken}
+        onChange={form.setTelegramToken}
+        disabled={!on}
+        isSet={form.telegramTokenSet}
+        savedLabel={t("alerts.channels.secret_saved")}
+        placeholder={
+          form.telegramTokenSet
+            ? t("alerts.channels.telegram.token_keep")
+            : t("alerts.channels.telegram.token_placeholder")
+        }
+        autoComplete="off"
+        showLabel={t("alerts.channels.telegram.token_show")}
+        hideLabel={t("alerts.channels.telegram.token_hide")}
+      />
+      <ChannelField
+        id="telegram-chat"
+        label={t("alerts.channels.telegram.chat_label")}
+        labelAddon={
+          <HintIcon label={t("alerts.channels.telegram.chat_hint_label")}>
+            {t("alerts.channels.telegram.chat_hint")}
+          </HintIcon>
+        }
+        error={
+          form.missing.telegramChat
+            ? t("alerts.channels.telegram.chat_missing")
+            : on && form.errors.telegramChat
+              ? t("alerts.channels.telegram.chat_error")
+              : undefined
+        }
+        value={form.telegramChat}
+        onChange={form.setTelegramChat}
+        disabled={!on}
+        autoComplete="off"
+        placeholder="123456789"
+        mono
       />
     </>
   );

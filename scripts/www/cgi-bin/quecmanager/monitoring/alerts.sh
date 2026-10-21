@@ -93,7 +93,12 @@ MSMTP_INSTALL_PID="/tmp/qmanager_msmtp_install.pid"
 # exactly, since that's the backend truth the engine enforces regardless of
 # what's written here. Enforcing it again here just keeps the persisted
 # routing file honest for the GET response / future engine changes.
-ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false},"connection_restored":{"sms":true,"email":true,"discord":true},"reboot":{"sms":true,"email":true,"discord":true}}'
+ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true}}'
+
+TELEGRAM_CONFIG="/etc/qmanager/telegram_alerts.json"
+TELEGRAM_RELOAD="/tmp/qmanager_telegram_reload"
+TELEGRAM_LOG="/tmp/qmanager_telegram_log.json"
+TELEGRAM_SEND_HELPER="/usr/bin/qmanager_telegram_send"
 
 # =============================================================================
 # Root-helper invocation — shared by both privileged helpers this endpoint uses
@@ -191,8 +196,16 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         token_set: (.token_set == true)
     }')
 
+    telegram_j=$(cfg_json "$TELEGRAM_CONFIG" '{
+        enabled: ((.enabled | tostring) == "true"),
+        chat: (.chat_id // "" | tostring),
+        token_set: (.token_set == true)
+    }')
+
     msmtp_installed="false"
     command -v msmtp >/dev/null 2>&1 && msmtp_installed="true"
+    curl_installed="false"
+    command -v curl >/dev/null 2>&1 && curl_installed="true"
 
     # Connected only while the daemon's 30 s heartbeat is fresh: a crashed daemon leaves the
     # last "connected":true in the file.
@@ -231,6 +244,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --argjson sms "$sms_j" \
         --argjson email "$email_j" \
         --argjson discord "$discord_j" \
+        --argjson telegram "$telegram_j" \
+        --argjson curl_installed "$curl_installed" \
         --argjson msmtp_installed "$msmtp_installed" \
         --argjson discord_connected "$discord_connected" \
         --argjson routing "$routing_json" \
@@ -241,6 +256,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         | ($email.pw_set // false) as $email_pw_set
         | ($discord.owner // "") as $discord_owner
         | ($discord.token_set // false) as $discord_token_set
+        | ($telegram.chat // "") as $telegram_chat
+        | ($telegram.token_set // false) as $telegram_token_set
         | {
             success: true,
             alert_after_min: $wait,
@@ -267,6 +284,14 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                     threshold_minutes: $wait,
                     connected: $discord_connected,
                     configured: ($discord_owner != "" and $discord_token_set)
+                },
+                telegram: {
+                    enabled: ($telegram.enabled // false),
+                    chat_id: $telegram_chat,
+                    token_set: $telegram_token_set,
+                    threshold_minutes: $wait,
+                    curl_installed: $curl_installed,
+                    configured: ($telegram_chat != "" and $telegram_token_set)
                 }
             },
             routing: { events: $routing },
@@ -274,10 +299,11 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 connection_lost: {
                     sms: true,
                     email: false, email_reason: "email_needs_internet",
-                    discord: false, discord_reason: "discord_needs_internet"
+                    discord: false, discord_reason: "discord_needs_internet",
+                    telegram: false, telegram_reason: "telegram_needs_internet"
                 },
-                connection_restored: { sms: true, email: true, discord: true },
-                reboot: { sms: true, email: true, discord: true }
+                connection_restored: { sms: true, email: true, discord: true, telegram: true },
+                reboot: { sms: true, email: true, discord: true, telegram: true }
             },
             reboots: $reboots
         }'
@@ -323,6 +349,23 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         discord_threshold_in=$(printf '%s' "$POST_DATA" | jq -r --arg d "$cur_wait" '.discord.threshold_minutes // $d' 2>/dev/null)
         discord_token_in=$(printf '%s' "$POST_DATA" | jq -r '.discord.bot_token // empty' 2>/dev/null)
 
+        # Telegram: a client that predates the channel omits the block; keep what is saved.
+        _tg_prev_enabled="false"; _tg_prev_chat=""; _existing_telegram_token_set="false"
+        if [ -f "$TELEGRAM_CONFIG" ]; then
+            _tg_prev_enabled=$(jq -r '(.enabled == true) | tostring' "$TELEGRAM_CONFIG" 2>/dev/null)
+            _tg_prev_chat=$(jq -r '.chat_id // "" | tostring' "$TELEGRAM_CONFIG" 2>/dev/null)
+            [ "$(jq -r '.token_set == true' "$TELEGRAM_CONFIG" 2>/dev/null)" = "true" ] && _existing_telegram_token_set="true"
+        fi
+        if [ "$(printf '%s' "$POST_DATA" | jq -r 'has("telegram")' 2>/dev/null)" = "true" ]; then
+            telegram_enabled_in=$(printf '%s' "$POST_DATA" | jq -r '.telegram.enabled // false' 2>/dev/null)
+            telegram_chat_in=$(printf '%s' "$POST_DATA" | jq -r '.telegram.chat_id // "" | tostring' 2>/dev/null)
+            telegram_token_in=$(printf '%s' "$POST_DATA" | jq -r '.telegram.bot_token // empty' 2>/dev/null)
+        else
+            telegram_enabled_in="$_tg_prev_enabled"
+            telegram_chat_in="$_tg_prev_chat"
+            telegram_token_in=""
+        fi
+
         routing_in=$(printf '%s' "$POST_DATA" | jq -c '.routing.events // empty' 2>/dev/null)
 
         # Optional top-level wait; absent (old clients) keeps the per-channel rule below.
@@ -332,6 +375,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         case "$sms_enabled_in" in true|false) ;; *) cgi_error "invalid_enabled" "sms.enabled must be a boolean"; exit 0 ;; esac
         case "$email_enabled_in" in true|false) ;; *) cgi_error "invalid_enabled" "email.enabled must be a boolean"; exit 0 ;; esac
         case "$discord_enabled_in" in true|false) ;; *) cgi_error "invalid_enabled" "discord.enabled must be a boolean"; exit 0 ;; esac
+        case "$telegram_enabled_in" in true|false) ;; *) cgi_error "invalid_enabled" "telegram.enabled must be a boolean"; exit 0 ;; esac
 
         # --- Validate thresholds (1-1440) -------------------------------------
         for _pair in "sms:$sms_threshold_in" "email:$email_threshold_in" "discord:$discord_threshold_in"; do
@@ -480,6 +524,22 @@ EOF
             fi
         fi
 
+        # --- Telegram: chat id shape + token marker carry-forward ---------------
+        if [ "$telegram_enabled_in" = "true" ]; then
+            . /usr/lib/qmanager/telegram_alerts.sh 2>/dev/null
+            if ! command -v _ta_valid_chat_id >/dev/null 2>&1 || ! _ta_valid_chat_id "$telegram_chat_in"; then
+                cgi_error "invalid_telegram_chat" "telegram.chat_id must be a numeric chat ID or an @channel name"
+                exit 0
+            fi
+            if [ -z "$telegram_token_in" ] && [ "$_existing_telegram_token_set" != "true" ]; then
+                cgi_error "missing_telegram_token" "telegram.bot_token is required unless one is already saved"
+                exit 0
+            fi
+        fi
+        case "$telegram_token_in" in
+            *[[:cntrl:]]*) cgi_error "invalid_value" "telegram.bot_token must not contain control characters"; exit 0 ;;
+        esac
+
         # --- Routing: merge over defaults, then hard-clamp connection_lost -----
         # (connection_lost.email / connection_lost.discord are ALWAYS false —
         # server-authoritative regardless of what the client submits, mirroring
@@ -492,6 +552,7 @@ EOF
             ($def * ($usr // {}))
             | .connection_lost.email = false
             | .connection_lost.discord = false
+            | .connection_lost.telegram = false
         ' 2>/dev/null)
         if [ -z "$routing_final" ]; then
             routing_final="$ROUTING_DEFAULT"
@@ -605,6 +666,29 @@ EOF
             svc_disable qmanager_discord || qlog_warn "svc_disable qmanager_discord failed"
         fi
 
+        # --- Write Telegram config (atomic, NO token), then store a new token ---
+        # The JSON goes first: the helper writes token_set into this file.
+        if ! jq -n \
+            --argjson enabled "$telegram_enabled_in" \
+            --arg chat_id "$telegram_chat_in" \
+            --argjson threshold_minutes "$new_wait" \
+            --argjson token_set "$_existing_telegram_token_set" \
+            '{enabled:$enabled, chat_id:$chat_id, threshold_minutes:$threshold_minutes, token_set:$token_set}' \
+            > "${TELEGRAM_CONFIG}.tmp"; then
+            rm -f "${TELEGRAM_CONFIG}.tmp"
+            cgi_error "write_failed" "Failed to write Telegram config"
+            exit 0
+        fi
+        mv "${TELEGRAM_CONFIG}.tmp" "$TELEGRAM_CONFIG"
+        if [ -n "$telegram_token_in" ]; then
+            if ! secret_helper set telegram_bot_token "$telegram_token_in"; then
+                telegram_token_in=""
+                root_helper_fail "The privileged helper could not store the Telegram bot token"
+                exit 0
+            fi
+        fi
+        telegram_token_in=""
+
         # --- Write routing config (atomic, wrapped under version+events) -------
         if ! jq -n --argjson events "$routing_final" '{version:1, events:$events}' \
             > "${ROUTING_CONFIG}.tmp" 2>/dev/null; then
@@ -615,9 +699,9 @@ EOF
         mv "${ROUTING_CONFIG}.tmp" "$ROUTING_CONFIG"
 
         # --- Signal alert_engine.sh (and channel libs) to reload ---------------
-        touch "$SMS_RELOAD" "$EMAIL_RELOAD" "$DISCORD_RELOAD" "$ROUTING_RELOAD" "$QUALITY_RELOAD_FLAG" 2>/dev/null
+        touch "$SMS_RELOAD" "$EMAIL_RELOAD" "$DISCORD_RELOAD" "$TELEGRAM_RELOAD" "$ROUTING_RELOAD" "$QUALITY_RELOAD_FLAG" 2>/dev/null
 
-        qlog_info "Centralized alert settings saved: sms=$sms_enabled_in email=$email_enabled_in discord=$discord_enabled_in"
+        qlog_info "Centralized alert settings saved: sms=$sms_enabled_in email=$email_enabled_in discord=$discord_enabled_in telegram=$telegram_enabled_in"
         if [ -n "$_discord_restart_err" ]; then
             cgi_error "service_restart_failed" "$_discord_restart_err"
             exit 0
@@ -713,8 +797,16 @@ EOF
                     cgi_error "send_failed" "Failed to hand off the test message to the Discord bot"
                 fi
                 ;;
+            telegram)
+                # The token is root-only, so the whole send and its log row happen root-side.
+                if root_helper_call "$TELEGRAM_SEND_HELPER" test; then
+                    cgi_success
+                else
+                    root_helper_fail "Failed to send the Telegram test message."
+                fi
+                ;;
             *)
-                cgi_error "invalid_channel" "channel must be one of: sms, email, discord"
+                cgi_error "invalid_channel" "channel must be one of: sms, email, discord, telegram"
                 ;;
         esac
         exit 0
@@ -730,13 +822,14 @@ EOF
         [ -s "$SMS_LOG" ] && set -- "$@" "$SMS_LOG"
         [ -s "$EMAIL_LOG" ] && set -- "$@" "$EMAIL_LOG"
         [ -s "$DISCORD_LOG" ] && set -- "$@" "$DISCORD_LOG"
+        [ -s "$TELEGRAM_LOG" ] && set -- "$@" "$TELEGRAM_LOG"
         _log_out=""
         if [ "$#" -gt 0 ]; then
-            _log_out=$(jq -R -n -c --arg sms "$SMS_LOG" --arg email "$EMAIL_LOG" '
+            _log_out=$(jq -R -n -c --arg sms "$SMS_LOG" --arg email "$EMAIL_LOG" --arg telegram "$TELEGRAM_LOG" '
                 [inputs
                  | input_filename as $f
                  | (fromjson? | select(type == "object")
-                    | . + {channel: (if $f == $sms then "sms" elif $f == $email then "email" else "discord" end)})]
+                    | . + {channel: (if $f == $sms then "sms" elif $f == $email then "email" elif $f == $telegram then "telegram" else "discord" end)})]
                 | {success: true, entries: (sort_by(.timestamp) | reverse | .[0:100]), total: length}
             ' "$@" 2>/dev/null)
         fi

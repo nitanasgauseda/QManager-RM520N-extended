@@ -113,12 +113,14 @@ const CHANNEL_KEY: Record<AlertChannel, string> = {
   sms: "alerts.activity.channel.sms",
   email: "alerts.activity.channel.email",
   discord: "alerts.activity.channel.discord",
+  telegram: "alerts.activity.channel.telegram",
 };
 
 const CHANNEL_EN: Record<AlertChannel, string> = {
   sms: "SMS",
   email: "Email",
   discord: "Discord",
+  telegram: "Telegram",
 };
 
 /** Non-event triggers: test sends, and the Discord daemon's own success rows. */

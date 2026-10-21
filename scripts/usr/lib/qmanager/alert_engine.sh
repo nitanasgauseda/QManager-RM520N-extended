@@ -20,9 +20,9 @@
 # since NTP/NITZ can step the wall clock backward/forward mid-outage.
 #
 # Capability matrix (hardcoded, not configurable):
-#   connection_lost:      sms=capable, email/discord=INCAPABLE (need internet)
-#   connection_restored:  sms/email/discord all capable
-#   reboot:                sms/email/discord all capable
+#   connection_lost:      sms=capable, email/discord/telegram=INCAPABLE (need internet)
+#   connection_restored:  sms/email/discord/telegram all capable
+#   reboot:                sms/email/discord/telegram all capable
 #
 # Config:
 #   Routing:  /etc/qmanager/alert_routing.json  {"version":1,"events":{...}}
@@ -45,6 +45,7 @@
 #   /tmp/qmanager_email_reload    (shared with email_alerts.sh)
 #   /tmp/qmanager_sms_reload      (shared with sms_alerts.sh)
 #   /tmp/qmanager_discord_reload  (shared with discord_alerts.sh)
+#   /tmp/qmanager_telegram_reload (shared with telegram_alerts.sh)
 #
 # Exposed to the poller:
 #   alert_engine_init   — call once at poller startup
@@ -85,7 +86,7 @@ _AE_MAX_DISCORD_LOG=100     # same cap as the SMS and email logs
 _AE_DISCORD_TRIM_EVERY=150  # cycles between Discord-log size checks (~10 min at ~4 s/cycle)
 
 # Applied verbatim whenever alert_routing.json is missing or fails to parse.
-_AE_ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false},"connection_restored":{"sms":true,"email":true,"discord":true},"reboot":{"sms":true,"email":true,"discord":true}}'
+_AE_ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true}}'
 
 # --- State (poller-lifetime only — not persisted across a poller restart,
 #     matching the pre-existing per-channel timers this engine replaces) ----
@@ -107,6 +108,13 @@ _ae_discord_owner_id=""
     qlog_warn "alert_engine: discord_alerts.sh not found, Discord dispatch disabled"
     discord_dispatch_message() { return 1; }
     da_is_running() { return 1; }
+}
+
+. /usr/lib/qmanager/telegram_alerts.sh 2>/dev/null || {
+    qlog_warn "alert_engine: telegram_alerts.sh not found, Telegram dispatch disabled"
+    _ta_read_config() { _ta_enabled="false"; return 1; }
+    telegram_alert_send() { return 1; }
+    _ta_log_event() { :; }
 }
 
 # =============================================================================
@@ -151,6 +159,14 @@ _ae_refresh_sms() {
         _sa_read_config
     else
         _sa_enabled="false"
+    fi
+}
+
+_ae_refresh_telegram() {
+    if command -v _ta_read_config >/dev/null 2>&1; then
+        _ta_read_config
+    else
+        _ta_enabled="false"
     fi
 }
 
@@ -203,7 +219,7 @@ _ae_capable() {
             [ "$2" = "sms" ]
             ;;
         connection_restored|reboot)
-            case "$2" in sms|email|discord) return 0 ;; *) return 1 ;; esac
+            case "$2" in sms|email|discord|telegram) return 0 ;; *) return 1 ;; esac
             ;;
         *)
             return 1
@@ -223,6 +239,7 @@ _ae_effective_send() {
         sms)     [ "$_sa_enabled" = "true" ] || return 1 ;;
         email)   [ "$_ea_enabled" = "true" ] || return 1 ;;
         discord) [ "$_ae_discord_enabled" = "true" ] || return 1 ;;
+        telegram) [ "${_ta_enabled:-false}" = "true" ] || return 1 ;;
         *)       return 1 ;;
     esac
 
@@ -427,6 +444,15 @@ _ae_dispatch() {
             fi
             [ "$rc" -ne 0 ] && _ae_log_discord_failed "$trigger" "$recipient"
             ;;
+        telegram)
+            recipient="telegram:${_ta_chat_id:-unknown}"
+            if command -v telegram_alert_send >/dev/null 2>&1; then
+                telegram_alert_send "$message"
+                rc=$?
+            fi
+            [ "$rc" -eq 0 ] && status="sent"
+            command -v _ta_log_event >/dev/null 2>&1 && _ta_log_event "$trigger" "$status" "$recipient"
+            ;;
         *)
             return 1
             ;;
@@ -466,6 +492,7 @@ _ae_deliver_reboot() {
     _ae_effective_send reboot sms     && _ae_dispatch sms     reboot "$msg"
     _ae_effective_send reboot email   && _ae_dispatch email   reboot "$msg"
     _ae_effective_send reboot discord && _ae_dispatch discord reboot "$msg"
+    _ae_effective_send reboot telegram && _ae_dispatch telegram reboot "$msg"
 }
 
 # =============================================================================
@@ -500,7 +527,7 @@ _ae_check_connection_lost() {
 _ae_maybe_restore() {
     local channel="$1" elapsed="$2" thr_sec dur_text msg
 
-    case "$channel" in sms|email|discord) ;; *) return 1 ;; esac
+    case "$channel" in sms|email|discord|telegram) ;; *) return 1 ;; esac
     thr_sec=$(_ae_wait_secs)
 
     [ "$elapsed" -ge "$thr_sec" ] || return 0
@@ -521,6 +548,7 @@ _ae_handle_restore() {
     _ae_maybe_restore sms    "$elapsed"
     _ae_maybe_restore email   "$elapsed"
     _ae_maybe_restore discord "$elapsed"
+    _ae_maybe_restore telegram "$elapsed"
 
     if [ "$_ae_reboot_pending" = "1" ]; then
         _ae_deliver_reboot
@@ -566,6 +594,12 @@ check_alerts() {
         _ae_read_discord_config
         _ae_resolve_wait
         qlog_info "alert_engine: discord config reloaded"
+    fi
+    if [ -f "${_TA_RELOAD_FLAG:-/tmp/qmanager_telegram_reload}" ]; then
+        rm -f "${_TA_RELOAD_FLAG:-/tmp/qmanager_telegram_reload}"
+        _ae_refresh_telegram
+        _ae_resolve_wait
+        qlog_info "alert_engine: telegram config reloaded"
     fi
 
     local now_up
@@ -630,6 +664,7 @@ _ae_load_all_config() {
     _ae_refresh_email
     _ae_refresh_sms
     _ae_read_discord_config
+    _ae_refresh_telegram
     _ae_resolve_wait
     return 0
 }

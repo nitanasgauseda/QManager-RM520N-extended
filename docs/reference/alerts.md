@@ -18,7 +18,7 @@ The Alerts subsystem consolidates the three previously-independent notification 
 | Types | `types/alerts.ts` |
 | CGI endpoint | `GET`/`POST` `/cgi-bin/quecmanager/monitoring/alerts.sh` |
 | Alert engine | `/usr/lib/qmanager/alert_engine.sh` (sourced by `qmanager_poller`) |
-| Channel transports | `/usr/lib/qmanager/{email_alerts,sms_alerts,discord_alerts}.sh` |
+| Channel transports | `/usr/lib/qmanager/{email_alerts,sms_alerts,discord_alerts,telegram_alerts}.sh` |
 | Discord daemon | `/usr/bin/qmanager_discord` (source: `discord-bot/`) |
 | Discord hand-off | `/tmp/qmanager_discord_spool/` (`root:root 1777`, one `<epoch>-<pid>-<seq>.json` per DM) — see [Spool directory](#spool-directory-tmpqmanager_discord_spool) |
 | Reboot breadcrumb helper | `/usr/bin/qmanager_crash_log_append` (sudoers-gated root helper) |
@@ -560,6 +560,24 @@ A helper failure surfaces as a normal `cgi_error`, reusing the helper's own slug
 - **Discord** — requires the daemon running (`da_is_running`), reads `owner_discord_id` from `discord_bot.json`, then calls `discord_dispatch_message "<text>" "test" "discord:<owner id>"`. Success is NOT logged by the CGI — the daemon logs it, as `test`, once it completes the API call. A refused hand-off logs one `failed` row with the same recipient and returns `send_failed`.
 
 ---
+
+## Telegram channel
+
+Added as a fourth channel with the same contract as Discord: transport only, capability `connection_lost=false`, `connection_restored`/`reboot` true.
+
+| Item | Value |
+|------|-------|
+| Transport | `/usr/lib/qmanager/telegram_alerts.sh` (`_ta_read_config`, `telegram_send_raw`, `telegram_alert_send`, `_ta_log_event`, `_ta_valid_chat_id`) |
+| Config | `/etc/qmanager/telegram_alerts.json` — `enabled`, `chat_id`, `threshold_minutes`, `token_set` |
+| Token | `/etc/qmanager-secrets/telegram_bot_token`, written only by `qmanager_secret_set` (name `telegram_bot_token`, format `<digits>:<20+ base64url>`) |
+| Test send | `/usr/bin/qmanager_telegram_send test` (sudoers bare-path grant, canned text, logs its own row) |
+| Log | `/tmp/qmanager_telegram_log.json` — every writer is root; cap 100 |
+| Reload flag | `/tmp/qmanager_telegram_reload` |
+
+- **The token never reaches argv.** `telegram_send_raw` pipes `url = "https://api.telegram.org/bot<token>/sendMessage"` into `curl -K -`; only `chat_id` and the text are on the command line.
+- **curl is required.** No wget fallback: BusyBox wget would need the token in the URL on argv. GET reports `channels.telegram.curl_installed`; the test returns `curl_missing`.
+- **Old clients.** A `save_settings` body without a `telegram` key keeps the saved Telegram settings instead of switching the channel off.
+- **Routing.** An `alert_routing.json` written before the channel existed has no `telegram` cells; the engine and the page both read them as false until the next save.
 
 ## Frontend anatomy
 

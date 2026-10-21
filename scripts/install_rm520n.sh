@@ -451,8 +451,11 @@ preflight() {
                 RM551E*)
                     die "Incompatible device: $project_name detected. Use the QManager RM551E installer."
                     ;;
+                RM520NEU*)
+                    info "Detected: RM520N-EU ($project_name)"
+                    ;;
                 RM520N*)
-                    info "Detected: RM520N-GL ($ver)"
+                    info "Detected: RM520N-GL ($project_name)"
                     ;;
                 RG501Q*)
                     # Community tier — see qm_hw_tier() in hw_profile.sh. Info

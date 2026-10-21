@@ -12,6 +12,7 @@ import { staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 import AddressesCard from "./addresses-card";
+import FirmwareCard from "./firmware-card";
 import IdentityBand from "./identity-band";
 import ModemCard from "./modem-card";
 import QManagerBand from "./qmanager-band";
@@ -73,6 +74,8 @@ const AboutDeviceComponent = () => {
         <ModemCard view={view} data={data} />
         <AddressesCard view={view} data={data} />
       </motion.div>
+
+      <FirmwareCard view={view} data={data} />
 
       <QManagerBand onSupport={() => setDonateOpen(true)} />
 

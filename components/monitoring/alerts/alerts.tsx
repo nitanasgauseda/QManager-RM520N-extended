@@ -34,6 +34,7 @@ function isComplete(state: AlertsState | null): state is AlertsState {
     !!state?.channels?.sms &&
     !!state.channels.email &&
     !!state.channels.discord &&
+    !!state.channels.telegram &&
     !!state.routing?.events &&
     !!state.capabilities
   );

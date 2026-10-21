@@ -848,7 +848,8 @@
       "channel": {
         "discord": "Discord",
         "email": "Email",
-        "sms": "SMS"
+        "sms": "SMS",
+        "telegram": "Telegram"
       },
       "day": {
         "today": "今天",
@@ -913,6 +914,25 @@
         "sub": "由你的機器人私訊傳送。",
         "id_hint_label": "如何找到你的 Discord ID"
       },
+      "telegram": {
+        "title": "Telegram 提醒",
+        "sub": "由你自己的 Telegram 機器人傳送訊息。",
+        "token_label": "機器人權杖",
+        "token_hint": "使用 @BotFather 建立機器人，然後貼上它提供的權杖。",
+        "token_link": "開啟 @BotFather",
+        "token_placeholder": "123456789:AA...",
+        "token_keep": "留空以保留已儲存的權杖",
+        "token_missing": "傳送 Telegram 提醒需要機器人權杖。",
+        "token_error": "機器人權杖的格式為 123456789:AA…，不含空格。",
+        "token_show": "顯示機器人權杖",
+        "token_hide": "隱藏機器人權杖",
+        "chat_label": "聊天 ID",
+        "chat_hint_label": "如何找到你的聊天 ID",
+        "chat_hint": "在機器人聊天中點選「開始」，然後向 @userinfobot 查詢你的 ID。群組 ID 以 -100 開頭；公開頻道可使用其 @名稱。",
+        "chat_missing": "需要填寫聊天 ID。",
+        "chat_error": "請輸入數字聊天 ID 或 @頻道名稱。",
+        "test": "傳送測試訊息"
+      },
       "email": {
         "address_error": "請輸入有效的電子郵件地址。",
         "mailer_install": "安裝 msmtp",
@@ -945,7 +965,8 @@
       "name": {
         "discord": "Discord",
         "email": "Email",
-        "sms": "SMS"
+        "sms": "SMS",
+        "telegram": "Telegram"
       },
       "rail_label": "警示管道",
       "save": {
@@ -967,7 +988,9 @@
           "invalid_secret": "應用程式密碼或機器人權杖包含不允許的字元。",
           "partial": "密碼或權杖已儲存，但設定未能完成更新，請再儲存一次。",
           "service_restart_failed": "設定已儲存，但 Discord 機器人無法重新啟動。",
-          "service_enable_failed": "設定已儲存，但無法將 Discord 機器人設為開機自動啟動。"
+          "service_enable_failed": "設定已儲存，但無法將 Discord 機器人設為開機自動啟動。",
+          "invalid_telegram_chat": "請輸入數字 Telegram 聊天 ID 或 @頻道名稱。",
+          "missing_telegram_token": "請輸入 Telegram 機器人權杖。"
         }
       },
       "secret_saved": "已儲存",
@@ -1004,8 +1027,11 @@
           "msmtp_missing": "郵件程式尚未安裝，測試郵件未傳送。",
           "send_failed_sms": "測試簡訊未傳送，請檢查訊號、SIM 卡餘額和號碼。",
           "send_failed_email": "測試郵件未傳送，請檢查電子郵件地址、應用程式密碼和網路連線。",
-          "send_failed_discord": "測試訊息未能送達 Discord 機器人，請再試一次。"
-        }
+          "send_failed_discord": "測試訊息未能送達 Discord 機器人，請再試一次。",
+          "curl_missing": "數據機上未安裝 curl，因此無法連線 Telegram。",
+          "send_failed_telegram": "Telegram 未接受該訊息。請檢查權杖和聊天 ID，並在機器人聊天中點選「開始」。"
+        },
+        "blocked_curl": "數據機上尚未安裝 curl。"
       },
       "threshold_error": "請輸入 1 到 1440 之間的整數分鐘。",
       "threshold_hint": "較短的斷線只記錄，不傳送。",
@@ -1041,7 +1067,8 @@
       "reason": {
         "discord_needs_internet": "需要網路連線",
         "email_needs_internet": "需要網路連線",
-        "not_supported": "此管道無法傳送此事件"
+        "not_supported": "此管道無法傳送此事件",
+        "telegram_needs_internet": "需要網際網路"
       },
       "staleNotice": "顯示我們上次從裝置讀取到的設定。",
       "title": "涵蓋範圍",
@@ -1510,6 +1537,55 @@
       "repository": "GitHub 儲存庫",
       "release_notes": "版本資訊",
       "support": "支持本專案"
+    },
+    "firmware": {
+      "title": "韌體更新",
+      "description": "在電腦上燒錄韌體套件之前先檢查它。",
+      "installed": "已安裝韌體",
+      "variant": "版本類型",
+      "check_label": "要檢查的韌體套件",
+      "check_hint": "貼上韌體套件或資料夾名稱，例如你下載的 .zip 檔案。",
+      "verdict": {
+        "newer": {
+          "chip": "較新版本",
+          "text": "此韌體套件與你的 {{installed}} 數據機相符，且比已安裝的韌體更新。"
+        },
+        "same": {
+          "chip": "相同版本",
+          "text": "這就是已安裝的韌體，再次燒錄不會有任何變化。"
+        },
+        "older": {
+          "chip": "較舊版本",
+          "text": "此韌體套件與你的數據機相符，但比已安裝的韌體舊。"
+        },
+        "wrong_variant": {
+          "chip": "版本類型不符",
+          "text": "這是 {{pkg}} 韌體套件，而你的數據機是 {{installed}}。請勿燒錄。"
+        },
+        "wrong_model": {
+          "chip": "模組不同",
+          "text": "此韌體套件適用於另一款 Quectel 模組。請勿燒錄。"
+        },
+        "unrecognized": {
+          "chip": "無法辨識",
+          "text": "此名稱看起來不像 Quectel 韌體套件。"
+        },
+        "unknown_installed": {
+          "chip": "無法比較",
+          "text": "無法讀取已安裝的韌體版本，請自行確認版本類型。"
+        }
+      },
+      "steps_label": "如何燒錄",
+      "steps": {
+        "download": "下載 {{variant}} 韌體套件，並在裝有 QFirehose 的 Linux 電腦上解壓縮。",
+        "connect": "用 USB 線將數據機連接到該電腦。燒錄期間此頁面會離線。",
+        "run": "在解壓縮出的資料夾所在目錄中執行：",
+        "after": "完成後數據機會自動重新啟動。如果之後無法開啟 QManager，請重新執行其安裝程式。"
+      },
+      "warning": "燒錄期間切勿斷電，也切勿燒錄其他版本類型的韌體套件。",
+      "copy": "複製指令",
+      "copied": "指令已複製。",
+      "copy_failed": "無法複製指令。"
     }
   },
   "support": {

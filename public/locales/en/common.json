@@ -856,7 +856,8 @@
       "reason": {
         "email_needs_internet": "Needs the internet",
         "discord_needs_internet": "Needs the internet",
-        "not_supported": "This channel cannot send this event"
+        "not_supported": "This channel cannot send this event",
+        "telegram_needs_internet": "Needs the internet"
       },
       "staleNotice": "Showing the settings we last read from the device.",
       "errorTitle": "Could not load coverage",
@@ -882,7 +883,8 @@
       "name": {
         "sms": "SMS",
         "email": "Email",
-        "discord": "Discord"
+        "discord": "Discord",
+        "telegram": "Telegram"
       },
       "status": {
         "ready": "Ready",
@@ -942,6 +944,25 @@
         "sub": "A direct message from your bot.",
         "id_hint_label": "How to find your Discord ID"
       },
+      "telegram": {
+        "title": "Telegram alerts",
+        "sub": "A message from your own Telegram bot.",
+        "token_label": "Bot token",
+        "token_hint": "Create a bot with @BotFather and paste the token it gives you.",
+        "token_link": "Open @BotFather",
+        "token_placeholder": "123456789:AA...",
+        "token_keep": "Leave blank to keep the saved token",
+        "token_missing": "A bot token is required to send Telegram alerts.",
+        "token_error": "A bot token looks like 123456789:AA… with no spaces.",
+        "token_show": "Show bot token",
+        "token_hide": "Hide bot token",
+        "chat_label": "Chat ID",
+        "chat_hint_label": "How to find your chat ID",
+        "chat_hint": "Press Start in your bot chat, then ask @userinfobot for your ID. Group IDs start with -100; a public channel can use its @name.",
+        "chat_missing": "A chat ID is required.",
+        "chat_error": "Enter a numeric chat ID or an @channel name.",
+        "test": "Send a test message"
+      },
       "threshold_label": "Wait before alerting",
       "threshold_hint": "Shorter outages are logged, not sent.",
       "threshold_error": "Enter a whole number of minutes from 1 to 1440.",
@@ -963,8 +984,11 @@
           "msmtp_missing": "The mailer is not installed, so the test email was not sent.",
           "send_failed_sms": "The test SMS was not sent, so check the signal, SIM credit and number.",
           "send_failed_email": "The test email was not sent, so check the addresses, app password and connection.",
-          "send_failed_discord": "The test message did not reach the Discord bot, so try again."
-        }
+          "send_failed_discord": "The test message did not reach the Discord bot, so try again.",
+          "curl_missing": "curl is not installed on the modem, so Telegram cannot be reached.",
+          "send_failed_telegram": "Telegram did not accept the message. Check the token and chat ID, and press Start in the bot chat."
+        },
+        "blocked_curl": "curl is not installed on the modem yet."
       },
       "save": {
         "clean": "All changes saved",
@@ -985,7 +1009,9 @@
           "invalid_secret": "The app password or bot token contains characters that are not allowed.",
           "partial": "The password or token was saved, but the settings did not finish updating, so save again.",
           "service_restart_failed": "Settings saved, but the Discord bot could not be restarted.",
-          "service_enable_failed": "Settings saved, but the Discord bot could not be set to start on boot."
+          "service_enable_failed": "Settings saved, but the Discord bot could not be set to start on boot.",
+          "invalid_telegram_chat": "Enter a numeric Telegram chat ID or an @channel name.",
+          "missing_telegram_token": "Enter the Telegram bot token."
         }
       },
       "empty": {
@@ -1014,7 +1040,8 @@
       "channel": {
         "sms": "SMS",
         "email": "Email",
-        "discord": "Discord"
+        "discord": "Discord",
+        "telegram": "Telegram"
       },
       "sr": {
         "sent": "Alert sent",
@@ -1510,6 +1537,55 @@
       "repository": "GitHub repository",
       "release_notes": "Release notes",
       "support": "Support the project"
+    },
+    "firmware": {
+      "title": "Firmware update",
+      "description": "Check a firmware package before you flash it from a computer.",
+      "installed": "Installed firmware",
+      "variant": "Variant",
+      "check_label": "Package to check",
+      "check_hint": "Paste the package or folder name, for example the .zip you downloaded.",
+      "verdict": {
+        "newer": {
+          "chip": "Newer build",
+          "text": "This package matches your {{installed}} modem and is newer than the installed firmware."
+        },
+        "same": {
+          "chip": "Same build",
+          "text": "This is the firmware already installed. Flashing it again changes nothing."
+        },
+        "older": {
+          "chip": "Older build",
+          "text": "This package matches your modem but is older than the installed firmware."
+        },
+        "wrong_variant": {
+          "chip": "Wrong variant",
+          "text": "This is a {{pkg}} package and your modem is {{installed}}. Do not flash it."
+        },
+        "wrong_model": {
+          "chip": "Different module",
+          "text": "This package is for another Quectel module. Do not flash it."
+        },
+        "unrecognized": {
+          "chip": "Not recognised",
+          "text": "The name does not look like a Quectel firmware package."
+        },
+        "unknown_installed": {
+          "chip": "Cannot compare",
+          "text": "The installed firmware version could not be read, so check the variant yourself."
+        }
+      },
+      "steps_label": "How to flash",
+      "steps": {
+        "download": "Download a {{variant}} firmware package and unzip it on a Linux computer that has QFirehose.",
+        "connect": "Connect the modem to that computer with a USB cable. This page goes offline while it flashes.",
+        "run": "In the unzipped folder's parent, run:",
+        "after": "When it finishes the modem restarts on its own. If QManager does not open afterwards, run its installer again."
+      },
+      "warning": "Never unplug power during a flash, and never flash a package for another variant.",
+      "copy": "Copy command",
+      "copied": "Command copied.",
+      "copy_failed": "Could not copy the command."
     }
   },
   "support": {

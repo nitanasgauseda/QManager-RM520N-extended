@@ -78,6 +78,35 @@ export const MNO_PRESETS: MnoPreset[] = [
     ttl: 0,
     hl: 0,
   },
+  // Lithuania — APNs from the operators' own guides and the DROAM SIM wiki.
+  {
+    id: "lt_telia",
+    label: "Telia (LT)",
+    apn_name: "omnitel",
+    ttl: 0,
+    hl: 0,
+  },
+  {
+    id: "lt_bite",
+    label: "Bitė (LT)",
+    apn_name: "banga",
+    ttl: 0,
+    hl: 0,
+  },
+  {
+    id: "lt_tele2_voice",
+    label: "Tele2 (LT) — voice SIM",
+    apn_name: "internet.tele2.lt",
+    ttl: 0,
+    hl: 0,
+  },
+  {
+    id: "lt_tele2_data",
+    label: "Tele2 (LT) — data-only SIM",
+    apn_name: "mobileinternet.tele2.lt",
+    ttl: 0,
+    hl: 0,
+  },
 ];
 
 /**

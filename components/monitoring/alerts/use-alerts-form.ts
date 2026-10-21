@@ -26,6 +26,10 @@ const PHONE_REGEX = /^\+?[1-9]\d{6,14}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Matches the save endpoint's 15–25 digit check, which is the authority.
 const DISCORD_ID_REGEX = /^\d{15,25}$/;
+// Matches _ta_valid_chat_id: a (negative for groups) numeric id, or an @channel name.
+const TELEGRAM_CHAT_REGEX = /^(-?\d{1,20}|@[A-Za-z0-9_]{5,32})$/;
+// <bot id>:<key> as issued by @BotFather; the root helper is the authority.
+const TELEGRAM_TOKEN_REGEX = /^\d+:[A-Za-z0-9_-]{20,}$/;
 
 const THRESHOLD_MIN = 1;
 const THRESHOLD_MAX = 1440;
@@ -49,7 +53,7 @@ function savedWait(state: AlertsState): string {
 // signature. Clearing the secret inputs after a successful save is therefore
 // the settings card's job, not this sync's.
 function settingsSignature(state: AlertsState): string {
-  const { sms, email, discord } = state.channels;
+  const { sms, email, discord, telegram } = state.channels;
   const routing = ALERT_EVENT_ORDER.flatMap((ev) =>
     ALERT_CHANNEL_ORDER.map((ch) =>
       state.routing.events[ev]?.[ch] ? "1" : "0",
@@ -68,6 +72,10 @@ function settingsSignature(state: AlertsState): string {
     discord.owner_discord_id,
     discord.token_set,
     discord.connected,
+    telegram.enabled,
+    telegram.chat_id,
+    telegram.token_set,
+    telegram.curl_installed,
     routing,
   ].join("|");
 }
@@ -79,6 +87,8 @@ export interface AlertsFormErrors {
   senderEmail?: boolean;
   recipientEmail?: boolean;
   discordId?: boolean;
+  telegramChat?: boolean;
+  telegramToken?: boolean;
   /** The one alert wait, shared by every channel. */
   threshold?: boolean;
 }
@@ -116,6 +126,16 @@ export interface AlertsForm {
   /** True when the device already has a stored bot token (never revealed). */
   botTokenSet: boolean;
 
+  // Telegram channel
+  telegramEnabled: boolean;
+  setTelegramEnabled: (v: boolean) => void;
+  telegramChat: string;
+  setTelegramChat: (v: string) => void;
+  telegramToken: string;
+  setTelegramToken: (v: string) => void;
+  /** True when the device already has a stored Telegram bot token (never revealed). */
+  telegramTokenSet: boolean;
+
   // Routing matrix
   getRoute: (event: AlertEventKey, channel: AlertChannel) => boolean;
   setRoute: (event: AlertEventKey, channel: AlertChannel, v: boolean) => void;
@@ -130,6 +150,8 @@ export interface AlertsForm {
     appPassword: boolean;
     discordId: boolean;
     botToken: boolean;
+    telegramChat: boolean;
+    telegramToken: boolean;
   };
   isDirty: boolean;
   blocked: boolean;
@@ -149,7 +171,7 @@ export function useAlertsForm({
   state: AlertsState;
   isSaving: boolean;
 }): AlertsForm {
-  const { sms, email, discord } = state.channels;
+  const { sms, email, discord, telegram } = state.channels;
   const { saved, markSaved } = useSaveFlash();
 
   // ── Seed once from server truth ────────────────────────────────────────────
@@ -166,6 +188,10 @@ export function useAlertsForm({
   const [discordEnabled, setDiscordEnabled] = useState(discord.enabled);
   const [discordId, setDiscordId] = useState(discord.owner_discord_id);
   const [botToken, setBotToken] = useState(""); // never pre-filled
+
+  const [telegramEnabled, setTelegramEnabled] = useState(telegram.enabled);
+  const [telegramChat, setTelegramChat] = useState(telegram.chat_id);
+  const [telegramToken, setTelegramToken] = useState(""); // never pre-filled
 
   const seedRouting = useCallback((): RoutingDraft => {
     const draft = {} as RoutingDraft;
@@ -205,9 +231,12 @@ export function useAlertsForm({
       senderEmail: !!senderEmail && !EMAIL_REGEX.test(senderEmail),
       recipientEmail: !!recipientEmail && !EMAIL_REGEX.test(recipientEmail),
       discordId: !!discordId && !DISCORD_ID_REGEX.test(discordId.trim()),
+      telegramChat: !!telegramChat && !TELEGRAM_CHAT_REGEX.test(telegramChat.trim()),
+      telegramToken:
+        !!telegramToken.trim() && !TELEGRAM_TOKEN_REGEX.test(telegramToken.trim()),
       threshold: thresholdInvalid(threshold),
     }),
-    [smsPhone, senderEmail, recipientEmail, discordId, threshold],
+    [smsPhone, senderEmail, recipientEmail, discordId, telegramChat, telegramToken, threshold],
   );
 
   // ── Empty-while-enabled blockers ───────────────────────────────────────────
@@ -221,6 +250,9 @@ export function useAlertsForm({
         emailEnabled && !email.app_password_set && appPassword.trim() === "",
       discordId: discordEnabled && discordId.trim() === "",
       botToken: discordEnabled && !discord.token_set && botToken.trim() === "",
+      telegramChat: telegramEnabled && telegramChat.trim() === "",
+      telegramToken:
+        telegramEnabled && !telegram.token_set && telegramToken.trim() === "",
     }),
     [
       smsEnabled,
@@ -234,6 +266,10 @@ export function useAlertsForm({
       discordId,
       botToken,
       discord.token_set,
+      telegramEnabled,
+      telegramChat,
+      telegramToken,
+      telegram.token_set,
     ],
   );
 
@@ -242,14 +278,17 @@ export function useAlertsForm({
     errors.threshold ||
     (smsEnabled && errors.smsPhone) ||
     (emailEnabled && (errors.senderEmail || errors.recipientEmail)) ||
-    (discordEnabled && errors.discordId);
+    (discordEnabled && errors.discordId) ||
+    (telegramEnabled && (errors.telegramChat || errors.telegramToken));
   const hasMissing =
     missing.smsPhone ||
     missing.senderEmail ||
     missing.recipientEmail ||
     missing.appPassword ||
     missing.discordId ||
-    missing.botToken;
+    missing.botToken ||
+    missing.telegramChat ||
+    missing.telegramToken;
   const blocked = !!hasFormatError || hasMissing;
 
   // ── Dirty check vs seeded server truth ─────────────────────────────────────
@@ -275,6 +314,9 @@ export function useAlertsForm({
     discordEnabled !== discord.enabled ||
     discordId !== discord.owner_discord_id ||
     botToken.trim() !== "" ||
+    telegramEnabled !== telegram.enabled ||
+    telegramChat !== telegram.chat_id ||
+    telegramToken.trim() !== "" ||
     routingDirty;
 
   // ── Payload / discard ──────────────────────────────────────────────────────
@@ -302,6 +344,10 @@ export function useAlertsForm({
         enabled: discordEnabled,
         owner_discord_id: discordId.trim(),
       },
+      telegram: {
+        enabled: telegramEnabled,
+        chat_id: telegramChat.trim(),
+      },
       routing: { events },
     };
     // Per-channel waits are never sent: omitted means current, so a stale form cannot write one back.
@@ -309,6 +355,7 @@ export function useAlertsForm({
       payload.alert_after_min = parseInt(threshold, 10);
     if (appPassword.trim() !== "") payload.email.app_password = appPassword;
     if (botToken.trim() !== "") payload.discord.bot_token = botToken;
+    if (telegramToken.trim() !== "") payload.telegram.bot_token = telegramToken.trim();
     return payload;
   }, [
     state.capabilities,
@@ -324,6 +371,9 @@ export function useAlertsForm({
     discordEnabled,
     discordId,
     botToken,
+    telegramEnabled,
+    telegramChat,
+    telegramToken,
   ]);
 
   const discard = useCallback(() => {
@@ -337,8 +387,11 @@ export function useAlertsForm({
     setDiscordEnabled(discord.enabled);
     setDiscordId(discord.owner_discord_id);
     setBotToken("");
+    setTelegramEnabled(telegram.enabled);
+    setTelegramChat(telegram.chat_id);
+    setTelegramToken("");
     setRouting(seedRouting());
-  }, [sms, email, discord, currentWait, seedRouting]);
+  }, [sms, email, discord, telegram, currentWait, seedRouting]);
 
   // ── Re-seed on server-truth change (render-phase, React-Compiler safe) ──────
   // `discard` is the already-correct re-seed path (pure setState, no async, no
@@ -373,6 +426,13 @@ export function useAlertsForm({
     botToken,
     setBotToken,
     botTokenSet: discord.token_set,
+    telegramEnabled,
+    setTelegramEnabled,
+    telegramChat,
+    setTelegramChat,
+    telegramToken,
+    setTelegramToken,
+    telegramTokenSet: telegram.token_set,
     getRoute,
     setRoute,
     errors,
@@ -403,5 +463,9 @@ export function blockedChannelMap(
       (form.discordEnabled && !!errors.discordId) ||
       missing.discordId ||
       missing.botToken,
+    telegram:
+      (form.telegramEnabled && (!!errors.telegramChat || !!errors.telegramToken)) ||
+      missing.telegramChat ||
+      missing.telegramToken,
   };
 }

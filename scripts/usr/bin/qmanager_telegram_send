@@ -1,0 +1,42 @@
+#!/bin/sh
+# qmanager_telegram_send — Root helper: send the canned Telegram test message.
+# One verb (`test`), nothing on stdin, fixed text; root is needed only to read the token.
+# Called via sudoers: www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_telegram_send
+
+PATH=/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH
+
+TELEGRAM_LIB="/usr/lib/qmanager/telegram_alerts.sh"
+QLOG_LIB="/usr/lib/qmanager/qlog.sh"
+
+fail() {
+    printf '{"success":false,"error":"%s","detail":"%s"}\n' "$1" "$2"
+    exit 1
+}
+
+if [ "$#" -ne 1 ] || [ "$1" != "test" ]; then
+    fail "invalid_action" "the only supported action is: test"
+fi
+
+# `.` on a missing file aborts a non-interactive shell, so test for it first.
+[ -f "$QLOG_LIB" ] && . "$QLOG_LIB" 2>/dev/null
+if ! command -v qlog_info >/dev/null 2>&1; then
+    qlog_init() { :; }; qlog_debug() { :; }; qlog_info() { :; }
+    qlog_warn() { :; }; qlog_error() { :; }
+fi
+qlog_init "telegram_send"
+
+[ -f "$TELEGRAM_LIB" ] || fail "library_missing" "Telegram alerts library not found"
+. "$TELEGRAM_LIB" 2>/dev/null || fail "library_missing" "Telegram alerts library could not be loaded"
+
+_ta_read_config
+[ "$_ta_enabled" = "true" ] || fail "not_configured" "Telegram alerts must be enabled and fully configured before sending a test"
+
+telegram_send_raw "$_ta_chat_id" "[QManager] Test alert - your Telegram alert configuration is working."
+rc=$?
+case "$rc" in
+    0) _ta_log_event test sent "telegram:$_ta_chat_id"; printf '{"success":true}\n'; exit 0 ;;
+    2) _ta_log_event test failed "telegram:$_ta_chat_id"; fail "not_configured" "No Telegram bot token is stored" ;;
+    3) _ta_log_event test failed "telegram:$_ta_chat_id"; fail "curl_missing" "curl is not installed on this device" ;;
+    *) _ta_log_event test failed "telegram:$_ta_chat_id"; fail "send_failed" "Telegram did not accept the message. Check the token, the chat ID and that you pressed Start in the bot chat." ;;
+esac

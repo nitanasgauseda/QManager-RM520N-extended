@@ -848,7 +848,8 @@
       "channel": {
         "discord": "Discord",
         "email": "Email",
-        "sms": "SMS"
+        "sms": "SMS",
+        "telegram": "Telegram"
       },
       "day": {
         "today": "今天",
@@ -913,6 +914,25 @@
         "sub": "由你的机器人私信发送。",
         "id_hint_label": "如何找到你的 Discord ID"
       },
+      "telegram": {
+        "title": "Telegram 提醒",
+        "sub": "由你自己的 Telegram 机器人发送消息。",
+        "token_label": "机器人令牌",
+        "token_hint": "使用 @BotFather 创建机器人，然后粘贴它提供的令牌。",
+        "token_link": "打开 @BotFather",
+        "token_placeholder": "123456789:AA...",
+        "token_keep": "留空以保留已保存的令牌",
+        "token_missing": "发送 Telegram 提醒需要机器人令牌。",
+        "token_error": "机器人令牌的格式为 123456789:AA…，不含空格。",
+        "token_show": "显示机器人令牌",
+        "token_hide": "隐藏机器人令牌",
+        "chat_label": "聊天 ID",
+        "chat_hint_label": "如何找到你的聊天 ID",
+        "chat_hint": "在机器人聊天中点击“开始”，然后向 @userinfobot 查询你的 ID。群组 ID 以 -100 开头；公开频道可使用其 @名称。",
+        "chat_missing": "需要填写聊天 ID。",
+        "chat_error": "请输入数字聊天 ID 或 @频道名称。",
+        "test": "发送测试消息"
+      },
       "email": {
         "address_error": "请输入有效的邮箱地址。",
         "mailer_install": "安装 msmtp",
@@ -945,7 +965,8 @@
       "name": {
         "discord": "Discord",
         "email": "Email",
-        "sms": "SMS"
+        "sms": "SMS",
+        "telegram": "Telegram"
       },
       "rail_label": "提醒渠道",
       "save": {
@@ -967,7 +988,9 @@
           "invalid_secret": "应用专用密码或机器人令牌包含不允许的字符。",
           "partial": "密码或令牌已保存，但设置未能完成更新，请再次保存。",
           "service_restart_failed": "设置已保存，但 Discord 机器人未能重新启动。",
-          "service_enable_failed": "设置已保存，但未能将 Discord 机器人设为开机启动。"
+          "service_enable_failed": "设置已保存，但未能将 Discord 机器人设为开机启动。",
+          "invalid_telegram_chat": "请输入数字 Telegram 聊天 ID 或 @频道名称。",
+          "missing_telegram_token": "请输入 Telegram 机器人令牌。"
         }
       },
       "secret_saved": "已保存",
@@ -1004,8 +1027,11 @@
           "msmtp_missing": "邮件程序尚未安装，测试邮件未发送。",
           "send_failed_sms": "测试短信未发送，请检查信号、SIM 卡余额和号码。",
           "send_failed_email": "测试邮件未发送，请检查邮件地址、应用专用密码和网络连接。",
-          "send_failed_discord": "测试消息未能送达 Discord 机器人，请重试。"
-        }
+          "send_failed_discord": "测试消息未能送达 Discord 机器人，请重试。",
+          "curl_missing": "调制解调器上未安装 curl，因此无法连接 Telegram。",
+          "send_failed_telegram": "Telegram 未接受该消息。请检查令牌和聊天 ID，并在机器人聊天中点击“开始”。"
+        },
+        "blocked_curl": "调制解调器上尚未安装 curl。"
       },
       "threshold_error": "请输入 1 到 1440 之间的整数分钟。",
       "threshold_hint": "较短的断网只记录，不发送。",
@@ -1041,7 +1067,8 @@
       "reason": {
         "discord_needs_internet": "需要网络",
         "email_needs_internet": "需要网络",
-        "not_supported": "此渠道无法发送该事件"
+        "not_supported": "此渠道无法发送该事件",
+        "telegram_needs_internet": "需要互联网"
       },
       "staleNotice": "显示我们上一次从设备读取到的设置。",
       "title": "覆盖范围",
@@ -1510,6 +1537,55 @@
       "repository": "GitHub 仓库",
       "release_notes": "发行说明",
       "support": "支持本项目"
+    },
+    "firmware": {
+      "title": "固件更新",
+      "description": "在电脑上刷写固件包之前先检查它。",
+      "installed": "已安装固件",
+      "variant": "版本类型",
+      "check_label": "要检查的固件包",
+      "check_hint": "粘贴固件包或文件夹名称，例如你下载的 .zip 文件。",
+      "verdict": {
+        "newer": {
+          "chip": "较新版本",
+          "text": "此固件包与你的 {{installed}} 调制解调器匹配，并且比已安装的固件更新。"
+        },
+        "same": {
+          "chip": "相同版本",
+          "text": "这就是已安装的固件，再次刷写不会有任何变化。"
+        },
+        "older": {
+          "chip": "较旧版本",
+          "text": "此固件包与你的调制解调器匹配，但比已安装的固件旧。"
+        },
+        "wrong_variant": {
+          "chip": "版本类型不符",
+          "text": "这是 {{pkg}} 固件包，而你的调制解调器是 {{installed}}。请勿刷写。"
+        },
+        "wrong_model": {
+          "chip": "模块不同",
+          "text": "此固件包适用于另一款 Quectel 模块。请勿刷写。"
+        },
+        "unrecognized": {
+          "chip": "无法识别",
+          "text": "该名称看起来不像 Quectel 固件包。"
+        },
+        "unknown_installed": {
+          "chip": "无法比较",
+          "text": "无法读取已安装的固件版本，请自行确认版本类型。"
+        }
+      },
+      "steps_label": "如何刷写",
+      "steps": {
+        "download": "下载 {{variant}} 固件包，并在装有 QFirehose 的 Linux 电脑上解压。",
+        "connect": "用 USB 线将调制解调器连接到该电脑。刷写期间此页面会离线。",
+        "run": "在解压出的文件夹所在目录中运行：",
+        "after": "完成后调制解调器会自动重启。如果之后无法打开 QManager，请重新运行其安装程序。"
+      },
+      "warning": "刷写期间切勿断电，也切勿刷写其他版本类型的固件包。",
+      "copy": "复制命令",
+      "copied": "命令已复制。",
+      "copy_failed": "无法复制命令。"
     }
   },
   "support": {

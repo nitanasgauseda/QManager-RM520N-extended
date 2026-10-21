@@ -11,7 +11,7 @@
 
 import type { MutationResult } from "@/types/mutation-result";
 
-export type AlertChannel = "sms" | "email" | "discord";
+export type AlertChannel = "sms" | "email" | "discord" | "telegram";
 
 /** The trigger events a channel can be routed to. Extensible by design — new
  *  events are an additive key here + a backend capability entry. */
@@ -50,10 +50,23 @@ export interface DiscordChannelState {
   configured: boolean;
 }
 
+export interface TelegramChannelState {
+  enabled: boolean;
+  /** Numeric user/group chat id, or an @channel name. */
+  chat_id: string;
+  /** Whether a bot token is stored. The token itself is never returned. */
+  token_set: boolean;
+  threshold_minutes: number;
+  /** Whether curl, the Telegram transport, is present on the device. */
+  curl_installed: boolean;
+  configured: boolean;
+}
+
 export interface AlertChannels {
   sms: SmsChannelState;
   email: EmailChannelState;
   discord: DiscordChannelState;
+  telegram: TelegramChannelState;
 }
 
 // ─── Routing matrix (user preference) ────────────────────────────────────────
@@ -69,10 +82,12 @@ export interface AlertCapabilityCell {
   sms: boolean;
   email: boolean;
   discord: boolean;
+  telegram: boolean;
   /** Reason key explaining why a channel is incapable, if it is. */
   sms_reason?: string;
   email_reason?: string;
   discord_reason?: string;
+  telegram_reason?: string;
 }
 
 export type AlertCapabilities = Record<AlertEventKey, AlertCapabilityCell>;
@@ -129,6 +144,12 @@ export interface AlertsSavePayload {
     bot_token?: string;
     threshold_minutes?: number;
   };
+  telegram: {
+    enabled: boolean;
+    chat_id: string;
+    /** Only sent when the user typed a new bot token. */
+    bot_token?: string;
+  };
   routing: AlertRouting;
 }
 
@@ -167,4 +188,4 @@ export const ALERT_EVENT_ORDER: AlertEventKey[] = [
   "reboot",
 ];
 
-export const ALERT_CHANNEL_ORDER: AlertChannel[] = ["sms", "email", "discord"];
+export const ALERT_CHANNEL_ORDER: AlertChannel[] = ["sms", "email", "telegram", "discord"];

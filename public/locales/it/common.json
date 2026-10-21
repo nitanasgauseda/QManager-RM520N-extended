@@ -848,7 +848,8 @@
       "channel": {
         "discord": "Discord",
         "email": "Email",
-        "sms": "SMS"
+        "sms": "SMS",
+        "telegram": "Telegram"
       },
       "day": {
         "today": "Oggi",
@@ -913,6 +914,25 @@
         "sub": "Un messaggio diretto dal tuo bot.",
         "id_hint_label": "Come trovare il tuo ID Discord"
       },
+      "telegram": {
+        "title": "Avvisi Telegram",
+        "sub": "Un messaggio dal tuo bot Telegram.",
+        "token_label": "Token del bot",
+        "token_hint": "Crea un bot con @BotFather e incolla il token che ti fornisce.",
+        "token_link": "Apri @BotFather",
+        "token_placeholder": "123456789:AA...",
+        "token_keep": "Lascia vuoto per mantenere il token salvato",
+        "token_missing": "Serve un token del bot per inviare avvisi Telegram.",
+        "token_error": "Un token del bot ha la forma 123456789:AA… senza spazi.",
+        "token_show": "Mostra token del bot",
+        "token_hide": "Nascondi token del bot",
+        "chat_label": "ID chat",
+        "chat_hint_label": "Come trovare il tuo ID chat",
+        "chat_hint": "Premi Avvia nella chat del bot, poi chiedi il tuo ID a @userinfobot. Gli ID dei gruppi iniziano con -100; un canale pubblico può usare il suo @nome.",
+        "chat_missing": "Serve un ID chat.",
+        "chat_error": "Inserisci un ID chat numerico o un nome @canale.",
+        "test": "Invia un messaggio di prova"
+      },
       "email": {
         "address_error": "Inserisci un indirizzo email valido.",
         "mailer_install": "Installa msmtp",
@@ -945,7 +965,8 @@
       "name": {
         "discord": "Discord",
         "email": "Email",
-        "sms": "SMS"
+        "sms": "SMS",
+        "telegram": "Telegram"
       },
       "rail_label": "Canale di avviso",
       "save": {
@@ -967,7 +988,9 @@
           "invalid_secret": "La password per le app o il token del bot contiene caratteri non consentiti.",
           "partial": "La password o il token sono stati salvati, ma le impostazioni non sono state aggiornate del tutto: salva di nuovo.",
           "service_restart_failed": "Impostazioni salvate, ma non è stato possibile riavviare il bot Discord.",
-          "service_enable_failed": "Impostazioni salvate, ma non è stato possibile avviare automaticamente il bot Discord all'accensione."
+          "service_enable_failed": "Impostazioni salvate, ma non è stato possibile avviare automaticamente il bot Discord all'accensione.",
+          "invalid_telegram_chat": "Inserisci un ID chat Telegram numerico o un nome @canale.",
+          "missing_telegram_token": "Inserisci il token del bot Telegram."
         }
       },
       "secret_saved": "Salvato",
@@ -1004,8 +1027,11 @@
           "msmtp_missing": "Il programma di posta non è installato, quindi l'email di test non è stata inviata.",
           "send_failed_sms": "L'SMS di test non è stato inviato: controlla il segnale, il credito della SIM e il numero.",
           "send_failed_email": "L'email di test non è stata inviata: controlla gli indirizzi, la password per le app e la connessione.",
-          "send_failed_discord": "Il messaggio di test non ha raggiunto il bot Discord: riprova."
-        }
+          "send_failed_discord": "Il messaggio di test non ha raggiunto il bot Discord: riprova.",
+          "curl_missing": "curl non è installato sul modem, quindi Telegram non è raggiungibile.",
+          "send_failed_telegram": "Telegram non ha accettato il messaggio. Controlla token e ID chat e premi Avvia nella chat del bot."
+        },
+        "blocked_curl": "curl non è ancora installato sul modem."
       },
       "threshold_error": "Inserisci un numero intero di minuti da 1 a 1440.",
       "threshold_hint": "Le interruzioni più brevi vengono registrate, non inviate.",
@@ -1041,7 +1067,8 @@
       "reason": {
         "discord_needs_internet": "Richiede internet",
         "email_needs_internet": "Richiede internet",
-        "not_supported": "Questo canale non può inviare questo evento"
+        "not_supported": "Questo canale non può inviare questo evento",
+        "telegram_needs_internet": "Richiede internet"
       },
       "staleNotice": "Mostriamo le ultime impostazioni lette dal dispositivo.",
       "title": "Copertura",
@@ -1510,6 +1537,55 @@
       "repository": "Repository GitHub",
       "release_notes": "Note di rilascio",
       "support": "Sostieni il progetto"
+    },
+    "firmware": {
+      "title": "Aggiornamento firmware",
+      "description": "Controlla un pacchetto firmware prima di flasharlo da un computer.",
+      "installed": "Firmware installato",
+      "variant": "Variante",
+      "check_label": "Pacchetto da controllare",
+      "check_hint": "Incolla il nome del pacchetto o della cartella, ad esempio lo .zip scaricato.",
+      "verdict": {
+        "newer": {
+          "chip": "Build più recente",
+          "text": "Questo pacchetto corrisponde al tuo modem {{installed}} ed è più recente del firmware installato."
+        },
+        "same": {
+          "chip": "Stessa build",
+          "text": "È il firmware già installato. Flasharlo di nuovo non cambia nulla."
+        },
+        "older": {
+          "chip": "Build precedente",
+          "text": "Questo pacchetto corrisponde al tuo modem ma è più vecchio del firmware installato."
+        },
+        "wrong_variant": {
+          "chip": "Variante errata",
+          "text": "Questo è un pacchetto {{pkg}} e il tuo modem è {{installed}}. Non flasharlo."
+        },
+        "wrong_model": {
+          "chip": "Modulo diverso",
+          "text": "Questo pacchetto è per un altro modulo Quectel. Non flasharlo."
+        },
+        "unrecognized": {
+          "chip": "Non riconosciuto",
+          "text": "Il nome non sembra un pacchetto firmware Quectel."
+        },
+        "unknown_installed": {
+          "chip": "Confronto impossibile",
+          "text": "Non è stato possibile leggere la versione installata, quindi verifica tu la variante."
+        }
+      },
+      "steps_label": "Come flashare",
+      "steps": {
+        "download": "Scarica un pacchetto firmware {{variant}} e decomprimilo su un computer Linux con QFirehose.",
+        "connect": "Collega il modem a quel computer con un cavo USB. Questa pagina va offline durante il flash.",
+        "run": "Nella cartella che contiene quella decompressa, esegui:",
+        "after": "Al termine il modem si riavvia da solo. Se QManager non si apre, esegui di nuovo il suo programma di installazione."
+      },
+      "warning": "Non togliere mai l'alimentazione durante un flash e non flashare mai un pacchetto di un'altra variante.",
+      "copy": "Copia comando",
+      "copied": "Comando copiato.",
+      "copy_failed": "Impossibile copiare il comando."
     }
   },
   "support": {

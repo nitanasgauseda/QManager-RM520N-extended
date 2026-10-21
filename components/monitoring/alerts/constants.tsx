@@ -6,6 +6,7 @@ import {
   MessageCircleIcon,
   MessageSquareIcon,
   RotateCcwIcon,
+  SendHorizontalIcon,
   WifiIcon,
   WifiOffIcon,
   type LucideIcon,
@@ -16,6 +17,7 @@ export const CHANNEL_GLYPH: Record<AlertChannel, LucideIcon> = {
   sms: MessageSquareIcon,
   email: MailIcon,
   discord: MessageCircleIcon,
+  telegram: SendHorizontalIcon,
 };
 
 export const EVENT_GLYPH: Record<AlertEventKey, LucideIcon> = {
@@ -38,6 +40,7 @@ export function isEventKey(value: string): value is AlertEventKey {
 const KNOWN_REASONS = new Set([
   "email_needs_internet",
   "discord_needs_internet",
+  "telegram_needs_internet",
   "not_supported",
 ]);
 
@@ -50,6 +53,8 @@ const SAVE_ERROR_KEY: Record<string, string> = {
   missing_app_password: "alerts.channels.save.errors.missing_app_password",
   invalid_discord_id: "alerts.channels.save.errors.invalid_discord_id",
   missing_bot_token: "alerts.channels.save.errors.missing_bot_token",
+  invalid_telegram_chat: "alerts.channels.save.errors.invalid_telegram_chat",
+  missing_telegram_token: "alerts.channels.save.errors.missing_telegram_token",
   empty_value: "alerts.channels.save.errors.invalid_secret",
   invalid_value: "alerts.channels.save.errors.invalid_secret",
   value_too_long: "alerts.channels.save.errors.invalid_secret",
@@ -64,11 +69,13 @@ const TEST_ERROR_KEY: Record<string, string> = {
   not_configured: "alerts.channels.test.errors.not_configured",
   bot_not_running: "alerts.channels.test.errors.bot_not_running",
   msmtp_missing: "alerts.channels.test.errors.msmtp_missing",
+  curl_missing: "alerts.channels.test.errors.curl_missing",
 };
 const SEND_FAILED_KEY: Record<AlertChannel, string> = {
   sms: "alerts.channels.test.errors.send_failed_sms",
   email: "alerts.channels.test.errors.send_failed_email",
   discord: "alerts.channels.test.errors.send_failed_discord",
+  telegram: "alerts.channels.test.errors.send_failed_telegram",
 };
 
 const own = (map: Record<string, string>, code: string | null) =>

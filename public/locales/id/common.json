@@ -848,7 +848,8 @@
       "channel": {
         "discord": "Discord",
         "email": "Email",
-        "sms": "SMS"
+        "sms": "SMS",
+        "telegram": "Telegram"
       },
       "day": {
         "today": "Hari ini",
@@ -913,6 +914,25 @@
         "sub": "Pesan langsung dari bot Anda.",
         "id_hint_label": "Cara menemukan ID Discord Anda"
       },
+      "telegram": {
+        "title": "Peringatan Telegram",
+        "sub": "Pesan dari bot Telegram Anda sendiri.",
+        "token_label": "Token bot",
+        "token_hint": "Buat bot dengan @BotFather lalu tempel token yang diberikan.",
+        "token_link": "Buka @BotFather",
+        "token_placeholder": "123456789:AA...",
+        "token_keep": "Biarkan kosong untuk tetap memakai token tersimpan",
+        "token_missing": "Token bot diperlukan untuk mengirim peringatan Telegram.",
+        "token_error": "Token bot berbentuk 123456789:AA… tanpa spasi.",
+        "token_show": "Tampilkan token bot",
+        "token_hide": "Sembunyikan token bot",
+        "chat_label": "ID chat",
+        "chat_hint_label": "Cara menemukan ID chat Anda",
+        "chat_hint": "Tekan Start di chat bot Anda, lalu tanyakan ID Anda ke @userinfobot. ID grup diawali -100; kanal publik dapat memakai @nama-nya.",
+        "chat_missing": "ID chat diperlukan.",
+        "chat_error": "Masukkan ID chat berupa angka atau nama @kanal.",
+        "test": "Kirim pesan uji"
+      },
       "email": {
         "address_error": "Masukkan alamat email yang valid.",
         "mailer_install": "Instal msmtp",
@@ -945,7 +965,8 @@
       "name": {
         "discord": "Discord",
         "email": "Email",
-        "sms": "SMS"
+        "sms": "SMS",
+        "telegram": "Telegram"
       },
       "rail_label": "Saluran peringatan",
       "save": {
@@ -967,7 +988,9 @@
           "invalid_secret": "Sandi aplikasi atau token bot berisi karakter yang tidak diizinkan.",
           "partial": "Sandi atau token sudah disimpan, tetapi pengaturan belum selesai diperbarui, jadi simpan lagi.",
           "service_restart_failed": "Pengaturan disimpan, tetapi bot Discord tidak dapat dimulai ulang.",
-          "service_enable_failed": "Pengaturan disimpan, tetapi bot Discord tidak dapat diatur untuk berjalan saat perangkat menyala."
+          "service_enable_failed": "Pengaturan disimpan, tetapi bot Discord tidak dapat diatur untuk berjalan saat perangkat menyala.",
+          "invalid_telegram_chat": "Masukkan ID chat Telegram berupa angka atau nama @kanal.",
+          "missing_telegram_token": "Masukkan token bot Telegram."
         }
       },
       "secret_saved": "Tersimpan",
@@ -1004,8 +1027,11 @@
           "msmtp_missing": "Pengirim email belum terpasang, jadi email tes tidak terkirim.",
           "send_failed_sms": "SMS tes tidak terkirim, jadi periksa sinyal, pulsa SIM, dan nomornya.",
           "send_failed_email": "Email tes tidak terkirim, jadi periksa alamat, sandi aplikasi, dan koneksinya.",
-          "send_failed_discord": "Pesan tes tidak sampai ke bot Discord, jadi coba lagi."
-        }
+          "send_failed_discord": "Pesan tes tidak sampai ke bot Discord, jadi coba lagi.",
+          "curl_missing": "curl belum terpasang di modem, sehingga Telegram tidak dapat dijangkau.",
+          "send_failed_telegram": "Telegram tidak menerima pesan. Periksa token dan ID chat, lalu tekan Start di chat bot."
+        },
+        "blocked_curl": "curl belum terpasang di modem."
       },
       "threshold_error": "Masukkan jumlah menit bulat dari 1 sampai 1440.",
       "threshold_hint": "Gangguan yang lebih singkat dicatat, tidak dikirim.",
@@ -1041,7 +1067,8 @@
       "reason": {
         "discord_needs_internet": "Perlu internet",
         "email_needs_internet": "Perlu internet",
-        "not_supported": "Saluran ini tidak dapat mengirim peristiwa ini"
+        "not_supported": "Saluran ini tidak dapat mengirim peristiwa ini",
+        "telegram_needs_internet": "Memerlukan internet"
       },
       "staleNotice": "Menampilkan pengaturan terakhir yang berhasil kami baca dari perangkat.",
       "title": "Cakupan",
@@ -1510,6 +1537,55 @@
       "repository": "Repositori GitHub",
       "release_notes": "Catatan rilis",
       "support": "Dukung proyek ini"
+    },
+    "firmware": {
+      "title": "Pembaruan firmware",
+      "description": "Periksa paket firmware sebelum Anda mem-flash-nya dari komputer.",
+      "installed": "Firmware terpasang",
+      "variant": "Varian",
+      "check_label": "Paket yang diperiksa",
+      "check_hint": "Tempel nama paket atau folder, misalnya file .zip yang Anda unduh.",
+      "verdict": {
+        "newer": {
+          "chip": "Build lebih baru",
+          "text": "Paket ini cocok dengan modem {{installed}} Anda dan lebih baru dari firmware terpasang."
+        },
+        "same": {
+          "chip": "Build sama",
+          "text": "Ini adalah firmware yang sudah terpasang. Mem-flash-nya lagi tidak mengubah apa pun."
+        },
+        "older": {
+          "chip": "Build lebih lama",
+          "text": "Paket ini cocok dengan modem Anda tetapi lebih lama dari firmware terpasang."
+        },
+        "wrong_variant": {
+          "chip": "Varian salah",
+          "text": "Ini paket {{pkg}} sedangkan modem Anda {{installed}}. Jangan di-flash."
+        },
+        "wrong_model": {
+          "chip": "Modul berbeda",
+          "text": "Paket ini untuk modul Quectel lain. Jangan di-flash."
+        },
+        "unrecognized": {
+          "chip": "Tidak dikenali",
+          "text": "Nama ini tidak tampak seperti paket firmware Quectel."
+        },
+        "unknown_installed": {
+          "chip": "Tidak dapat dibandingkan",
+          "text": "Versi firmware terpasang tidak terbaca, jadi periksa variannya sendiri."
+        }
+      },
+      "steps_label": "Cara mem-flash",
+      "steps": {
+        "download": "Unduh paket firmware {{variant}} lalu ekstrak di komputer Linux yang memiliki QFirehose.",
+        "connect": "Hubungkan modem ke komputer itu dengan kabel USB. Halaman ini akan offline selama proses flash.",
+        "run": "Di folder induk dari folder hasil ekstrak, jalankan:",
+        "after": "Setelah selesai, modem mulai ulang dengan sendirinya. Jika QManager tidak terbuka, jalankan penginstalnya lagi."
+      },
+      "warning": "Jangan pernah mencabut daya saat flash, dan jangan pernah mem-flash paket untuk varian lain.",
+      "copy": "Salin perintah",
+      "copied": "Perintah disalin.",
+      "copy_failed": "Perintah tidak dapat disalin."
     }
   },
   "support": {
