@@ -69,8 +69,11 @@ build_index() {
         $1 == "NR"  { r = "N"; id = int($5 / 16384) }
         $1 != "LTE" && $1 != "NR" { next }
         {
-            k = r SUBSEP ($3 + 0) SUBSEP id
-            w = ($10 + 0 > 0) ? $10 + 0 : 1
+            # BusyBox 1.31 awk reads "NAME (" as a function call, so no variable is followed by "(".
+            mnc = $3 + 0
+            k = r SUBSEP mnc SUBSEP id
+            w = $10 + 0
+            if (w <= 0) w = 1
             sw[k] += w; sla[k] += $8 * w; slo[k] += $7 * w
             n[k]++; s[k] += $10; if ($13 + 0 > u[k]) u[k] = $13 + 0
             if ($9 + 0 > rg[k]) rg[k] = $9 + 0
@@ -80,8 +83,11 @@ build_index() {
             first = 1
             for (k in n) {
                 split(k, p, SUBSEP)
-                printf "%s{\"r\":\"%s\",\"m\":%d,\"e\":%d,\"la\":%.5f,\"lo\":%.5f,\"c\":%d,\"s\":%d,\"u\":%d,\"g\":%d}", \
-                    (first ? "" : ","), p[1], p[2], p[3], sla[k] / sw[k], slo[k] / sw[k], n[k], s[k], u[k], rg[k]
+                sep = ","
+                if (first) sep = ""
+                la = sla[k] / sw[k]
+                lo = slo[k] / sw[k]
+                printf "%s{\"r\":\"%s\",\"m\":%d,\"e\":%d,\"la\":%.5f,\"lo\":%.5f,\"c\":%d,\"s\":%d,\"u\":%d,\"g\":%d}", sep, p[1], p[2], p[3], la, lo, n[k], s[k], u[k], rg[k]
                 first = 0
             }
             printf "]}\n"
