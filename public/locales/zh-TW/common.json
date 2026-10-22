@@ -1921,7 +1921,8 @@
       "invalid_allow": "允許清單中有一項不是網域",
       "invalid_deny": "封鎖清單中有一項不是網域",
       "too_many": "每個清單最多 200 個網域",
-      "not_running": "DNS 隱私未執行"
+      "not_running": "DNS 隱私未執行",
+      "redirect_failed": "來自您網路的查詢未能到達 DNS 隱私，已重新關閉。您的網路未受影響。"
     },
     "toast": {
       "saved": "DNS 隱私已儲存",
@@ -2020,7 +2021,8 @@
       "title_warning": "注意",
       "title_info": "提示",
       "title_destructive": "已停止",
-      "open_custom_dns": "開啟自訂 DNS"
+      "open_custom_dns": "開啟自訂 DNS",
+      "redirect_failed": "來自您網路的查詢未能到達 DNS 隱私，數據機已將其關閉以維持網路正常。裝置改用電信商 DNS。再次儲存即可重試。"
     }
   },
   "securityCheck": {

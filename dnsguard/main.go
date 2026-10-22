@@ -749,7 +749,7 @@ func main() {
 				lastUpdateCheck = time.Now()
 				go e.updateLists(false)
 			}
-			if time.Since(lastStatus) >= 15*time.Second {
+			if time.Since(lastStatus) >= 5*time.Second {
 				lastStatus = time.Now()
 				e.writeStatus()
 			}

@@ -115,6 +115,7 @@ const KNOWN_ERRORS = [
   "invalid_deny",
   "too_many",
   "not_running",
+  "redirect_failed",
 ];
 const errorKey = (code: string) => `${K}.errors.${KNOWN_ERRORS.includes(code) ? code : "failed"}`;
 
@@ -555,6 +556,8 @@ export default function DnsPrivacyComponent() {
       ? { tone: "warning" as const, text: t(`${K}.notice.unavailable`) }
       : svc.custom_dns_active
         ? { tone: "info" as const, text: t(`${K}.notice.custom_dns`), link: "/local-network/custom-dns" }
+        : wanted && svc.redirect_failed
+          ? { tone: "destructive" as const, text: t(`${K}.notice.redirect_failed`) }
         : wanted && !svc.healthy
           ? { tone: "destructive" as const, text: t(`${K}.notice.stopped`) }
           : wanted && !svc.active

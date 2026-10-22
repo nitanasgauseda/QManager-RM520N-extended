@@ -15,6 +15,7 @@ _DNS_PRIVACY_LOADED=1
 : "${DP_LAN_IF:=bridge0}"
 : "${QM_IPTABLES:=/usr/sbin/iptables}"
 : "${QM_IP6TABLES:=/usr/sbin/ip6tables}"
+: "${DP_FAILED_FLAG:=/etc/qmanager/dnsguard_redirect_failed}"
 DP_CHAIN="QMANAGER_DNS"
 # v1 forwarded through a block in dnsmasq.conf; only kept to clean it up.
 DP_BEGIN="# QMANAGER-DNSGUARD-BEGIN v1"
@@ -81,9 +82,19 @@ dp_guard_off() {
     return 0
 }
 
+# LAN IPv4 of bridge0 (192.168.225.1 by default). Not REDIRECT: that picks the interface's first
+# address, which in IP Passthrough mode is the carrier IP the router also uses, so the reply never
+# leaves the modem.
+dp_lan_ip() {
+    if [ -n "${DP_LAN_IP:-}" ]; then printf '%s' "$DP_LAN_IP"; return 0; fi
+    ip -4 addr show dev "$DP_LAN_IF" 2>/dev/null | awk '
+        $1 == "inet" { split($2, a, "/"); ip = a[1]; split(ip, o, ".")
+            if (o[1] == 10 || (o[1] == 192 && o[2] == 168) || (o[1] == 172 && o[2] >= 16 && o[2] <= 31)) { print ip; exit } }'
+}
+
 # dp_redirect on|off — on returns 0 only when the IPv4 redirect is in place.
 dp_redirect() {
-    local t ok=0
+    local t ok=0 lan target
     for t in $(_dp_tables); do
         while _dp_priv "$t" -t nat -C PREROUTING -i "$DP_LAN_IF" -j "$DP_CHAIN" >/dev/null 2>&1; do
             _dp_priv "$t" -t nat -D PREROUTING -i "$DP_LAN_IF" -j "$DP_CHAIN" >/dev/null 2>&1 || break
@@ -92,10 +103,15 @@ dp_redirect() {
         _dp_priv "$t" -t nat -X "$DP_CHAIN" >/dev/null 2>&1
     done
     [ "$1" = "on" ] || return 0
+    lan=$(dp_lan_ip)
+    [ -n "$lan" ] || return 1
     for t in $(_dp_tables); do
+        if [ "$t" = "$QM_IPTABLES" ]; then target="DNAT --to-destination $lan:$DP_PORT"
+        else target="REDIRECT --to-ports $DP_PORT"; fi
         _dp_priv "$t" -t nat -N "$DP_CHAIN" >/dev/null 2>&1 || continue
-        if _dp_priv "$t" -t nat -A "$DP_CHAIN" -p udp --dport 53 -j REDIRECT --to-ports "$DP_PORT" >/dev/null 2>&1 \
-            && _dp_priv "$t" -t nat -A "$DP_CHAIN" -p tcp --dport 53 -j REDIRECT --to-ports "$DP_PORT" >/dev/null 2>&1 \
+        # $target is split on purpose.
+        if _dp_priv "$t" -t nat -A "$DP_CHAIN" -p udp --dport 53 -j $target >/dev/null 2>&1 \
+            && _dp_priv "$t" -t nat -A "$DP_CHAIN" -p tcp --dport 53 -j $target >/dev/null 2>&1 \
             && _dp_priv "$t" -t nat -I PREROUTING 1 -i "$DP_LAN_IF" -j "$DP_CHAIN" >/dev/null 2>&1; then
             [ "$t" = "$QM_IPTABLES" ] && ok=1
         else
@@ -104,6 +120,32 @@ dp_redirect() {
         fi
     done
     [ "$ok" = "1" ]
+}
+
+# Lookups the redirect sent (new flows seen by the IPv4 nat chain) and lookups the forwarder answered.
+dp_redirect_pkts() {
+    _dp_priv "$QM_IPTABLES" -t nat -L "$DP_CHAIN" -v -n -x 2>/dev/null \
+        | awk '$1 ~ /^[0-9]+$/ { n += $1 } END { print n + 0 }'
+}
+dp_queries() { jq -r '.stats.queries // 0' "$DP_STATUS" 2>/dev/null || echo 0; }
+
+# dp_verify_redirect — right after a switch-on: if LAN lookups are redirected but none reach the
+# forwarder within ~15 s, take the redirect down again. Returns 1 only for that case.
+# The forwarder writes its status every 5 s.
+dp_verify_redirect() {
+    local q0 p q i=0
+    q0=$(dp_queries)
+    while [ "$i" -lt "${DP_VERIFY_STEPS:-5}" ]; do
+        sleep "${DP_VERIFY_SLEEP:-3}"
+        i=$((i + 1))
+        q=$(dp_queries)
+        [ "${q:-0}" -gt "${q0:-0}" ] && return 0
+    done
+    p=$(dp_redirect_pkts)
+    [ "${p:-0}" -lt 3 ] && return 0
+    dp_redirect off
+    : > "$DP_FAILED_FLAG" 2>/dev/null
+    return 1
 }
 
 # Strip a v1 dnsmasq block if one is left. No reload: the file only matters at dnsmasq's next start,
@@ -126,6 +168,8 @@ _dp_good=0
 _dp_next=0
 _dp_failopen=0
 _dp_cleaned=0
+_dp_pk=-1
+_dp_q=-1
 
 dns_privacy_watch() {
     local up
@@ -147,6 +191,24 @@ dns_privacy_watch() {
     if dp_daemon_healthy; then
         _dp_bad=0
         _dp_good=$((_dp_good + 1))
+        # End to end: lookups redirected since the last check but none answered means the path is broken.
+        if dp_redirect_present; then
+            local pk q
+            pk=$(dp_redirect_pkts); q=$(dp_queries)
+            if [ "$_dp_pk" -ge 0 ] && [ "$pk" -ge "$_dp_pk" ] && [ "$q" -ge "$_dp_q" ] \
+                && [ $((pk - _dp_pk)) -ge 10 ] && [ "$q" -eq "$_dp_q" ]; then
+                dp_redirect off
+                : > "$DP_FAILED_FLAG" 2>/dev/null
+                _dp_pk=-1; _dp_q=-1
+                command -v append_event >/dev/null 2>&1 \
+                    && append_event "dns_privacy" "LAN lookups did not reach DNS Privacy, so it was switched off; devices use the carrier's DNS" "warning"
+                return 0
+            fi
+            _dp_pk=$pk; _dp_q=$q
+        else
+            _dp_pk=-1; _dp_q=-1
+        fi
+        [ -f "$DP_FAILED_FLAG" ] && return 0
         if ! dp_redirect_present && { [ "$_dp_failopen" = "0" ] || [ "$_dp_good" -ge 2 ]; } \
             && ! dp_custom_dns_active; then
             dp_guard_on

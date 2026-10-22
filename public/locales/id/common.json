@@ -1921,7 +1921,8 @@
       "invalid_allow": "Daftar izin berisi entri yang bukan domain",
       "invalid_deny": "Daftar blokir berisi entri yang bukan domain",
       "too_many": "Satu daftar memuat paling banyak 200 domain",
-      "not_running": "Privasi DNS tidak berjalan"
+      "not_running": "Privasi DNS tidak berjalan",
+      "redirect_failed": "Pencarian dari jaringan Anda tidak sampai ke Privasi DNS, jadi fitur ini dimatikan lagi. Internet Anda tidak terpengaruh."
     },
     "toast": {
       "saved": "Privasi DNS disimpan",
@@ -2020,7 +2021,8 @@
       "title_warning": "Perhatian",
       "title_info": "Catatan",
       "title_destructive": "Berhenti",
-      "open_custom_dns": "Buka DNS Kustom"
+      "open_custom_dns": "Buka DNS Kustom",
+      "redirect_failed": "Pencarian dari jaringan Anda tidak sampai ke Privasi DNS, jadi modem mematikannya agar internet tetap berjalan. Perangkat memakai DNS operator. Simpan lagi untuk mencoba ulang."
     }
   },
   "securityCheck": {

@@ -53,10 +53,11 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     healthy=false; dp_daemon_healthy && healthy=true
     present=false; dp_redirect_present && present=true
     present6=false; dp_redirect6_present && present6=true
+    rfail=false; [ -f "$DP_FAILED_FLAG" ] && rfail=true
     custom=false; dp_custom_dns_active && custom=true
     mode=$(dns_mode)
     jq -n --argjson c "$(conf_json)" --argjson s "$st" --argjson inst "$installed" --argjson run "$running" \
-        --argjson ok "$healthy" --argjson live "$present" --argjson live6 "$present6" --argjson custom "$custom" --arg mode "$mode" '{
+        --argjson ok "$healthy" --argjson live "$present" --argjson live6 "$present6" --argjson rfail "$rfail" --argjson custom "$custom" --arg mode "$mode" '{
         success: true,
         config: {
             encrypt: {
@@ -74,7 +75,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 deny: ($c.block.deny // [])
             }
         },
-        service: {installed: $inst, running: $run, healthy: $ok, active: $live, active_ipv6: $live6,
+        service: {installed: $inst, running: $run, healthy: $ok, active: $live, active_ipv6: $live6, redirect_failed: $rfail,
                   custom_dns_active: $custom, dns_mode: $mode,
                   available: true},
         status: (if $ok then $s else null end)
@@ -184,11 +185,19 @@ if [ "$want" = "true" ]; then
     fi
     dp_legacy_cleanup
     dp_guard_on
-    if ! dp_redirect_present && ! dp_redirect on; then
-        cgi_error "apply_failed" "Saved, but LAN DNS could not be redirected"
-        exit 0
+    rm -f "$DP_FAILED_FLAG" 2>/dev/null
+    if ! dp_redirect_present; then
+        if ! dp_redirect on; then
+            cgi_error "apply_failed" "Saved, but LAN DNS could not be redirected"
+            exit 0
+        fi
+        if ! dp_verify_redirect; then
+            cgi_error "redirect_failed" "Lookups from your network did not reach DNS Privacy, so it was switched back off"
+            exit 0
+        fi
     fi
 else
+    rm -f "$DP_FAILED_FLAG" 2>/dev/null
     dp_redirect off
     dp_guard_off
     dp_legacy_cleanup

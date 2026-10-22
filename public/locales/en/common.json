@@ -1921,7 +1921,8 @@
       "invalid_allow": "The allow list has an entry that is not a domain",
       "invalid_deny": "The block list has an entry that is not a domain",
       "too_many": "A list holds at most 200 domains",
-      "not_running": "DNS Privacy is not running"
+      "not_running": "DNS Privacy is not running",
+      "redirect_failed": "Lookups from your network did not reach DNS Privacy, so it was switched back off. Your internet was not affected."
     },
     "toast": {
       "saved": "DNS Privacy saved",
@@ -2020,7 +2021,8 @@
       "title_warning": "Attention",
       "title_info": "Note",
       "title_destructive": "Stopped",
-      "open_custom_dns": "Open Custom DNS"
+      "open_custom_dns": "Open Custom DNS",
+      "redirect_failed": "Lookups from your network did not reach DNS Privacy, so the modem switched it off to keep the internet working. Devices use the carrier's DNS. Save again to retry."
     }
   },
   "securityCheck": {

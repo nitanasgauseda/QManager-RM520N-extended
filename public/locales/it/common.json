@@ -1921,7 +1921,8 @@
       "invalid_allow": "La lista consentiti contiene una voce che non è un dominio",
       "invalid_deny": "La lista bloccati contiene una voce che non è un dominio",
       "too_many": "Una lista contiene al massimo 200 domini",
-      "not_running": "Privacy DNS non è in esecuzione"
+      "not_running": "Privacy DNS non è in esecuzione",
+      "redirect_failed": "Le richieste dalla tua rete non raggiungevano Privacy DNS, quindi è stata disattivata. Internet non è stato toccato."
     },
     "toast": {
       "saved": "Privacy DNS salvato",
@@ -2020,7 +2021,8 @@
       "title_warning": "Attenzione",
       "title_info": "Nota",
       "title_destructive": "Fermato",
-      "open_custom_dns": "Apri DNS personalizzato"
+      "open_custom_dns": "Apri DNS personalizzato",
+      "redirect_failed": "Le richieste dalla tua rete non raggiungevano Privacy DNS, quindi il modem l'ha disattivata per mantenere Internet funzionante. I dispositivi usano il DNS dell'operatore. Salva di nuovo per riprovare."
     }
   },
   "securityCheck": {

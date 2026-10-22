@@ -1921,7 +1921,8 @@
       "invalid_allow": "允许列表中有一项不是域名",
       "invalid_deny": "拦截列表中有一项不是域名",
       "too_many": "每个列表最多 200 个域名",
-      "not_running": "DNS 隐私未运行"
+      "not_running": "DNS 隐私未运行",
+      "redirect_failed": "来自您网络的查询未能到达 DNS 隐私，已重新关闭。您的网络未受影响。"
     },
     "toast": {
       "saved": "DNS 隐私已保存",
@@ -2020,7 +2021,8 @@
       "title_warning": "注意",
       "title_info": "提示",
       "title_destructive": "已停止",
-      "open_custom_dns": "打开自定义 DNS"
+      "open_custom_dns": "打开自定义 DNS",
+      "redirect_failed": "来自您网络的查询未能到达 DNS 隐私，调制解调器已将其关闭以保证网络正常。设备改用运营商 DNS。再次保存可重试。"
     }
   },
   "securityCheck": {
