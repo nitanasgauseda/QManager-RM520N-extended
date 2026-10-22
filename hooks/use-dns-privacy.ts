@@ -65,7 +65,6 @@ export interface DnsPrivacyState {
     running: boolean;
     healthy: boolean;
     active: boolean;
-    active_ipv6: boolean;
     redirect_failed: boolean;
     custom_dns_active: boolean;
     dns_mode: string;

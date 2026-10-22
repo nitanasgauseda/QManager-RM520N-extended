@@ -2017,7 +2017,6 @@
       "custom_dns": "自訂 DNS 已開啟。關閉後才能使用 DNS 隱私。",
       "stopped": "DNS 隱私未執行。在其重新啟動前，裝置使用電信業者 DNS。",
       "paused": "DNS 隱私正在啟動，裝置將在幾分鐘內切換。",
-      "no_ipv6": "此數據機無法重新導向 IPv6 DNS 查詢，透過 IPv6 查詢的裝置會略過 DNS 隱私。",
       "title_warning": "注意",
       "title_info": "提示",
       "title_destructive": "已停止",

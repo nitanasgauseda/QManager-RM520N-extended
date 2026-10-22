@@ -93,7 +93,8 @@ type engine struct {
 	reloadAgain bool
 	updating    bool
 
-	localDNS func() string // LAN dnsmasq for local names; "" when unknown
+	localDNS  func() string // LAN dnsmasq for local names; "" when unknown
+	listening []string
 }
 
 type recentBlock struct {
@@ -493,22 +494,61 @@ func lanDNS(ifname string) func() string {
 			return cached
 		}
 		at, cached = time.Now(), ""
-		ifc, err := net.InterfaceByName(ifname)
-		if err != nil {
-			return ""
-		}
-		addrs, _ := ifc.Addrs()
-		for _, a := range addrs {
-			if ipn, ok := a.(*net.IPNet); ok && ipn.IP.To4() != nil && ipn.IP.IsPrivate() {
-				cached = net.JoinHostPort(ipn.IP.String(), "53")
-				break
-			}
+		if ip := lanIPv4(ifname); ip != "" {
+			cached = net.JoinHostPort(ip, "53")
 		}
 		return cached
 	}
 }
 
 // --- listeners
+
+func (e *engine) listenOn(addr string) error {
+	pc, err := net.ListenPacket("udp", addr)
+	if err != nil {
+		return err
+	}
+	tl, err := net.Listen("tcp", addr)
+	if err != nil {
+		pc.Close()
+		return err
+	}
+	go e.serveUDP(pc)
+	go e.serveTCP(tl)
+	e.mu.Lock()
+	e.listening = append(e.listening, addr)
+	e.mu.Unlock()
+	log.Printf("listening on %s", addr)
+	return nil
+}
+
+// listenLAN binds the private IPv4 of the LAN interface once it exists (QCMAP may bring bridge0 up late).
+func (e *engine) listenLAN(ifname, port string) {
+	for {
+		if ip := lanIPv4(ifname); ip != "" {
+			if err := e.listenOn(net.JoinHostPort(ip, port)); err == nil {
+				return
+			} else {
+				log.Printf("listen lan %s: %v", ip, err)
+			}
+		}
+		time.Sleep(3 * time.Second)
+	}
+}
+
+func lanIPv4(ifname string) string {
+	ifc, err := net.InterfaceByName(ifname)
+	if err != nil {
+		return ""
+	}
+	addrs, _ := ifc.Addrs()
+	for _, a := range addrs {
+		if ipn, ok := a.(*net.IPNet); ok && ipn.IP.To4() != nil && ipn.IP.IsPrivate() {
+			return ipn.IP.String()
+		}
+	}
+	return ""
+}
 
 func (e *engine) serveUDP(pc net.PacketConn) {
 	sem := make(chan struct{}, 64)
@@ -606,14 +646,18 @@ func (e *engine) writeStatus() {
 	if n := e.latencyN.Load(); n > 0 {
 		avg = e.latencySum.Load() / n
 	}
+	e.mu.Lock()
+	listening := append([]string(nil), e.listening...)
+	e.mu.Unlock()
 	st := map[string]any{
-		"running":  true,
-		"pid":      os.Getpid(),
-		"started":  e.started.Unix(),
-		"updated":  time.Now().Unix(),
-		"clock_ok": clockSane(),
-		"mem_kb":   rssKB(),
-		"mode":     map[string]bool{"encrypt": c.Encrypt.Enabled, "block": c.Block.Enabled},
+		"listening": listening,
+		"running":   true,
+		"pid":       os.Getpid(),
+		"started":   e.started.Unix(),
+		"updated":   time.Now().Unix(),
+		"clock_ok":  clockSane(),
+		"mem_kb":    rssKB(),
+		"mode":      map[string]bool{"encrypt": c.Encrypt.Enabled, "block": c.Block.Enabled},
 		"upstream": map[string]any{
 			"kind":          kind,
 			"provider":      c.Encrypt.Provider,
@@ -655,7 +699,7 @@ func takeFlag(path string) bool {
 
 func main() {
 	cfgPath := flag.String("config", "/etc/qmanager/dnsguard.json", "settings file")
-	listen := flag.String("listen", ":5335", "address the LAN redirect points at (the firewall keeps the cellular side out)")
+	listen := flag.String("listen", "127.0.0.1:5335,lan:5335", "addresses to listen on; lan:PORT is the private IPv4 of -lan-if")
 	localDNS := flag.String("local-dns", "auto", "dnsmasq for LAN host names: host:port, auto (private IPv4 of -lan-if) or off")
 	lanIf := flag.String("lan-if", "bridge0", "LAN interface for -local-dns auto")
 	listDir := flag.String("lists", "/usrdata/qmanager/dnsguard", "downloaded block lists")
@@ -706,17 +750,21 @@ func main() {
 	}
 	e.applyConfig(loadConfig(*cfgPath))
 
-	pc, err := net.ListenPacket("udp", *listen)
-	if err != nil {
-		log.Fatalf("listen udp %s: %v", *listen, err)
+	// Bound to specific addresses, never the wildcard: a wildcard UDP socket answers from whatever
+	// source the route picks, which in IP Passthrough mode is the carrier IP, and the router drops it.
+	for _, a := range strings.Split(*listen, ",") {
+		a = strings.TrimSpace(a)
+		if a == "" {
+			continue
+		}
+		if strings.HasPrefix(a, "lan:") {
+			go e.listenLAN(*lanIf, strings.TrimPrefix(a, "lan:"))
+			continue
+		}
+		if err := e.listenOn(a); err != nil {
+			log.Fatalf("listen %s: %v", a, err)
+		}
 	}
-	tl, err := net.Listen("tcp", *listen)
-	if err != nil {
-		log.Fatalf("listen tcp %s: %v", *listen, err)
-	}
-	go e.serveUDP(pc)
-	go e.serveTCP(tl)
-	log.Printf("listening on %s", *listen)
 
 	hup := make(chan os.Signal, 1)
 	signal.Notify(hup, syscall.SIGHUP)

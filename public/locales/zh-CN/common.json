@@ -2017,7 +2017,6 @@
       "custom_dns": "自定义 DNS 已开启。关闭后才能使用 DNS 隐私。",
       "stopped": "DNS 隐私未运行。在其重新启动前，设备使用运营商 DNS。",
       "paused": "DNS 隐私正在启动，设备将在几分钟内切换。",
-      "no_ipv6": "此调制解调器无法重定向 IPv6 DNS 查询，通过 IPv6 查询的设备会绕过 DNS 隐私。",
       "title_warning": "注意",
       "title_info": "提示",
       "title_destructive": "已停止",

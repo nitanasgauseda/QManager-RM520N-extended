@@ -2017,7 +2017,6 @@
       "custom_dns": "DNS Kustom aktif. Matikan untuk memakai Privasi DNS.",
       "stopped": "Privasi DNS tidak berjalan. Perangkat memakai DNS operator sampai berjalan lagi.",
       "paused": "Privasi DNS sedang dimulai. Perangkat beralih dalam beberapa menit.",
-      "no_ipv6": "Pencarian DNS lewat IPv6 tidak dapat dialihkan di modem ini, jadi perangkat yang memakai IPv6 melewati Privasi DNS.",
       "title_warning": "Perhatian",
       "title_info": "Catatan",
       "title_destructive": "Berhenti",

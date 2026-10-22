@@ -51,12 +51,8 @@ _dp_tables() {
     command -v "$QM_IP6TABLES" >/dev/null 2>&1 && echo "$QM_IP6TABLES"
 }
 
-# Redirect present: the IPv4 PREROUTING hook exists (IPv6 is best effort and reported separately).
+# Redirect present: the IPv4 PREROUTING hook exists.
 dp_redirect_present() { _dp_priv "$QM_IPTABLES" -t nat -C PREROUTING -i "$DP_LAN_IF" -j "$DP_CHAIN" >/dev/null 2>&1; }
-dp_redirect6_present() {
-    command -v "$QM_IP6TABLES" >/dev/null 2>&1 || return 1
-    _dp_priv "$QM_IP6TABLES" -t nat -C PREROUTING -i "$DP_LAN_IF" -j "$DP_CHAIN" >/dev/null 2>&1
-}
 
 # The forwarder listens on every address; the cellular side must never reach it.
 _dp_guard() {
@@ -92,9 +88,9 @@ dp_lan_ip() {
             if (o[1] == 10 || (o[1] == 192 && o[2] == 168) || (o[1] == 172 && o[2] >= 16 && o[2] <= 31)) { print ip; exit } }'
 }
 
-# dp_redirect on|off — on returns 0 only when the IPv4 redirect is in place.
+# dp_redirect on|off — IPv4 only (the forwarder binds the LAN IPv4); on returns 0 once it is in place.
 dp_redirect() {
-    local t ok=0 lan target
+    local t lan
     for t in $(_dp_tables); do
         while _dp_priv "$t" -t nat -C PREROUTING -i "$DP_LAN_IF" -j "$DP_CHAIN" >/dev/null 2>&1; do
             _dp_priv "$t" -t nat -D PREROUTING -i "$DP_LAN_IF" -j "$DP_CHAIN" >/dev/null 2>&1 || break
@@ -105,21 +101,32 @@ dp_redirect() {
     [ "$1" = "on" ] || return 0
     lan=$(dp_lan_ip)
     [ -n "$lan" ] || return 1
-    for t in $(_dp_tables); do
-        if [ "$t" = "$QM_IPTABLES" ]; then target="DNAT --to-destination $lan:$DP_PORT"
-        else target="REDIRECT --to-ports $DP_PORT"; fi
-        _dp_priv "$t" -t nat -N "$DP_CHAIN" >/dev/null 2>&1 || continue
-        # $target is split on purpose.
-        if _dp_priv "$t" -t nat -A "$DP_CHAIN" -p udp --dport 53 -j $target >/dev/null 2>&1 \
-            && _dp_priv "$t" -t nat -A "$DP_CHAIN" -p tcp --dport 53 -j $target >/dev/null 2>&1 \
-            && _dp_priv "$t" -t nat -I PREROUTING 1 -i "$DP_LAN_IF" -j "$DP_CHAIN" >/dev/null 2>&1; then
-            [ "$t" = "$QM_IPTABLES" ] && ok=1
-        else
-            _dp_priv "$t" -t nat -F "$DP_CHAIN" >/dev/null 2>&1
-            _dp_priv "$t" -t nat -X "$DP_CHAIN" >/dev/null 2>&1
-        fi
-    done
-    [ "$ok" = "1" ]
+    t="$QM_IPTABLES"
+    _dp_priv "$t" -t nat -N "$DP_CHAIN" >/dev/null 2>&1 || return 1
+    if _dp_priv "$t" -t nat -A "$DP_CHAIN" -p udp --dport 53 -j DNAT --to-destination "$lan:$DP_PORT" >/dev/null 2>&1 \
+        && _dp_priv "$t" -t nat -A "$DP_CHAIN" -p tcp --dport 53 -j DNAT --to-destination "$lan:$DP_PORT" >/dev/null 2>&1 \
+        && _dp_priv "$t" -t nat -I PREROUTING 1 -i "$DP_LAN_IF" -j "$DP_CHAIN" >/dev/null 2>&1; then
+        return 0
+    fi
+    _dp_priv "$t" -t nat -F "$DP_CHAIN" >/dev/null 2>&1
+    _dp_priv "$t" -t nat -X "$DP_CHAIN" >/dev/null 2>&1
+    return 1
+}
+
+# The forwarder reports the addresses it bound; the redirect must point at one of them.
+dp_lan_listening() {
+    local lan
+    lan=$(dp_lan_ip)
+    [ -n "$lan" ] || return 1
+    [ "$(jq -r --arg a "$lan:$DP_PORT" '(.listening // []) | index($a) != null' "$DP_STATUS" 2>/dev/null)" = "true" ]
+}
+
+# "total replied" for redirected lookups in the connection table (reply tuple from :5335).
+dp_conntrack_stats() {
+    local f="${DP_CONNTRACK:-/proc/net/nf_conntrack}"
+    [ -r "$f" ] || { echo "- -"; return 0; }
+    awk -v sp="sport=$DP_PORT " '/dport=53 / && index($0, sp) {
+        n++; if ($0 !~ /UNREPLIED/) r++ } END { print n + 0, r + 0 }' "$f"
 }
 
 # Lookups the redirect sent (new flows seen by the IPv4 nat chain) and lookups the forwarder answered.
@@ -129,20 +136,25 @@ dp_redirect_pkts() {
 }
 dp_queries() { jq -r '.stats.queries // 0' "$DP_STATUS" 2>/dev/null || echo 0; }
 
-# dp_verify_redirect — right after a switch-on: if LAN lookups are redirected but none reach the
-# forwarder within ~15 s, take the redirect down again. Returns 1 only for that case.
-# The forwarder writes its status every 5 s.
+# dp_verify_redirect — right after a switch-on: answers must go back out. If redirected lookups get
+# no reply within ~15 s, take the redirect down again. Returns 1 only for that case.
 dp_verify_redirect() {
-    local q0 p q i=0
+    local q0 p q i=0 total replied
     q0=$(dp_queries)
     while [ "$i" -lt "${DP_VERIFY_STEPS:-5}" ]; do
         sleep "${DP_VERIFY_SLEEP:-3}"
         i=$((i + 1))
-        q=$(dp_queries)
-        [ "${q:-0}" -gt "${q0:-0}" ] && return 0
+        set -- $(dp_conntrack_stats); replied=$2
+        [ "$replied" != "-" ] && [ "$replied" -gt 0 ] && return 0
     done
-    p=$(dp_redirect_pkts)
-    [ "${p:-0}" -lt 3 ] && return 0
+    set -- $(dp_conntrack_stats); total=$1; replied=$2
+    if [ "$total" != "-" ] && [ "$total" -ge 3 ]; then
+        [ "$replied" -gt 0 ] && return 0
+    else
+        # No connection table to read: fall back to "lookups went in, none reached the forwarder".
+        p=$(dp_redirect_pkts); q=$(dp_queries)
+        { [ "${p:-0}" -lt 3 ] || [ "${q:-0}" -gt "${q0:-0}" ]; } && return 0
+    fi
     dp_redirect off
     : > "$DP_FAILED_FLAG" 2>/dev/null
     return 1
@@ -194,9 +206,11 @@ dns_privacy_watch() {
         # End to end: lookups redirected since the last check but none answered means the path is broken.
         if dp_redirect_present; then
             local pk q
-            pk=$(dp_redirect_pkts); q=$(dp_queries)
-            if [ "$_dp_pk" -ge 0 ] && [ "$pk" -ge "$_dp_pk" ] && [ "$q" -ge "$_dp_q" ] \
-                && [ $((pk - _dp_pk)) -ge 10 ] && [ "$q" -eq "$_dp_q" ]; then
+            local ct
+            pk=$(dp_redirect_pkts); q=$(dp_queries); ct=$(dp_conntrack_stats)
+            if { [ "${ct%% *}" != "-" ] && [ "${ct%% *}" -ge 5 ] && [ "${ct#* }" -eq 0 ]; } \
+                || { [ "$_dp_pk" -ge 0 ] && [ "$pk" -ge "$_dp_pk" ] && [ "$q" -ge "$_dp_q" ] \
+                     && [ $((pk - _dp_pk)) -ge 10 ] && [ "$q" -eq "$_dp_q" ]; }; then
                 dp_redirect off
                 : > "$DP_FAILED_FLAG" 2>/dev/null
                 _dp_pk=-1; _dp_q=-1
@@ -210,7 +224,7 @@ dns_privacy_watch() {
         fi
         [ -f "$DP_FAILED_FLAG" ] && return 0
         if ! dp_redirect_present && { [ "$_dp_failopen" = "0" ] || [ "$_dp_good" -ge 2 ]; } \
-            && ! dp_custom_dns_active; then
+            && ! dp_custom_dns_active && dp_lan_listening; then
             dp_guard_on
             if dp_redirect on; then
                 [ "$_dp_failopen" = "1" ] && command -v append_event >/dev/null 2>&1 \

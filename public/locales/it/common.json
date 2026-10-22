@@ -2017,7 +2017,6 @@
       "custom_dns": "Il DNS personalizzato è attivo. Disattivalo per usare Privacy DNS.",
       "stopped": "Privacy DNS non è in esecuzione. I dispositivi usano il DNS dell'operatore finché non riparte.",
       "paused": "Privacy DNS si sta avviando. I dispositivi passano entro pochi minuti.",
-      "no_ipv6": "Su questo modem le richieste DNS via IPv6 non possono essere reindirizzate: un dispositivo che le usa salta Privacy DNS.",
       "title_warning": "Attenzione",
       "title_info": "Nota",
       "title_destructive": "Fermato",

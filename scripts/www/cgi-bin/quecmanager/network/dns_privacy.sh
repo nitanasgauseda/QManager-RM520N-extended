@@ -52,12 +52,11 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     running=false; svc_is_running qmanager_dnsguard && running=true
     healthy=false; dp_daemon_healthy && healthy=true
     present=false; dp_redirect_present && present=true
-    present6=false; dp_redirect6_present && present6=true
     rfail=false; [ -f "$DP_FAILED_FLAG" ] && rfail=true
     custom=false; dp_custom_dns_active && custom=true
     mode=$(dns_mode)
     jq -n --argjson c "$(conf_json)" --argjson s "$st" --argjson inst "$installed" --argjson run "$running" \
-        --argjson ok "$healthy" --argjson live "$present" --argjson live6 "$present6" --argjson rfail "$rfail" --argjson custom "$custom" --arg mode "$mode" '{
+        --argjson ok "$healthy" --argjson live "$present" --argjson rfail "$rfail" --argjson custom "$custom" --arg mode "$mode" '{
         success: true,
         config: {
             encrypt: {
@@ -75,7 +74,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 deny: ($c.block.deny // [])
             }
         },
-        service: {installed: $inst, running: $run, healthy: $ok, active: $live, active_ipv6: $live6, redirect_failed: $rfail,
+        service: {installed: $inst, running: $run, healthy: $ok, active: $live, redirect_failed: $rfail,
                   custom_dns_active: $custom, dns_mode: $mode,
                   available: true},
         status: (if $ok then $s else null end)
@@ -178,8 +177,8 @@ if [ "$want" = "true" ]; then
         svc_restart qmanager_dnsguard
     fi
     i=0
-    while [ "$i" -lt 12 ] && ! dp_daemon_healthy; do sleep 1; i=$((i + 1)); done
-    if ! dp_daemon_healthy; then
+    while [ "$i" -lt 12 ] && ! { dp_daemon_healthy && dp_lan_listening; }; do sleep 1; i=$((i + 1)); done
+    if ! dp_daemon_healthy || ! dp_lan_listening; then
         cgi_error "daemon_failed" "DNS Privacy did not start; your DNS was left unchanged"
         exit 0
     fi

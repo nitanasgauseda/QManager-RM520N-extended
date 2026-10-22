@@ -562,9 +562,7 @@ export default function DnsPrivacyComponent() {
           ? { tone: "destructive" as const, text: t(`${K}.notice.stopped`) }
           : wanted && !svc.active
             ? { tone: "warning" as const, text: t(`${K}.notice.paused`) }
-            : wanted && !svc.active_ipv6
-              ? { tone: "info" as const, text: t(`${K}.notice.no_ipv6`) }
-              : null;
+            : null;
 
   return (
     <div className="@container/main flex flex-col gap-5 p-2">
