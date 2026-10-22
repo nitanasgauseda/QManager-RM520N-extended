@@ -140,8 +140,9 @@ function EncryptCard({ state, api }: { state: DnsPrivacyState; api: Api }) {
   const ipOk = d.provider !== "custom" || /^(\d{1,3}\.){3}\d{1,3}$/.test(d.custom_ip.trim());
   const valid = nidOk && hostOk && ipOk;
   const st = state.status;
-  // Measured against the forwarder's own clock, so the page never compares two clocks.
-  const fallbackRecent = !!st && st.upstream.fallback_at > 0 && st.updated - st.upstream.fallback_at < 300;
+  // Forwarder clock only; a fallback counts while no encrypted answer has come since.
+  const fallbackRecent =
+    !!st && st.upstream.fallback_at > 0 && st.updated - st.upstream.fallback_at < 300 && st.upstream.fallback_at >= st.upstream.last_ok;
 
   const onSave = async () => {
     const r = await api.save({
