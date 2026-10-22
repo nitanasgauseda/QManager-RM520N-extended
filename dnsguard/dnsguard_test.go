@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -169,7 +170,10 @@ func newTestCA(t *testing.T, host string) testCA {
 }
 
 // dotServer answers every query with one A record; counts queries.
-func dotServer(t *testing.T, ca testCA) (string, *int) {
+func dotServer(t *testing.T, ca testCA) (string, *int) { return dotServerOpts(t, ca, false) }
+
+// dotServerOpts with oneShot closes each connection after one answer, like an idle timeout.
+func dotServerOpts(t *testing.T, ca testCA, oneShot bool) (string, *int) {
 	l, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{Certificates: []tls.Certificate{ca.cert}})
 	if err != nil {
 		t.Fatal(err)
@@ -197,6 +201,9 @@ func dotServer(t *testing.T, ca testCA) (string, *int) {
 					r := answer(m, 1)
 					out := append([]byte{byte(len(r) >> 8), byte(len(r))}, r...)
 					c.Write(out)
+					if oneShot {
+						return
+					}
 				}
 			}()
 		}
@@ -446,5 +453,24 @@ func TestIsLocalName(t *testing.T) {
 		if isLocalName(n) {
 			t.Errorf("%s should not be local", n)
 		}
+	}
+}
+
+func TestDoTStalePool(t *testing.T) {
+	ca := newTestCA(t, "dns.test")
+	addr, _ := dotServerOpts(t, ca, true)
+	r := &dotResolver{host: "dns.test", addrs: []string{addr}, conf: &tls.Config{ServerName: "dns.test", RootCAs: ca.pool}}
+	var wg sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			r.exchange(context.Background(), buildQuery(uint16(i+1), "a.example", 1, 0))
+		}(i)
+	}
+	wg.Wait()
+	time.Sleep(100 * time.Millisecond)
+	if _, err := r.exchange(context.Background(), buildQuery(9, "b.example", 1, 0)); err != nil {
+		t.Fatalf("stale pooled connections should be dropped and redialled: %v", err)
 	}
 }

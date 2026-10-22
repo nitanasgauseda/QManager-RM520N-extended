@@ -79,8 +79,16 @@ type dotResolver struct {
 	conf  *tls.Config
 	next  uint32
 	mu    sync.Mutex
-	idle  []*tls.Conn
+	idle  []idleConn
 }
+
+type idleConn struct {
+	c  *tls.Conn
+	at time.Time
+}
+
+// Resolvers close idle DoT connections after ~10 s (Cloudflare); reusing one then reads EOF.
+const dotIdleMax = 8 * time.Second
 
 func newDoT(p provider, roots *x509.CertPool) *dotResolver {
 	addrs := make([]string, len(p.IPs))
@@ -103,11 +111,14 @@ func (r *dotResolver) dial(ctx context.Context) (*tls.Conn, error) {
 
 func (r *dotResolver) get(ctx context.Context) (*tls.Conn, bool, error) {
 	r.mu.Lock()
-	if n := len(r.idle); n > 0 {
-		c := r.idle[n-1]
+	for n := len(r.idle); n > 0; n = len(r.idle) {
+		ic := r.idle[n-1]
 		r.idle = r.idle[:n-1]
-		r.mu.Unlock()
-		return c, true, nil
+		if time.Since(ic.at) < dotIdleMax {
+			r.mu.Unlock()
+			return ic.c, true, nil
+		}
+		ic.c.Close()
 	}
 	r.mu.Unlock()
 	c, err := r.dial(ctx)
@@ -121,14 +132,14 @@ func (r *dotResolver) put(c *tls.Conn) {
 		c.Close()
 		return
 	}
-	r.idle = append(r.idle, c)
+	r.idle = append(r.idle, idleConn{c, time.Now()})
 }
 
 func (r *dotResolver) close() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for _, c := range r.idle {
-		c.Close()
+	for _, ic := range r.idle {
+		ic.c.Close()
 	}
 	r.idle = nil
 }
@@ -159,7 +170,7 @@ func (r *dotResolver) exchange(ctx context.Context, msg []byte) ([]byte, error) 
 	var lastErr error
 	// Up to three tries: a pooled connection may have gone stale, and a fresh dial rotates address.
 	for attempt := 0; attempt < 3 && ctx.Err() == nil; attempt++ {
-		c, _, err := r.get(ctx)
+		c, pooled, err := r.get(ctx)
 		if err != nil {
 			lastErr = err
 			continue
@@ -176,6 +187,10 @@ func (r *dotResolver) exchange(ctx context.Context, msg []byte) ([]byte, error) 
 		}
 		c.Close()
 		lastErr = err
+		if pooled {
+			// The others were opened around the same time; dial fresh next.
+			r.close()
+		}
 	}
 	return nil, lastErr
 }
