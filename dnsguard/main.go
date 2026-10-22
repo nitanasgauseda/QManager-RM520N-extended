@@ -1,5 +1,5 @@
 // qmanager_dnsguard — local DNS forwarder for QManager's DNS Privacy page.
-// dnsmasq forwards LAN queries here; names on the block lists are answered with
+// LAN DNS (port 53 on bridge0) is redirected here by an iptables nat rule; names on the block lists are answered with
 // 0.0.0.0 / ::, everything else goes to an encrypted resolver (DNS over TLS) or the
 // carrier's DNS. See docs/reference/dns-privacy.md.
 package main
@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -91,6 +92,8 @@ type engine struct {
 	loading     bool
 	reloadAgain bool
 	updating    bool
+
+	localDNS func() string // LAN dnsmasq for local names; "" when unknown
 }
 
 type recentBlock struct {
@@ -387,6 +390,17 @@ func (e *engine) handle(msg []byte, maxUDP int) []byte {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
+	// Host names of LAN devices and reverse lookups of private addresses are dnsmasq's to answer.
+	if q.single && isLocalName(q.name) && e.localDNS != nil {
+		if a := e.localDNS(); a != "" {
+			lctx, lcancel := context.WithTimeout(ctx, 2*time.Second)
+			resp, err := udpExchange(lctx, a, msg)
+			lcancel()
+			if err == nil {
+				return resp
+			}
+		}
+	}
 	start := time.Now()
 	resp, err := e.forward(ctx, msg)
 	if err != nil {
@@ -437,6 +451,61 @@ func (e *engine) forward(ctx context.Context, msg []byte) ([]byte, error) {
 		return e.plain.exchange(pctx, msg)
 	}
 	return e.plain.exchange(ctx, msg)
+}
+
+// isLocalName: single-label names, LAN suffixes and PTR names of private IPv4 ranges.
+func isLocalName(n string) bool {
+	if n == "" {
+		return false
+	}
+	if !strings.Contains(n, ".") {
+		return true
+	}
+	for _, suf := range []string{".lan", ".localdomain", ".home.arpa", ".internal"} {
+		if strings.HasSuffix(n, suf) {
+			return true
+		}
+	}
+	if !strings.HasSuffix(n, ".in-addr.arpa") {
+		return false
+	}
+	if strings.HasSuffix(n, ".10.in-addr.arpa") || n == "10.in-addr.arpa" ||
+		strings.HasSuffix(n, ".168.192.in-addr.arpa") || strings.HasSuffix(n, ".254.169.in-addr.arpa") {
+		return true
+	}
+	for i := 16; i <= 31; i++ {
+		if strings.HasSuffix(n, "."+strconv.Itoa(i)+".172.in-addr.arpa") {
+			return true
+		}
+	}
+	return false
+}
+
+// lanDNS finds the LAN address dnsmasq listens on: the first private IPv4 of the LAN interface.
+func lanDNS(ifname string) func() string {
+	var mu sync.Mutex
+	var at time.Time
+	var cached string
+	return func() string {
+		mu.Lock()
+		defer mu.Unlock()
+		if time.Since(at) < time.Minute {
+			return cached
+		}
+		at, cached = time.Now(), ""
+		ifc, err := net.InterfaceByName(ifname)
+		if err != nil {
+			return ""
+		}
+		addrs, _ := ifc.Addrs()
+		for _, a := range addrs {
+			if ipn, ok := a.(*net.IPNet); ok && ipn.IP.To4() != nil && ipn.IP.IsPrivate() {
+				cached = net.JoinHostPort(ipn.IP.String(), "53")
+				break
+			}
+		}
+		return cached
+	}
 }
 
 // --- listeners
@@ -586,7 +655,9 @@ func takeFlag(path string) bool {
 
 func main() {
 	cfgPath := flag.String("config", "/etc/qmanager/dnsguard.json", "settings file")
-	listen := flag.String("listen", "127.0.0.1:5335", "address dnsmasq forwards to")
+	listen := flag.String("listen", ":5335", "address the LAN redirect points at (the firewall keeps the cellular side out)")
+	localDNS := flag.String("local-dns", "auto", "dnsmasq for LAN host names: host:port, auto (private IPv4 of -lan-if) or off")
+	lanIf := flag.String("lan-if", "bridge0", "LAN interface for -local-dns auto")
 	listDir := flag.String("lists", "/usrdata/qmanager/dnsguard", "downloaded block lists")
 	statPath := flag.String("status", "/tmp/qmanager_dnsguard.json", "status file")
 	reloadFlag := flag.String("reload-flag", "/tmp/qmanager_dnsguard_reload", "touch to reload settings")
@@ -624,6 +695,14 @@ func main() {
 		statPath:   *statPath,
 		started:    time.Now(),
 		topBlocked: map[string]uint64{},
+	}
+	switch *localDNS {
+	case "off", "":
+	case "auto":
+		e.localDNS = lanDNS(*lanIf)
+	default:
+		a := *localDNS
+		e.localDNS = func() string { return a }
 	}
 	e.applyConfig(loadConfig(*cfgPath))
 

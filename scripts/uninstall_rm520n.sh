@@ -219,16 +219,28 @@ fi
 
 info "Systemd services stopped"
 
-# DNS Privacy: its forwarder is gone now, so dnsmasq must stop pointing at it or LAN DNS breaks.
+# DNS Privacy: its forwarder is gone now, so the LAN DNS redirect must go or LAN DNS breaks.
+for _t in iptables ip6tables; do
+    command -v "$_t" >/dev/null 2>&1 || continue
+    while $_t -t nat -C PREROUTING -i bridge0 -j QMANAGER_DNS 2>/dev/null; do
+        $_t -t nat -D PREROUTING -i bridge0 -j QMANAGER_DNS 2>/dev/null || break
+    done
+    while $_t -C INPUT -j QMANAGER_DNS 2>/dev/null; do
+        $_t -D INPUT -j QMANAGER_DNS 2>/dev/null || break
+    done
+    $_t -t nat -F QMANAGER_DNS 2>/dev/null; $_t -t nat -X QMANAGER_DNS 2>/dev/null
+    $_t -F QMANAGER_DNS 2>/dev/null; $_t -X QMANAGER_DNS 2>/dev/null
+done
+# A block from the first DNS Privacy version (dnsmasq.conf) is stripped too. No reload: dnsmasq cannot
+# be restarted safely here, and the file only matters at its next start.
 if grep -qxF "# QMANAGER-DNSGUARD-BEGIN v1" /etc/data/dnsmasq.conf 2>/dev/null; then
     awk '$0 == "# QMANAGER-DNSGUARD-BEGIN v1" { skip = 1; next }
          $0 == "# QMANAGER-DNSGUARD-END v1" && skip { skip = 0; next }
          !skip { print }' /etc/data/dnsmasq.conf > /etc/data/dnsmasq.conf.qm-tmp \
         && mv /etc/data/dnsmasq.conf.qm-tmp /etc/data/dnsmasq.conf \
         && chown radio:radio /etc/data/dnsmasq.conf 2>/dev/null
-    killall -HUP dnsmasq 2>/dev/null || true
-    info "DNS Privacy removed from dnsmasq (carrier DNS restored)"
 fi
+info "DNS Privacy removed (LAN DNS goes to dnsmasq again)"
 rm -f /usrdata/qmanager/bin/qmanager_dnsguard
 rm -rf /usrdata/qmanager/dnsguard
 

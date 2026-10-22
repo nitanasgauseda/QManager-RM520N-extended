@@ -432,3 +432,19 @@ func TestPruneLists(t *testing.T) {
 		t.Error("rss not read")
 	}
 }
+
+func TestIsLocalName(t *testing.T) {
+	yes := []string{"router", "nas.lan", "printer.home.arpa", "5.225.168.192.in-addr.arpa", "1.0.0.10.in-addr.arpa",
+		"9.1.20.172.in-addr.arpa", "1.1.254.169.in-addr.arpa", "box.localdomain"}
+	no := []string{"", "google.com", "lan.example.com", "8.8.8.8.in-addr.arpa", "1.1.32.172.in-addr.arpa", "1.1.15.172.in-addr.arpa"}
+	for _, n := range yes {
+		if !isLocalName(n) {
+			t.Errorf("%s should be local", n)
+		}
+	}
+	for _, n := range no {
+		if isLocalName(n) {
+			t.Errorf("%s should not be local", n)
+		}
+	}
+}

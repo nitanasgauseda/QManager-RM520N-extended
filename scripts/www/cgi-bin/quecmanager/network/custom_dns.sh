@@ -355,8 +355,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             exit 0
         fi
 
-        # --- DNS Privacy owns dnsmasq's upstream while it is on; two server= sets would leak queries ---
-        if [ "$ENABLED" = "true" ] && grep -qxF "# QMANAGER-DNSGUARD-BEGIN v1" "$DNSMASQ_CONF" 2>/dev/null; then
+        # --- DNS Privacy takes over LAN DNS while it is on, so custom servers would never be used ---
+        if [ "$ENABLED" = "true" ] && [ "$(jq -r '(.encrypt.enabled == true) or (.block.enabled == true)' "${DP_CONFIG:-/etc/qmanager/dnsguard.json}" 2>/dev/null)" = "true" ]; then
             jq -n '{"ok":false,"error":"Turn off DNS Privacy (Local Network → DNS Privacy) before setting custom DNS servers","field":"servers"}'
             exit 0
         fi

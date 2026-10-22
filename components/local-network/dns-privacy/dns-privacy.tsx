@@ -557,9 +557,11 @@ export default function DnsPrivacyComponent() {
         ? { tone: "info" as const, text: t(`${K}.notice.custom_dns`), link: "/local-network/custom-dns" }
         : wanted && !svc.healthy
           ? { tone: "destructive" as const, text: t(`${K}.notice.stopped`) }
-          : wanted && !svc.active_in_dnsmasq
+          : wanted && !svc.active
             ? { tone: "warning" as const, text: t(`${K}.notice.paused`) }
-            : null;
+            : wanted && !svc.active_ipv6
+              ? { tone: "info" as const, text: t(`${K}.notice.no_ipv6`) }
+              : null;
 
   return (
     <div className="@container/main flex flex-col gap-5 p-2">

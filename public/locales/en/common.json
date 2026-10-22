@@ -2016,6 +2016,7 @@
       "custom_dns": "Custom DNS is on. Turn it off to use DNS Privacy.",
       "stopped": "DNS Privacy is not running. Devices use the carrier's DNS until it starts again.",
       "paused": "DNS Privacy is starting. Devices switch over within a few minutes.",
+      "no_ipv6": "IPv6 DNS lookups can't be redirected on this modem, so a device that asks over IPv6 skips DNS Privacy.",
       "title_warning": "Attention",
       "title_info": "Note",
       "title_destructive": "Stopped",

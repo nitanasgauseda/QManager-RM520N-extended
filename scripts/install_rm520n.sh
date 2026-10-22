@@ -870,6 +870,17 @@ install_bundled_binaries() {
         info "qmanager_discord not bundled — Discord bot feature disabled"
     fi
 
+    # The first DNS Privacy version pointed dnsmasq at the forwarder from dnsmasq.conf. That block
+    # never took effect (dnsmasq does not re-read server= on HUP) and would break DNS at dnsmasq's
+    # next start if the forwarder is off, so strip it. No reload; the redirect replaces it.
+    if grep -qxF "# QMANAGER-DNSGUARD-BEGIN v1" /etc/data/dnsmasq.conf 2>/dev/null; then
+        awk '$0 == "# QMANAGER-DNSGUARD-BEGIN v1" { skip = 1; next }
+             $0 == "# QMANAGER-DNSGUARD-END v1" && skip { skip = 0; next }
+             !skip { print }' /etc/data/dnsmasq.conf > /etc/data/dnsmasq.conf.qm-tmp \
+            && mv /etc/data/dnsmasq.conf.qm-tmp /etc/data/dnsmasq.conf \
+            && chown radio:radio /etc/data/dnsmasq.conf 2>/dev/null \
+            && info "Old DNS Privacy block removed from dnsmasq.conf"
+    fi
     # --- qmanager_dnsguard (DNS Privacy forwarder) ----------------------------
     # Lives on /usrdata, not the rootfs: root-owned 0755 like tpws, since a root unit execs it.
     if [ -f "$SRC_DEPS/qmanager_dnsguard" ]; then

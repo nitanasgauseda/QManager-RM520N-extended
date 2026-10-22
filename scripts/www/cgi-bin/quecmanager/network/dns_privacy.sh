@@ -26,7 +26,7 @@ conf_json() {
     printf '%s' "$_c"
 }
 
-# dnsmasq must be the LAN resolver for any of this to matter (same gate as Custom DNS).
+# Reported only: the redirect catches LAN DNS whatever resolver the devices were handed.
 dns_mode() {
     [ -r "$MOBILEAP_XML" ] || { printf 'UNKNOWN'; return; }
     _m=$(grep -o '<DNSMode>[^<]*</DNSMode>' "$MOBILEAP_XML" 2>/dev/null | head -n1 | sed 's/<[^>]*>//g')
@@ -51,11 +51,12 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     installed=false; [ -x "$DP_BIN" ] && installed=true
     running=false; svc_is_running qmanager_dnsguard && running=true
     healthy=false; dp_daemon_healthy && healthy=true
-    present=false; dp_block_present && present=true
+    present=false; dp_redirect_present && present=true
+    present6=false; dp_redirect6_present && present6=true
     custom=false; dp_custom_dns_active && custom=true
     mode=$(dns_mode)
     jq -n --argjson c "$(conf_json)" --argjson s "$st" --argjson inst "$installed" --argjson run "$running" \
-        --argjson ok "$healthy" --argjson live "$present" --argjson custom "$custom" --arg mode "$mode" '{
+        --argjson ok "$healthy" --argjson live "$present" --argjson live6 "$present6" --argjson custom "$custom" --arg mode "$mode" '{
         success: true,
         config: {
             encrypt: {
@@ -73,9 +74,9 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 deny: ($c.block.deny // [])
             }
         },
-        service: {installed: $inst, running: $run, healthy: $ok, active_in_dnsmasq: $live,
+        service: {installed: $inst, running: $run, healthy: $ok, active: $live, active_ipv6: $live6,
                   custom_dns_active: $custom, dns_mode: $mode,
-                  available: ($mode == "PROXY" or $mode == "ABSENT")},
+                  available: true},
         status: (if $ok then $s else null end)
     }'
     exit 0
@@ -153,7 +154,6 @@ want=false
 if [ "$want" = "true" ]; then
     [ -x "$DP_BIN" ] || { cgi_error "not_installed" "The DNS Privacy program is not installed"; exit 0; }
     dp_custom_dns_active && { cgi_error "custom_dns_active" "Turn off Custom DNS first"; exit 0; }
-    case "$(dns_mode)" in PROXY|ABSENT) ;; *) cgi_error "unavailable" "The modem is not using its own DNS proxy"; exit 0 ;; esac
 fi
 
 js_lines() { printf '%s\n' "$1" | jq -R -s -c 'split("\n") | map(select(. != ""))'; }
@@ -182,15 +182,16 @@ if [ "$want" = "true" ]; then
         cgi_error "daemon_failed" "DNS Privacy did not start; your DNS was left unchanged"
         exit 0
     fi
-    if ! dp_block_present && ! dp_write_block on; then
-        cgi_error "apply_failed" "Saved, but dnsmasq could not be switched over"
+    dp_legacy_cleanup
+    dp_guard_on
+    if ! dp_redirect_present && ! dp_redirect on; then
+        cgi_error "apply_failed" "Saved, but LAN DNS could not be redirected"
         exit 0
     fi
 else
-    if dp_block_present && ! dp_write_block off; then
-        cgi_error "apply_failed" "Saved, but dnsmasq could not be switched back"
-        exit 0
-    fi
+    dp_redirect off
+    dp_guard_off
+    dp_legacy_cleanup
     svc_stop qmanager_dnsguard
     svc_disable qmanager_dnsguard >/dev/null 2>&1
 fi

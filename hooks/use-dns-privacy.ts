@@ -64,7 +64,8 @@ export interface DnsPrivacyState {
     installed: boolean;
     running: boolean;
     healthy: boolean;
-    active_in_dnsmasq: boolean;
+    active: boolean;
+    active_ipv6: boolean;
     custom_dns_active: boolean;
     dns_mode: string;
     available: boolean;
