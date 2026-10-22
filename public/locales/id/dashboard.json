@@ -398,7 +398,10 @@
       "new_cell": "Sel Baru",
       "data_limit": "Paket Data",
       "temperature_high": "Suhu Tinggi",
-      "temperature_normal": "Suhu Normal"
+      "temperature_normal": "Suhu Normal",
+      "suspicious_sms": "SMS Mencurigakan",
+      "dns_privacy": "Privasi DNS",
+      "login": "Masuk"
     }
   },
   "connection_quality": {

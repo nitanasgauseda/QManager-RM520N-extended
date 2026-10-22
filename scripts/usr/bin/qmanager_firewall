@@ -1,7 +1,7 @@
 #!/bin/sh
 # qmanager_firewall — Port firewall for QManager web UI (chain-based)
 #
-# Restricts HTTP/HTTPS access to trusted interfaces only. All rules live in
+# Restricts HTTP/HTTPS access to trusted interfaces only (IPv4 and IPv6). All rules live in
 # a dedicated user chain (QMANAGER_FW) hooked into INPUT, so start/stop is
 # atomic and cannot leak rules across upgrades. Replaces SimpleAdmin's
 # simplefirewall as a QManager-managed service.
@@ -22,6 +22,11 @@ if [ -x /usrdata/tailscale/tailscale ]; then
 fi
 
 CHAIN="QMANAGER_FW"
+
+# Ports the user closed to the cellular side from System Settings -> Security Check.
+# One "tcp 22" / "udp 5353" line per port; applies to IPv4 and IPv6 on rmnet+ only.
+WAN_CHAIN="QMANAGER_WAN"
+WAN_CONF="${QM_WAN_BLOCK_CONF:-/etc/qmanager/wan_block.conf}"
 
 ensure_chain() {
     iptables -t filter -N "$CHAIN" 2>/dev/null || true
@@ -75,12 +80,71 @@ do_start() {
     done
     unhook_chain
     iptables -I INPUT 1 -j "$CHAIN"
+    web6_start
+    wan_start
+}
+
+# The same web UI protection for IPv6: a [::] socket is reachable over the carrier's public IPv6 otherwise.
+web6_stop() {
+    command -v ip6tables >/dev/null 2>&1 || return 0
+    while ip6tables -C INPUT -j "$CHAIN" 2>/dev/null; do
+        ip6tables -D INPUT -j "$CHAIN" 2>/dev/null || break
+    done
+    ip6tables -F "$CHAIN" 2>/dev/null || true
+    ip6tables -X "$CHAIN" 2>/dev/null || true
+}
+
+web6_start() {
+    command -v ip6tables >/dev/null 2>&1 || return 0
+    web6_stop
+    ip6tables -N "$CHAIN" 2>/dev/null || true
+    for iface in $TRUSTED; do
+        for port in $PORTS; do
+            ip6tables -A "$CHAIN" -i "$iface" -p tcp --dport "$port" -j ACCEPT
+        done
+    done
+    for port in $PORTS; do
+        ip6tables -A "$CHAIN" -p tcp --dport "$port" -j DROP
+    done
+    ip6tables -I INPUT 1 -j "$CHAIN"
+}
+
+wan_tables() {
+    echo iptables
+    command -v ip6tables >/dev/null 2>&1 && echo ip6tables
+}
+
+wan_stop() {
+    for t in $(wan_tables); do
+        while $t -C INPUT -j "$WAN_CHAIN" 2>/dev/null; do
+            $t -D INPUT -j "$WAN_CHAIN" 2>/dev/null || break
+        done
+        $t -F "$WAN_CHAIN" 2>/dev/null || true
+        $t -X "$WAN_CHAIN" 2>/dev/null || true
+    done
+}
+
+wan_start() {
+    wan_stop
+    [ -s "$WAN_CONF" ] || return 0
+    for t in $(wan_tables); do
+        $t -N "$WAN_CHAIN" 2>/dev/null || true
+        while read -r proto port _rest; do
+            case "$proto" in tcp|udp) ;; *) continue ;; esac
+            case "$port" in ''|*[!0-9]*) continue ;; esac
+            [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || continue
+            $t -A "$WAN_CHAIN" -i rmnet+ -p "$proto" --dport "$port" -j DROP
+        done < "$WAN_CONF"
+        $t -I INPUT 1 -j "$WAN_CHAIN"
+    done
 }
 
 do_stop() {
     unhook_chain
     drop_chain
     cleanup_legacy_input_rules
+    web6_stop
+    wan_stop
 }
 
 case "${1:-}" in

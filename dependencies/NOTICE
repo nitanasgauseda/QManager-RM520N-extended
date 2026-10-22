@@ -25,3 +25,14 @@ modifications (see `dependencies/sms_tool.patch`, applied to `sms_main.c`) are:
 
 No other changes were made. A copy of the Apache License 2.0 is available at the
 URL above. This binary is redistributed under the terms of that license.
+
+--------------------------------------------------------------------------------
+qmanager_dnsguard (built from dnsguard/)
+--------------------------------------------------------------------------------
+Embeds the Mozilla CA certificate bundle as packaged by certifi
+<https://github.com/certifi/python-certifi> (dnsguard/cacert.pem), licensed under
+the Mozilla Public License 2.0 <https://www.mozilla.org/MPL/2.0/>.
+
+Block lists are not bundled; the device downloads the ones the user selects:
+HaGeZi DNS Blocklists <https://github.com/hagezi/dns-blocklists> (GPL-3.0) and
+StevenBlack hosts <https://github.com/StevenBlack/hosts> (MIT).

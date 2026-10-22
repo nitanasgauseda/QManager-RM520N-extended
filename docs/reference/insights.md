@@ -15,7 +15,7 @@ The poller sources `usr/lib/qmanager/insights.sh` and calls `insights_check` eve
 | Status | `/tmp/qmanager_insights.json` |
 | History | RAM buffer `/tmp/qmanager_sighist_buf.csv`, flushed every 15 lines to `/usrdata/qmanager/sighist/d<utc-day>.csv` |
 | Reload flag | `/tmp/qmanager_insights_reload` |
-| Events | `data_limit`, `temperature_high`, `temperature_normal`; alert events `data_limit`, `temperature` (routing defaults off) |
+| Events | `data_limit`, `temperature_high`, `temperature_normal`; alert events `data_limit`, `temperature` (routed to every enabled channel by default) |
 
 ## History
 

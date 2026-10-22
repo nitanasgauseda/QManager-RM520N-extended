@@ -53,7 +53,10 @@
     "traffic_engine": "流量引擎",
     "signal_history": "信号历史",
     "usage": "流量套餐与温度",
-    "backup": "备份与恢复"
+    "backup": "备份与恢复",
+    "dns_privacy": "DNS 隐私",
+    "security_check": "安全检查",
+    "activity_log": "活动日志"
   },
   "header": {
     "role": "管理员"

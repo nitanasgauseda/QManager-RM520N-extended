@@ -1070,6 +1070,9 @@
         },
         "temperature": {
           "name": "溫度過高"
+        },
+        "login": {
+          "name": "登入 QManager"
         }
       },
       "loading": "正在載入涵蓋範圍",
@@ -1669,7 +1672,8 @@
       "protect_link": "開啟行動網路設定",
       "unsaved": "有未儲存的變更",
       "reset": "忘記已知細胞",
-      "save": "儲存"
+      "save": "儲存",
+      "sms": "檢查收到的簡訊"
     },
     "findings": {
       "title": "發現",
@@ -1892,6 +1896,278 @@
       "later": "稍後",
       "rebooting": "正在重新啟動…",
       "now": "立即重新啟動"
+    }
+  },
+  "dnsPrivacy": {
+    "page": {
+      "title": "DNS 隱私",
+      "description": "加密網路中所有裝置的 DNS 查詢，並在廣告與追蹤器載入前將其封鎖。",
+      "refresh": "重新整理",
+      "retry": "重試"
+    },
+    "errors": {
+      "load_failed": "無法載入 DNS 隱私",
+      "failed": "模組沒有回應",
+      "custom_dns_active": "請先關閉自訂 DNS",
+      "not_installed": "未安裝 DNS 隱私程式。請更新 QManager 以取得。",
+      "unavailable": "模組未使用自身的 DNS 代理，因此不會生效",
+      "daemon_failed": "DNS 隱私未能啟動，DNS 維持不變。",
+      "apply_failed": "已儲存，但無法切換模組的 DNS 代理",
+      "invalid_nextdns_id": "NextDNS ID 為 4 到 16 個字母或數字",
+      "invalid_custom_host": "請輸入解析器的 TLS 主機名稱",
+      "invalid_custom_ip": "請輸入解析器的 IPv4 位址",
+      "too_many_lists": "最多選擇 3 個清單",
+      "no_lists": "請至少選擇一個清單",
+      "invalid_allow": "允許清單中有一項不是網域",
+      "invalid_deny": "封鎖清單中有一項不是網域",
+      "too_many": "每個清單最多 200 個網域",
+      "not_running": "DNS 隱私未執行"
+    },
+    "toast": {
+      "saved": "DNS 隱私已儲存",
+      "update_started": "正在更新封鎖清單",
+      "allowed": "{{domain}} 不再被封鎖"
+    },
+    "unsaved": "有未儲存的變更",
+    "save": "儲存",
+    "encrypt": {
+      "title": "加密 DNS",
+      "description": "透過加密連線（DNS over TLS）傳送每個查詢，電信業者無法看到您造訪的網站。",
+      "enabled": "加密 DNS",
+      "provider": "提供者",
+      "custom": "自訂",
+      "about": {
+        "quad9": "瑞士非營利組織。封鎖已知惡意網域，不記錄 IP。",
+        "cloudflare": "速度快，公開承諾不保留記錄。",
+        "google": "Google 公共 DNS。速度快，會保留暫時記錄。",
+        "adguard": "在提供者端同時封鎖廣告與追蹤器。",
+        "mullvad": "來自 Mullvad VPN 團隊，不保留記錄。"
+      },
+      "nextdns_id": "NextDNS ID",
+      "custom_host": "TLS 主機名稱",
+      "custom_ip": "IPv4 位址",
+      "if_fails": "失敗時",
+      "fallback_carrier": "使用電信業者 DNS",
+      "fallback_stop": "停止查詢",
+      "fallback_hint_carrier": "無法連上提供者時，查詢會以未加密方式送給電信業者，讓網路保持可用。",
+      "fallback_hint_stop": "無法連上提供者時查詢會失敗。不會洩漏任何資訊，但在恢復前無法上網。",
+      "state_clock": "正在等待時鐘設定",
+      "state_fallback": "目前使用電信業者 DNS",
+      "state_on": "已透過 {{provider}} 加密"
+    },
+    "block": {
+      "title": "廣告與追蹤器封鎖",
+      "description": "對網路中所有裝置的廣告、追蹤器與惡意網域查詢不予解析。",
+      "enabled": "封鎖廣告與追蹤器",
+      "lists": "清單（最多 {{max}} 個）",
+      "domains": "{{n}} 個網域",
+      "list_error": "上次更新失敗，正在使用先前的副本",
+      "list_pending": "正在下載…",
+      "memory": "約占用模組 {{mb}} MB 記憶體。",
+      "capped": "只載入前 {{n}} 個網域。",
+      "allow": "永不封鎖",
+      "allow_hint": "每行一個網域，其子網域也會被允許。",
+      "deny": "一律封鎖",
+      "state_updating": "正在更新清單",
+      "state_on": "已封鎖 {{n}} 個網域",
+      "state_empty": "尚未載入清單",
+      "update": "更新清單"
+    },
+    "list": {
+      "hagezi_light": {
+        "name": "HaGeZi Light",
+        "about": "基本防護，幾乎不會影響網站。建議使用。"
+      },
+      "hagezi_normal": {
+        "name": "HaGeZi Normal",
+        "about": "更廣泛地封鎖廣告、追蹤器與遙測。"
+      },
+      "hagezi_pro": {
+        "name": "HaGeZi Pro",
+        "about": "嚴格。部分網站或應用程式可能需要例外。"
+      },
+      "hagezi_tif_mini": {
+        "name": "HaGeZi Threats",
+        "about": "惡意軟體、網路釣魚與詐騙網域。"
+      },
+      "stevenblack": {
+        "name": "StevenBlack",
+        "about": "經典的廣告與惡意軟體 hosts 清單。"
+      }
+    },
+    "activity": {
+      "title": "活動",
+      "description": "自 DNS 隱私上次啟動以來的統計。",
+      "queries": "查詢",
+      "blocked": "已封鎖",
+      "encrypted": "已加密",
+      "fallback": "送給電信業者",
+      "latency": "平均回應時間",
+      "memory": "記憶體用量",
+      "memory_hint": "DNS 隱私程式目前占用的模組記憶體。",
+      "top": "封鎖最多",
+      "none": "尚未封鎖任何內容。",
+      "allow": "允許",
+      "allowed": "已允許"
+    },
+    "notice": {
+      "not_installed": "缺少 DNS 隱私程式。請安裝最新的 QManager 更新。",
+      "unavailable": "模組的 DNS 代理已關閉，裝置直接向電信業者查詢，此頁面不會生效。",
+      "custom_dns": "自訂 DNS 已開啟。關閉後才能使用 DNS 隱私。",
+      "stopped": "DNS 隱私未執行。在其重新啟動前，裝置使用電信業者 DNS。",
+      "paused": "DNS 隱私正在啟動，裝置將在幾分鐘內切換。",
+      "title_warning": "注意",
+      "title_info": "提示",
+      "title_destructive": "已停止",
+      "open_custom_dns": "開啟自訂 DNS"
+    }
+  },
+  "securityCheck": {
+    "page": {
+      "title": "安全檢查",
+      "description": "網際網路能存取模組上的哪些服務，以及值得查看的設定。",
+      "run": "重新檢查",
+      "retry": "重試",
+      "checked": "檢查於 {{time}}"
+    },
+    "errors": {
+      "load_failed": "無法執行檢查",
+      "save_failed": "無法變更防火牆",
+      "copy_failed": "無法複製"
+    },
+    "toast": {
+      "blocked": "{{name}} 已對網際網路關閉",
+      "unblocked": "{{name}} 已重新開放",
+      "copied": "指令已複製"
+    },
+    "summary": {
+      "fail_one": "{{count}} 項對網際網路開放",
+      "fail_other": "{{count}} 項對網際網路開放",
+      "warn_one": "{{count}} 項需要查看",
+      "warn_other": "{{count}} 項需要查看",
+      "ok": "未發現問題",
+      "fail_text": "網際網路上的任何人都能嘗試登入這些服務。請關閉不需要從外部使用的服務。",
+      "warn_text": "沒有服務對整個網際網路開放，但有些項目值得查看。",
+      "ok_text": "模組上沒有任何服務可從網際網路存取。"
+    },
+    "service": {
+      "ssh": "SSH",
+      "telnet": "Telnet",
+      "web": "QManager 網頁",
+      "web_https": "QManager 網頁（HTTPS）",
+      "dns": "DNS",
+      "console": "網頁終端機",
+      "rayhunter": "Rayhunter",
+      "bridge_monitor": "流量監視器",
+      "adb": "網路 ADB",
+      "ftp": "FTP",
+      "dns_privacy": "DNS 隱私",
+      "upnp": "UPnP",
+      "other": "連接埠 {{port}} 上的服務"
+    },
+    "ports": {
+      "title": "可從網際網路存取",
+      "description": "模組提供的服務，依其行動網路連線上的防火牆檢查。",
+      "public": "公網",
+      "cgnat": "電信業者 NAT",
+      "no_firewall": "無法讀取防火牆規則，此清單可能不完整。",
+      "offline": "目前沒有行動網路連線，因此無法從外部存取。",
+      "none": "行動網路端沒有開放的服務",
+      "open": "開放",
+      "closed": "關閉",
+      "uncertain_label": "關於此結果",
+      "uncertain": "某條防火牆規則使用了此檢查無法評估的條件，結果可能不準確。",
+      "closed_by_us": "已由 QManager 關閉",
+      "reachable": "對網際網路開放",
+      "reachable_carrier": "在電信業者網路內開放",
+      "block": "關閉",
+      "unblock": "重新開放",
+      "note": "關閉連接埠只影響行動網路端。區域網路裝置與 Tailscale 仍可存取。"
+    },
+    "device": {
+      "title": "裝置設定",
+      "description": "其他影響誰能控制模組的項目。",
+      "good": "良好",
+      "note": "提示",
+      "attention": "需要查看",
+      "adb_title": "USB 偵錯（ADB）",
+      "adb_on": "任何能接上模組 USB 連接埠的人都能完全控制它。請使用此 AT 指令關閉，然後重新啟動模組：",
+      "adb_off": "USB 偵錯已關閉。",
+      "adb_unknown": "模組未回報其 USB 設定。",
+      "copy": "複製",
+      "open_terminal": "開啟 AT 終端機",
+      "login_title": "登入保護",
+      "login_text": "連續輸錯五次密碼後，登入會被鎖定且時間逐步延長。每次登入都會被記錄。",
+      "open_activity": "開啟活動記錄",
+      "cell_guard_title": "Cell Guard",
+      "cell_guard_on": "正在監測假基地台與可疑簡訊。",
+      "cell_guard_off": "Cell Guard 已關閉，假基地台將無法被發現。",
+      "open_cell_guard": "開啟 Cell Guard",
+      "dns_title": "加密 DNS",
+      "dns_on": "DNS 查詢已加密。",
+      "dns_off": "電信業者可以看到您的裝置查詢了哪些網站。",
+      "open_dns": "開啟 DNS 隱私",
+      "console_title": "網頁終端機",
+      "console_on": "瀏覽器中可使用 root 終端機。如不使用請移除。",
+      "https_title": "HTTPS",
+      "https_off": "QManager 頁面在區域網路中未加密傳輸。"
+    }
+  },
+  "activityLog": {
+    "page": {
+      "title": "活動記錄",
+      "description": "誰從哪個位址登入，以及變更了什麼。",
+      "refresh": "重新整理",
+      "retry": "重試"
+    },
+    "filter": {
+      "all": "全部",
+      "logins": "登入",
+      "changes": "變更",
+      "label": "顯示"
+    },
+    "card": {
+      "title": "最近活動",
+      "description": "保留最新的 {{max}} 筆記錄。5 分鐘內重複的變更只記錄一次。"
+    },
+    "errors": {
+      "load_failed": "無法載入記錄",
+      "clear_failed": "無法清除記錄"
+    },
+    "toast": {
+      "cleared": "活動記錄已清除"
+    },
+    "empty": "尚無記錄。",
+    "login": {
+      "ok": "已登入",
+      "failed": "密碼錯誤",
+      "locked": "密碼錯誤次數過多，登入已被阻擋"
+    },
+    "logout": "已登出",
+    "area": {
+      "cellular": "行動網路",
+      "network": "區域網路",
+      "monitoring": "監控",
+      "system": "系統",
+      "at_cmd": "AT 指令",
+      "auth": "帳戶",
+      "profiles": "設定檔",
+      "scenarios": "情境",
+      "bands": "頻段鎖定",
+      "tower": "基地台鎖定",
+      "frequency": "頻點鎖定",
+      "settings": "設定",
+      "vpn": "VPN",
+      "other": "其他"
+    },
+    "failed_count": "記錄中有 {{n}} 次登入失敗",
+    "alert_hint": "每次登入時收到通知：",
+    "alert_link": "提醒",
+    "clear": "清除記錄",
+    "confirm": {
+      "title": "清除活動記錄？",
+      "description": "所有記錄都將被刪除，清除動作本身會被記錄。",
+      "cancel": "取消"
     }
   }
 }

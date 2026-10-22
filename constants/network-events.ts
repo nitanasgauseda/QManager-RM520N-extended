@@ -29,6 +29,9 @@ export const EVENT_LABELS: Record<NetworkEventType, string> = {
   data_limit: "Data Plan",
   temperature_high: "High Temperature",
   temperature_normal: "Temperature Normal",
+  suspicious_sms: "Suspicious SMS",
+  dns_privacy: "DNS Privacy",
+  login: "Sign-in",
 };
 
 /** Tab categories used by the monitoring Network Events card */
@@ -64,6 +67,9 @@ export const EVENT_TAB_CATEGORIES: Record<NetworkEventType, EventTabCategory> =
     data_limit: "dataConnection",
     temperature_high: "networkMode",
     temperature_normal: "networkMode",
+    suspicious_sms: "networkMode",
+    dns_privacy: "dataConnection",
+    login: "dataConnection",
   };
 
 /** The filter rail on `/monitoring`, in render order. `all` is not a category. */

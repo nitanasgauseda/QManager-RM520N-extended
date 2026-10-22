@@ -109,6 +109,11 @@ const navLocalNetwork: NavItem[] = [
     icon: "monitor",
   },
   {
+    t_key: "dns_privacy",
+    url: "/local-network/dns-privacy",
+    icon: "dns",
+  },
+  {
     t_key: "local_network_settings",
     url: "/local-network/ip-passthrough",
     icon: "tune",
@@ -132,6 +137,8 @@ const navSystem: NavItem[] = [
       },
       { t_key: "languages", url: "/system-settings/languages" },
       { t_key: "backup", url: "/system-settings/backup" },
+      { t_key: "security_check", url: "/system-settings/security" },
+      { t_key: "activity_log", url: "/system-settings/activity-log" },
     ],
   },
   {

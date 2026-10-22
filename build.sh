@@ -209,6 +209,13 @@ cp "$DISCORD_BUILT" "$STAGING_DIR/dependencies/qmanager_discord"
 chmod 755 "$STAGING_DIR/dependencies/qmanager_discord"
 step "Staged Discord bot binary"
 
+step "Building DNS Privacy forwarder (using $GO_EXE)..."
+( cd "$ROOT_DIR" && GO_EXE="${DNSGUARD_GO_EXE:-$GO_EXE}" ./build-dnsguard.sh ) \
+    || fail "build-dnsguard.sh failed"
+cp "$ROOT_DIR/qmanager-build/bin/qmanager_dnsguard" "$STAGING_DIR/dependencies/qmanager_dnsguard"
+chmod 755 "$STAGING_DIR/dependencies/qmanager_dnsguard"
+step "Staged DNS Privacy forwarder"
+
 step "Creating qmanager.tar.gz..."
 tar czf "$ARCHIVE" -C "$BUILD_DIR" qmanager_install
 

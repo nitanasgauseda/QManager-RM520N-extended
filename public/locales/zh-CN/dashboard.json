@@ -398,7 +398,10 @@
       "new_cell": "新小区",
       "data_limit": "流量套餐",
       "temperature_high": "温度过高",
-      "temperature_normal": "温度恢复正常"
+      "temperature_normal": "温度恢复正常",
+      "suspicious_sms": "可疑短信",
+      "dns_privacy": "DNS 隐私",
+      "login": "登录"
     }
   },
   "connection_quality": {

@@ -1070,6 +1070,9 @@
         },
         "temperature": {
           "name": "Suhu tinggi"
+        },
+        "login": {
+          "name": "Masuk ke QManager"
         }
       },
       "loading": "Memuat cakupan",
@@ -1669,7 +1672,8 @@
       "protect_link": "Buka Pengaturan Seluler",
       "unsaved": "Perubahan belum disimpan",
       "reset": "Lupakan sel yang dikenal",
-      "save": "Simpan"
+      "save": "Simpan",
+      "sms": "Periksa SMS masuk"
     },
     "findings": {
       "title": "Temuan",
@@ -1892,6 +1896,278 @@
       "later": "Nanti",
       "rebooting": "Memulai ulang…",
       "now": "Mulai ulang sekarang"
+    }
+  },
+  "dnsPrivacy": {
+    "page": {
+      "title": "Privasi DNS",
+      "description": "Enkripsi pencarian DNS semua perangkat di jaringan Anda dan blokir iklan serta pelacak sebelum dimuat.",
+      "refresh": "Muat ulang",
+      "retry": "Coba lagi"
+    },
+    "errors": {
+      "load_failed": "Tidak dapat memuat Privasi DNS",
+      "failed": "Modem tidak menjawab",
+      "custom_dns_active": "Matikan DNS Kustom terlebih dahulu",
+      "not_installed": "Program Privasi DNS belum terpasang. Perbarui QManager untuk mendapatkannya.",
+      "unavailable": "Modem tidak memakai proksi DNS-nya sendiri, jadi ini tidak berpengaruh",
+      "daemon_failed": "Privasi DNS tidak berjalan. DNS Anda dibiarkan seperti semula.",
+      "apply_failed": "Tersimpan, tetapi proksi DNS modem tidak dapat dialihkan",
+      "invalid_nextdns_id": "ID NextDNS terdiri dari 4 sampai 16 huruf atau angka",
+      "invalid_custom_host": "Masukkan nama host TLS resolver",
+      "invalid_custom_ip": "Masukkan alamat IPv4 resolver",
+      "too_many_lists": "Pilih paling banyak 3 daftar",
+      "no_lists": "Pilih setidaknya satu daftar",
+      "invalid_allow": "Daftar izin berisi entri yang bukan domain",
+      "invalid_deny": "Daftar blokir berisi entri yang bukan domain",
+      "too_many": "Satu daftar memuat paling banyak 200 domain",
+      "not_running": "Privasi DNS tidak berjalan"
+    },
+    "toast": {
+      "saved": "Privasi DNS disimpan",
+      "update_started": "Daftar blokir sedang diperbarui",
+      "allowed": "{{domain}} tidak lagi diblokir"
+    },
+    "unsaved": "Perubahan belum disimpan",
+    "save": "Simpan",
+    "encrypt": {
+      "title": "DNS terenkripsi",
+      "description": "Mengirim setiap pencarian lewat koneksi terenkripsi (DNS over TLS), sehingga operator tidak bisa melihat situs yang Anda kunjungi.",
+      "enabled": "Enkripsi DNS",
+      "provider": "Penyedia",
+      "custom": "Kustom",
+      "about": {
+        "quad9": "Nirlaba Swiss. Memblokir domain malware yang dikenal dan tidak menyimpan log IP.",
+        "cloudflare": "Cepat, dengan kebijakan publik tanpa log.",
+        "google": "Google Public DNS. Cepat; menyimpan log sementara.",
+        "adguard": "Juga memblokir iklan dan pelacak di sisi penyedia.",
+        "mullvad": "Dari tim Mullvad VPN. Tanpa log."
+      },
+      "nextdns_id": "ID NextDNS",
+      "custom_host": "Nama host TLS",
+      "custom_ip": "Alamat IPv4",
+      "if_fails": "Jika gagal",
+      "fallback_carrier": "Pakai DNS operator",
+      "fallback_stop": "Hentikan pencarian",
+      "fallback_hint_carrier": "Jika penyedia tidak terjangkau, pencarian dikirim ke operator tanpa enkripsi agar internet tetap berjalan.",
+      "fallback_hint_stop": "Jika penyedia tidak terjangkau, pencarian gagal. Tidak ada yang bocor, tetapi internet berhenti sampai penyedia kembali.",
+      "state_clock": "Menunggu jam disetel",
+      "state_fallback": "Saat ini memakai DNS operator",
+      "state_on": "Terenkripsi via {{provider}}"
+    },
+    "block": {
+      "title": "Pemblokiran iklan & pelacak",
+      "description": "Tidak menjawab pencarian untuk domain iklan, pelacak, dan malware bagi semua perangkat di jaringan Anda.",
+      "enabled": "Blokir iklan dan pelacak",
+      "lists": "Daftar (maks. {{max}})",
+      "domains": "{{n}} domain",
+      "list_error": "Pembaruan terakhir gagal; salinan sebelumnya yang dipakai",
+      "list_pending": "Mengunduh…",
+      "memory": "Memakai sekitar {{mb}} MB memori modem.",
+      "capped": "Hanya {{n}} domain pertama yang dimuat.",
+      "allow": "Jangan pernah blokir",
+      "allow_hint": "Satu domain per baris. Subdomainnya juga diizinkan.",
+      "deny": "Selalu blokir",
+      "state_updating": "Memperbarui daftar",
+      "state_on": "{{n}} domain diblokir",
+      "state_empty": "Belum ada daftar yang dimuat",
+      "update": "Perbarui daftar"
+    },
+    "list": {
+      "hagezi_light": {
+        "name": "HaGeZi Light",
+        "about": "Perlindungan dasar yang seharusnya tidak merusak situs. Disarankan."
+      },
+      "hagezi_normal": {
+        "name": "HaGeZi Normal",
+        "about": "Pemblokiran iklan, pelacak, dan telemetri yang lebih luas."
+      },
+      "hagezi_pro": {
+        "name": "HaGeZi Pro",
+        "about": "Ketat. Beberapa situs atau aplikasi mungkin perlu pengecualian."
+      },
+      "hagezi_tif_mini": {
+        "name": "HaGeZi Threats",
+        "about": "Domain malware, phishing, dan penipuan."
+      },
+      "stevenblack": {
+        "name": "StevenBlack",
+        "about": "Daftar hosts klasik untuk iklan dan malware."
+      }
+    },
+    "activity": {
+      "title": "Aktivitas",
+      "description": "Dihitung sejak Privasi DNS terakhir dijalankan.",
+      "queries": "Pencarian",
+      "blocked": "Diblokir",
+      "encrypted": "Terenkripsi",
+      "fallback": "Dikirim ke operator",
+      "latency": "Rata-rata waktu jawab",
+      "memory": "Memori terpakai",
+      "memory_hint": "Berapa banyak memori modem yang sedang dipakai program Privasi DNS.",
+      "top": "Paling sering diblokir",
+      "none": "Belum ada yang diblokir.",
+      "allow": "Izinkan",
+      "allowed": "Diizinkan"
+    },
+    "notice": {
+      "not_installed": "Program Privasi DNS tidak ada. Pasang pembaruan QManager terbaru.",
+      "unavailable": "Proksi DNS modem dimatikan, sehingga perangkat bertanya langsung ke operator dan halaman ini tidak berpengaruh.",
+      "custom_dns": "DNS Kustom aktif. Matikan untuk memakai Privasi DNS.",
+      "stopped": "Privasi DNS tidak berjalan. Perangkat memakai DNS operator sampai berjalan lagi.",
+      "paused": "Privasi DNS sedang dimulai. Perangkat beralih dalam beberapa menit.",
+      "title_warning": "Perhatian",
+      "title_info": "Catatan",
+      "title_destructive": "Berhenti",
+      "open_custom_dns": "Buka DNS Kustom"
+    }
+  },
+  "securityCheck": {
+    "page": {
+      "title": "Pemeriksaan Keamanan",
+      "description": "Apa yang bisa dijangkau internet di modem Anda, dan pengaturan yang perlu dilihat.",
+      "run": "Periksa lagi",
+      "retry": "Coba lagi",
+      "checked": "Diperiksa pukul {{time}}"
+    },
+    "errors": {
+      "load_failed": "Pemeriksaan tidak dapat dijalankan",
+      "save_failed": "Firewall tidak dapat diubah",
+      "copy_failed": "Tidak dapat menyalin"
+    },
+    "toast": {
+      "blocked": "{{name}} kini tertutup untuk internet",
+      "unblocked": "{{name}} terbuka lagi",
+      "copied": "Perintah disalin"
+    },
+    "summary": {
+      "fail_one": "{{count}} terbuka ke internet",
+      "fail_other": "{{count}} terbuka ke internet",
+      "warn_one": "{{count}} hal perlu dilihat",
+      "warn_other": "{{count}} hal perlu dilihat",
+      "ok": "Tidak ada masalah",
+      "fail_text": "Siapa pun di internet bisa mencoba masuk ke layanan ini. Tutup yang tidak Anda pakai dari luar.",
+      "warn_text": "Tidak ada yang terbuka ke seluruh internet, tetapi beberapa hal perlu dilihat.",
+      "ok_text": "Tidak ada bagian modem yang bisa dijangkau dari internet."
+    },
+    "service": {
+      "ssh": "SSH",
+      "telnet": "Telnet",
+      "web": "Halaman web QManager",
+      "web_https": "Halaman web QManager (HTTPS)",
+      "dns": "DNS",
+      "console": "Konsol web",
+      "rayhunter": "Rayhunter",
+      "bridge_monitor": "Pemantau lalu lintas",
+      "adb": "ADB lewat jaringan",
+      "ftp": "FTP",
+      "dns_privacy": "Privasi DNS",
+      "upnp": "UPnP",
+      "other": "Layanan di port {{port}}"
+    },
+    "ports": {
+      "title": "Terjangkau dari internet",
+      "description": "Layanan yang ditawarkan modem, diperiksa terhadap firewall pada koneksi seluler.",
+      "public": "publik",
+      "cgnat": "NAT operator",
+      "no_firewall": "Aturan firewall tidak dapat dibaca, jadi daftar ini mungkin tidak lengkap.",
+      "offline": "Tidak ada koneksi seluler saat ini, jadi tidak ada yang terjangkau.",
+      "none": "Tidak ada yang terbuka di sisi seluler",
+      "open": "terbuka",
+      "closed": "tertutup",
+      "uncertain_label": "Tentang hasil ini",
+      "uncertain": "Ada aturan firewall dengan kondisi yang tidak bisa dinilai pemeriksaan ini, jadi hasilnya mungkin keliru.",
+      "closed_by_us": "Ditutup oleh QManager",
+      "reachable": "Terbuka ke internet",
+      "reachable_carrier": "Terbuka di jaringan operator",
+      "block": "Tutup",
+      "unblock": "Buka lagi",
+      "note": "Menutup port hanya berlaku di sisi seluler. Perangkat di jaringan Anda dan Tailscale tetap punya akses."
+    },
+    "device": {
+      "title": "Pengaturan perangkat",
+      "description": "Hal lain yang memengaruhi siapa yang bisa mengendalikan modem.",
+      "good": "Baik",
+      "note": "Catatan",
+      "attention": "Perlu dilihat",
+      "adb_title": "Debug USB (ADB)",
+      "adb_on": "Siapa pun yang bisa mencolok ke port USB modem mendapat kendali penuh. Matikan dengan perintah AT ini, lalu mulai ulang modem:",
+      "adb_off": "Debug USB mati.",
+      "adb_unknown": "Modem tidak melaporkan pengaturan USB-nya.",
+      "copy": "Salin",
+      "open_terminal": "Buka Terminal AT",
+      "login_title": "Perlindungan masuk",
+      "login_text": "Lima kata sandi salah mengunci proses masuk untuk waktu yang terus bertambah. Setiap masuk dicatat.",
+      "open_activity": "Buka Log Aktivitas",
+      "cell_guard_title": "Cell Guard",
+      "cell_guard_on": "Mengawasi BTS palsu dan SMS mencurigakan.",
+      "cell_guard_off": "Cell Guard mati, sehingga BTS palsu tidak terdeteksi.",
+      "open_cell_guard": "Buka Cell Guard",
+      "dns_title": "DNS terenkripsi",
+      "dns_on": "Pencarian DNS terenkripsi.",
+      "dns_off": "Operator bisa melihat situs yang dicari perangkat Anda.",
+      "open_dns": "Buka Privasi DNS",
+      "console_title": "Konsol web",
+      "console_on": "Terminal root tersedia di peramban. Hapus jika tidak dipakai.",
+      "https_title": "HTTPS",
+      "https_off": "Halaman QManager disajikan tanpa enkripsi di jaringan Anda."
+    }
+  },
+  "activityLog": {
+    "page": {
+      "title": "Log Aktivitas",
+      "description": "Siapa yang masuk dan apa yang diubah, dari alamat mana.",
+      "refresh": "Muat ulang",
+      "retry": "Coba lagi"
+    },
+    "filter": {
+      "all": "Semua",
+      "logins": "Masuk",
+      "changes": "Perubahan",
+      "label": "Tampilkan"
+    },
+    "card": {
+      "title": "Aktivitas terbaru",
+      "description": "{{max}} entri terbaru disimpan. Perubahan yang diulang dalam 5 menit dicatat sekali."
+    },
+    "errors": {
+      "load_failed": "Tidak dapat memuat log",
+      "clear_failed": "Tidak dapat mengosongkan log"
+    },
+    "toast": {
+      "cleared": "Log aktivitas dikosongkan"
+    },
+    "empty": "Belum ada yang tercatat.",
+    "login": {
+      "ok": "Masuk",
+      "failed": "Kata sandi salah",
+      "locked": "Masuk diblokir setelah terlalu banyak kata sandi salah"
+    },
+    "logout": "Keluar",
+    "area": {
+      "cellular": "Seluler",
+      "network": "Jaringan lokal",
+      "monitoring": "Pemantauan",
+      "system": "Sistem",
+      "at_cmd": "Perintah AT",
+      "auth": "Akun",
+      "profiles": "Profil",
+      "scenarios": "Skenario",
+      "bands": "Penguncian band",
+      "tower": "Penguncian menara",
+      "frequency": "Penguncian frekuensi",
+      "settings": "Pengaturan",
+      "vpn": "VPN",
+      "other": "Lainnya"
+    },
+    "failed_count": "{{n}} upaya masuk gagal di log",
+    "alert_hint": "Dapatkan pesan setiap kali ada yang masuk:",
+    "alert_link": "Peringatan",
+    "clear": "Kosongkan log",
+    "confirm": {
+      "title": "Kosongkan log aktivitas?",
+      "description": "Semua entri dihapus. Pengosongan itu sendiri dicatat.",
+      "cancel": "Batal"
     }
   }
 }

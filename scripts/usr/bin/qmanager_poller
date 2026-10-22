@@ -483,6 +483,13 @@ else
     insights_flush() { :; }
 fi
 
+# DNS Privacy watchdog: gives LAN clients the carrier DNS back if the forwarder dies (optional).
+if [ -f /usr/lib/qmanager/dns_privacy.sh ]; then
+    . /usr/lib/qmanager/dns_privacy.sh
+else
+    dns_privacy_watch() { :; }
+fi
+
 # Shared ping.json reader + staleness rule. Fail-closed stub: no lib = always stale.
 # Guarded with -f: BusyBox ash exits when `.` cannot find its file.
 if [ -f /usr/lib/qmanager/conn_state.sh ]; then
@@ -2472,6 +2479,7 @@ poll_cycle() {
     detect_events
     cell_guard_check
     insights_check
+    dns_privacy_watch
     write_cache
 
     cycle_count=$((cycle_count + 1))

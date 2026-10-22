@@ -1070,6 +1070,9 @@
         },
         "temperature": {
           "name": "Temperatura alta"
+        },
+        "login": {
+          "name": "Accessi a QManager"
         }
       },
       "loading": "Caricamento della copertura…",
@@ -1669,7 +1672,8 @@
       "protect_link": "Apri Impostazioni cellulare",
       "unsaved": "Modifiche non salvate",
       "reset": "Dimentica celle conosciute",
-      "save": "Salva"
+      "save": "Salva",
+      "sms": "Controlla gli SMS in arrivo"
     },
     "findings": {
       "title": "Rilevazioni",
@@ -1892,6 +1896,278 @@
       "later": "Più tardi",
       "rebooting": "Riavvio…",
       "now": "Riavvia ora"
+    }
+  },
+  "dnsPrivacy": {
+    "page": {
+      "title": "Privacy DNS",
+      "description": "Cifra le richieste DNS di tutti i dispositivi della rete e blocca pubblicità e tracker prima che si carichino.",
+      "refresh": "Aggiorna",
+      "retry": "Riprova"
+    },
+    "errors": {
+      "load_failed": "Impossibile caricare Privacy DNS",
+      "failed": "Il modem non ha risposto",
+      "custom_dns_active": "Disattiva prima il DNS personalizzato",
+      "not_installed": "Il programma Privacy DNS non è installato. Aggiorna QManager per ottenerlo.",
+      "unavailable": "Il modem non usa il proprio proxy DNS, quindi non avrebbe effetto",
+      "daemon_failed": "Privacy DNS non si è avviato. Il DNS è rimasto invariato.",
+      "apply_failed": "Salvato, ma non è stato possibile cambiare il proxy DNS del modem",
+      "invalid_nextdns_id": "Un ID NextDNS è composto da 4 a 16 lettere o cifre",
+      "invalid_custom_host": "Inserisci il nome host TLS del resolver",
+      "invalid_custom_ip": "Inserisci l'indirizzo IPv4 del resolver",
+      "too_many_lists": "Scegli al massimo 3 liste",
+      "no_lists": "Scegli almeno una lista",
+      "invalid_allow": "La lista consentiti contiene una voce che non è un dominio",
+      "invalid_deny": "La lista bloccati contiene una voce che non è un dominio",
+      "too_many": "Una lista contiene al massimo 200 domini",
+      "not_running": "Privacy DNS non è in esecuzione"
+    },
+    "toast": {
+      "saved": "Privacy DNS salvato",
+      "update_started": "Aggiornamento delle liste in corso",
+      "allowed": "{{domain}} non è più bloccato"
+    },
+    "unsaved": "Modifiche non salvate",
+    "save": "Salva",
+    "encrypt": {
+      "title": "DNS cifrato",
+      "description": "Invia ogni richiesta su una connessione cifrata (DNS over TLS), così l'operatore non può vedere quali siti visiti.",
+      "enabled": "Cifra il DNS",
+      "provider": "Fornitore",
+      "custom": "Personalizzato",
+      "about": {
+        "quad9": "Organizzazione svizzera no-profit. Blocca domini di malware noti e non registra gli IP.",
+        "cloudflare": "Veloce, con una politica pubblica di nessuna registrazione.",
+        "google": "Google Public DNS. Veloce; conserva registri temporanei.",
+        "adguard": "Blocca pubblicità e tracker anche presso il fornitore.",
+        "mullvad": "Dal team di Mullvad VPN. Nessuna registrazione."
+      },
+      "nextdns_id": "ID NextDNS",
+      "custom_host": "Nome host TLS",
+      "custom_ip": "Indirizzo IPv4",
+      "if_fails": "Se non funziona",
+      "fallback_carrier": "Usa DNS operatore",
+      "fallback_stop": "Blocca le richieste",
+      "fallback_hint_carrier": "Se il fornitore non è raggiungibile, le richieste vanno all'operatore senza cifratura, così internet continua a funzionare.",
+      "fallback_hint_stop": "Se il fornitore non è raggiungibile, le richieste falliscono. Nulla trapela, ma internet si ferma finché non torna disponibile.",
+      "state_clock": "In attesa che l'orologio sia impostato",
+      "state_fallback": "Ora usa il DNS dell'operatore",
+      "state_on": "Cifrato tramite {{provider}}"
+    },
+    "block": {
+      "title": "Blocco pubblicità e tracker",
+      "description": "Non risponde alle richieste per domini di pubblicità, tracker e malware, per tutti i dispositivi della rete.",
+      "enabled": "Blocca pubblicità e tracker",
+      "lists": "Liste (fino a {{max}})",
+      "domains": "{{n}} domini",
+      "list_error": "L'ultimo aggiornamento non è riuscito; è in uso la copia precedente",
+      "list_pending": "Download in corso…",
+      "memory": "Usa circa {{mb}} MB della memoria del modem.",
+      "capped": "Vengono caricati solo i primi {{n}} domini.",
+      "allow": "Non bloccare mai",
+      "allow_hint": "Un dominio per riga. Sono consentiti anche i sottodomini.",
+      "deny": "Blocca sempre",
+      "state_updating": "Aggiornamento liste",
+      "state_on": "{{n}} domini bloccati",
+      "state_empty": "Nessuna lista ancora caricata",
+      "update": "Aggiorna liste"
+    },
+    "list": {
+      "hagezi_light": {
+        "name": "HaGeZi Light",
+        "about": "Protezione di base che non dovrebbe mai rompere un sito. Consigliata."
+      },
+      "hagezi_normal": {
+        "name": "HaGeZi Normal",
+        "about": "Blocco più ampio di pubblicità, tracker e telemetria."
+      },
+      "hagezi_pro": {
+        "name": "HaGeZi Pro",
+        "about": "Rigorosa. Alcuni siti o app potrebbero richiedere un'eccezione."
+      },
+      "hagezi_tif_mini": {
+        "name": "HaGeZi Threats",
+        "about": "Domini di malware, phishing e truffe."
+      },
+      "stevenblack": {
+        "name": "StevenBlack",
+        "about": "La classica lista hosts di pubblicità e malware."
+      }
+    },
+    "activity": {
+      "title": "Attività",
+      "description": "Conteggio dall'ultimo avvio di Privacy DNS.",
+      "queries": "Richieste",
+      "blocked": "Bloccate",
+      "encrypted": "Cifrate",
+      "fallback": "Inviate all'operatore",
+      "latency": "Tempo medio di risposta",
+      "memory": "Memoria usata",
+      "memory_hint": "Quanta memoria del modem usa ora il programma Privacy DNS.",
+      "top": "Più bloccati",
+      "none": "Ancora nulla di bloccato.",
+      "allow": "Consenti",
+      "allowed": "Consentito"
+    },
+    "notice": {
+      "not_installed": "Manca il programma Privacy DNS. Installa l'ultimo aggiornamento di QManager.",
+      "unavailable": "Il proxy DNS del modem è disattivato: i dispositivi interrogano direttamente l'operatore e questa pagina non ha effetto.",
+      "custom_dns": "Il DNS personalizzato è attivo. Disattivalo per usare Privacy DNS.",
+      "stopped": "Privacy DNS non è in esecuzione. I dispositivi usano il DNS dell'operatore finché non riparte.",
+      "paused": "Privacy DNS si sta avviando. I dispositivi passano entro pochi minuti.",
+      "title_warning": "Attenzione",
+      "title_info": "Nota",
+      "title_destructive": "Fermato",
+      "open_custom_dns": "Apri DNS personalizzato"
+    }
+  },
+  "securityCheck": {
+    "page": {
+      "title": "Controllo sicurezza",
+      "description": "Cosa può raggiungere internet sul modem e le impostazioni da verificare.",
+      "run": "Controlla di nuovo",
+      "retry": "Riprova",
+      "checked": "Controllato alle {{time}}"
+    },
+    "errors": {
+      "load_failed": "Il controllo non è stato eseguito",
+      "save_failed": "Impossibile modificare il firewall",
+      "copy_failed": "Impossibile copiare"
+    },
+    "toast": {
+      "blocked": "{{name}} ora è chiuso a internet",
+      "unblocked": "{{name}} è di nuovo aperto",
+      "copied": "Comando copiato"
+    },
+    "summary": {
+      "fail_one": "{{count}} aperto a internet",
+      "fail_other": "{{count}} aperti a internet",
+      "warn_one": "{{count}} cosa da verificare",
+      "warn_other": "{{count}} cose da verificare",
+      "ok": "Nessun problema trovato",
+      "fail_text": "Chiunque su internet può tentare di accedervi. Chiudi quelli che non usi dall'esterno.",
+      "warn_text": "Nulla è aperto a tutta internet, ma alcune cose meritano un'occhiata.",
+      "ok_text": "Nulla sul modem è raggiungibile da internet."
+    },
+    "service": {
+      "ssh": "SSH",
+      "telnet": "Telnet",
+      "web": "Pagina web di QManager",
+      "web_https": "Pagina web di QManager (HTTPS)",
+      "dns": "DNS",
+      "console": "Console web",
+      "rayhunter": "Rayhunter",
+      "bridge_monitor": "Monitor del traffico",
+      "adb": "ADB via rete",
+      "ftp": "FTP",
+      "dns_privacy": "Privacy DNS",
+      "upnp": "UPnP",
+      "other": "Servizio sulla porta {{port}}"
+    },
+    "ports": {
+      "title": "Raggiungibile da internet",
+      "description": "Servizi offerti dal modem, verificati con il suo firewall sulla connessione cellulare.",
+      "public": "pubblico",
+      "cgnat": "NAT dell'operatore",
+      "no_firewall": "Impossibile leggere le regole del firewall, l'elenco potrebbe essere incompleto.",
+      "offline": "Nessuna connessione cellulare ora, quindi nulla è raggiungibile.",
+      "none": "Nulla è aperto sul lato cellulare",
+      "open": "aperto",
+      "closed": "chiuso",
+      "uncertain_label": "Su questo risultato",
+      "uncertain": "Una regola del firewall usa una condizione che questo controllo non sa valutare, quindi il risultato potrebbe essere errato.",
+      "closed_by_us": "Chiuso da QManager",
+      "reachable": "Aperto a internet",
+      "reachable_carrier": "Aperto nella rete dell'operatore",
+      "block": "Chiudi",
+      "unblock": "Riapri",
+      "note": "Chiudere una porta riguarda solo il lato cellulare. I dispositivi della rete e Tailscale mantengono l'accesso."
+    },
+    "device": {
+      "title": "Impostazioni del dispositivo",
+      "description": "Altre cose che influiscono su chi può controllare il modem.",
+      "good": "OK",
+      "note": "Nota",
+      "attention": "Da verificare",
+      "adb_title": "Debug USB (ADB)",
+      "adb_on": "Chiunque possa collegarsi alla porta USB del modem ne ottiene il pieno controllo. Disattivalo con questo comando AT, poi riavvia il modem:",
+      "adb_off": "Il debug USB è disattivato.",
+      "adb_unknown": "Il modem non ha riportato le impostazioni USB.",
+      "copy": "Copia",
+      "open_terminal": "Apri terminale AT",
+      "login_title": "Protezione dell'accesso",
+      "login_text": "Cinque password errate bloccano l'accesso per un tempo crescente. Ogni accesso viene registrato.",
+      "open_activity": "Apri registro attività",
+      "cell_guard_title": "Cell Guard",
+      "cell_guard_on": "Sorveglia false stazioni base e SMS sospetti.",
+      "cell_guard_off": "Cell Guard è disattivato, quindi le false stazioni base passano inosservate.",
+      "open_cell_guard": "Apri Cell Guard",
+      "dns_title": "DNS cifrato",
+      "dns_on": "Le richieste DNS sono cifrate.",
+      "dns_off": "L'operatore può vedere quali siti cercano i tuoi dispositivi.",
+      "open_dns": "Apri Privacy DNS",
+      "console_title": "Console web",
+      "console_on": "Nel browser è disponibile un terminale root. Rimuovilo se non lo usi.",
+      "https_title": "HTTPS",
+      "https_off": "La pagina di QManager è servita senza cifratura nella rete locale."
+    }
+  },
+  "activityLog": {
+    "page": {
+      "title": "Registro attività",
+      "description": "Chi ha effettuato l'accesso e cosa è stato modificato, da quale indirizzo.",
+      "refresh": "Aggiorna",
+      "retry": "Riprova"
+    },
+    "filter": {
+      "all": "Tutto",
+      "logins": "Accessi",
+      "changes": "Modifiche",
+      "label": "Mostra"
+    },
+    "card": {
+      "title": "Attività recenti",
+      "description": "Vengono conservate le {{max}} voci più recenti. Una modifica ripetuta entro 5 minuti compare una sola volta."
+    },
+    "errors": {
+      "load_failed": "Impossibile caricare il registro",
+      "clear_failed": "Impossibile svuotare il registro"
+    },
+    "toast": {
+      "cleared": "Registro attività svuotato"
+    },
+    "empty": "Ancora nulla di registrato.",
+    "login": {
+      "ok": "Accesso effettuato",
+      "failed": "Password errata",
+      "locked": "Accesso bloccato dopo troppe password errate"
+    },
+    "logout": "Disconnesso",
+    "area": {
+      "cellular": "Cellulare",
+      "network": "Rete locale",
+      "monitoring": "Monitoraggio",
+      "system": "Sistema",
+      "at_cmd": "Comando AT",
+      "auth": "Account",
+      "profiles": "Profili",
+      "scenarios": "Scenari",
+      "bands": "Blocco bande",
+      "tower": "Blocco torre",
+      "frequency": "Blocco frequenza",
+      "settings": "Impostazioni",
+      "vpn": "VPN",
+      "other": "Altro"
+    },
+    "failed_count": "{{n}} accessi non riusciti nel registro",
+    "alert_hint": "Ricevi un messaggio a ogni accesso:",
+    "alert_link": "Avvisi",
+    "clear": "Svuota registro",
+    "confirm": {
+      "title": "Svuotare il registro attività?",
+      "description": "Tutte le voci vengono eliminate. Lo svuotamento stesso viene registrato.",
+      "cancel": "Annulla"
     }
   }
 }

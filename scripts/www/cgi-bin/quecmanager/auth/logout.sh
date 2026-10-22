@@ -18,6 +18,7 @@ fi
 _token=$(qm_get_cookie "$COOKIE_SESSION")
 if [ -n "$_token" ]; then
     qm_destroy_session "$_token"
+    qm_audit logout ""
     qlog_info "Session destroyed via logout"
 fi
 

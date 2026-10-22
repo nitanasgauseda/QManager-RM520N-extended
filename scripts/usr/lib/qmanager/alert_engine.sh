@@ -86,7 +86,7 @@ _AE_MAX_DISCORD_LOG=100     # same cap as the SMS and email logs
 _AE_DISCORD_TRIM_EVERY=150  # cycles between Discord-log size checks (~10 min at ~4 s/cycle)
 
 # Applied verbatim whenever alert_routing.json is missing or fails to parse.
-_AE_ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true},"suspicious_cell":{"sms":true,"email":true,"discord":true,"telegram":true},"data_limit":{"sms":true,"email":true,"discord":true,"telegram":true},"temperature":{"sms":true,"email":true,"discord":true,"telegram":true}}'
+_AE_ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true},"suspicious_cell":{"sms":true,"email":true,"discord":true,"telegram":true},"data_limit":{"sms":true,"email":true,"discord":true,"telegram":true},"temperature":{"sms":true,"email":true,"discord":true,"telegram":true},"login":{"sms":false,"email":false,"discord":false,"telegram":false}}'
 
 # --- State (poller-lifetime only — not persisted across a poller restart,
 #     matching the pre-existing per-channel timers this engine replaces) ----
@@ -218,7 +218,7 @@ _ae_capable() {
         connection_lost)
             [ "$2" = "sms" ]
             ;;
-        connection_restored|reboot|suspicious_cell|data_limit|temperature)
+        connection_restored|reboot|suspicious_cell|data_limit|temperature|login)
             case "$2" in sms|email|discord|telegram) return 0 ;; *) return 1 ;; esac
             ;;
         *)
@@ -373,6 +373,7 @@ _ae_email_subject() {
         suspicious_cell)      printf '%s' "Suspicious Cell Detected" ;;
         data_limit)           printf '%s' "Data Plan Alert" ;;
         temperature)          printf '%s' "Modem Temperature Alert" ;;
+        login)                printf '%s' "QManager Sign-in" ;;
         connection_restored) printf '%s' "Connection Recovered" ;;
         reboot)               printf '%s' "Device Rebooted" ;;
         *)                    printf '%s' "Alert" ;;

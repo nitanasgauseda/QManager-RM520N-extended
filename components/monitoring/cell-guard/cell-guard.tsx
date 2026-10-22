@@ -121,20 +121,23 @@ function DetectionCard({ state, act, busy, locale }: { state: CellGuardState; ac
   const { t } = useTranslation("common");
   const [enabled, setEnabled] = useState(state.config.enabled);
   const [learn, setLearn] = useState(String(state.config.learn_hours));
+  const smsSaved = state.config.sms_guard !== false;
+  const [sms, setSms] = useState(smsSaved);
   // Re-seed when the saved values move (render-phase, not an effect).
-  const sig = `${state.config.enabled}|${state.config.learn_hours}`;
+  const sig = `${state.config.enabled}|${state.config.learn_hours}|${smsSaved}`;
   const [prevSig, setPrevSig] = useState(sig);
   if (sig !== prevSig) {
     setPrevSig(sig);
     setEnabled(state.config.enabled);
     setLearn(String(state.config.learn_hours));
+    setSms(smsSaved);
   }
-  const dirty = enabled !== state.config.enabled || learn !== String(state.config.learn_hours);
+  const dirty = enabled !== state.config.enabled || learn !== String(state.config.learn_hours) || sms !== smsSaved;
   const s = state.status;
   const learningUntil = s?.since ? s.since + state.config.learn_hours * 3600 : null;
 
   const save = async () => {
-    const r = await act("save", { enabled, learn_hours: learn });
+    const r = await act("save", { enabled, learn_hours: learn, sms_guard: sms });
     if (r.ok) toast.success(t(`${K}.toast.saved`));
     else toast.error(t(`${K}.errors.save_failed`));
   };
@@ -170,6 +173,19 @@ function DetectionCard({ state, act, busy, locale }: { state: CellGuardState; ac
             onValueChange={(v) => setLearn(v)}
             options={LEARN_OPTIONS.map((h) => ({ value: h, label: t(`${K}.detection.learn_${h}`), numeric: true }))}
             ariaLabel={t(`${K}.detection.learn`)}
+            breakpoint="never"
+            glyph={glyph}
+          />
+        </Row>
+        <Row label={t(`${K}.detection.sms`)} wrap>
+          <SegmentedField
+            value={sms ? "on" : "off"}
+            onValueChange={(v) => setSms(v === "on")}
+            options={[
+              { value: "on", label: t("state.on") },
+              { value: "off", label: t("state.off") },
+            ]}
+            ariaLabel={t(`${K}.detection.sms`)}
             breakpoint="never"
             glyph={glyph}
           />

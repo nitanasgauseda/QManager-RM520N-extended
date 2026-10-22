@@ -860,6 +860,9 @@
         },
         "temperature": {
           "name": "High temperature"
+        },
+        "login": {
+          "name": "Sign-ins to QManager"
         }
       },
       "reason": {
@@ -1669,7 +1672,8 @@
       "protect_link": "Open Cellular Settings",
       "unsaved": "Unsaved changes",
       "reset": "Forget known cells",
-      "save": "Save"
+      "save": "Save",
+      "sms": "Check incoming SMS"
     },
     "findings": {
       "title": "Findings",
@@ -1892,6 +1896,278 @@
       "later": "Later",
       "rebooting": "Restarting…",
       "now": "Restart now"
+    }
+  },
+  "dnsPrivacy": {
+    "page": {
+      "title": "DNS Privacy",
+      "description": "Encrypt the DNS lookups of every device on your network and block ads and trackers before they load.",
+      "refresh": "Refresh",
+      "retry": "Try again"
+    },
+    "errors": {
+      "load_failed": "Could not load DNS Privacy",
+      "failed": "The modem did not answer",
+      "custom_dns_active": "Turn off Custom DNS first",
+      "not_installed": "The DNS Privacy program is not installed. Update QManager to get it.",
+      "unavailable": "The modem is not using its own DNS proxy, so this would have no effect",
+      "daemon_failed": "DNS Privacy did not start. Your DNS was left as it was.",
+      "apply_failed": "Saved, but the modem's DNS proxy could not be switched",
+      "invalid_nextdns_id": "A NextDNS ID is 4 to 16 letters or digits",
+      "invalid_custom_host": "Enter the resolver's TLS host name",
+      "invalid_custom_ip": "Enter the resolver's IPv4 address",
+      "too_many_lists": "Choose at most 3 lists",
+      "no_lists": "Choose at least one list",
+      "invalid_allow": "The allow list has an entry that is not a domain",
+      "invalid_deny": "The block list has an entry that is not a domain",
+      "too_many": "A list holds at most 200 domains",
+      "not_running": "DNS Privacy is not running"
+    },
+    "toast": {
+      "saved": "DNS Privacy saved",
+      "update_started": "Block lists are being updated",
+      "allowed": "{{domain}} is no longer blocked"
+    },
+    "unsaved": "Unsaved changes",
+    "save": "Save",
+    "encrypt": {
+      "title": "Encrypted DNS",
+      "description": "Sends every lookup over an encrypted connection (DNS over TLS), so your operator cannot read which sites you visit.",
+      "enabled": "Encrypt DNS",
+      "provider": "Provider",
+      "custom": "Custom",
+      "about": {
+        "quad9": "Swiss non-profit. Blocks known malware domains and keeps no IP logs.",
+        "cloudflare": "Fast, with a public no-logging policy.",
+        "google": "Google Public DNS. Fast; keeps temporary logs.",
+        "adguard": "Blocks ads and trackers at the provider as well.",
+        "mullvad": "From the Mullvad VPN team. No logging."
+      },
+      "nextdns_id": "NextDNS ID",
+      "custom_host": "TLS host name",
+      "custom_ip": "IPv4 address",
+      "if_fails": "If it fails",
+      "fallback_carrier": "Use carrier DNS",
+      "fallback_stop": "Stop lookups",
+      "fallback_hint_carrier": "If the provider cannot be reached, lookups go to your operator unencrypted so the internet keeps working.",
+      "fallback_hint_stop": "If the provider cannot be reached, lookups fail. Nothing leaks, but the internet stops working until it is back.",
+      "state_clock": "Waiting for the clock to be set",
+      "state_fallback": "Using carrier DNS right now",
+      "state_on": "Encrypted via {{provider}}"
+    },
+    "block": {
+      "title": "Ad & tracker blocking",
+      "description": "Answers lookups for ad, tracker and malware domains with nothing, for every device on your network.",
+      "enabled": "Block ads and trackers",
+      "lists": "Lists (up to {{max}})",
+      "domains": "{{n}} domains",
+      "list_error": "The last update failed; the previous copy is in use",
+      "list_pending": "Downloading…",
+      "memory": "Uses about {{mb}} MB of the modem's memory.",
+      "capped": "Only the first {{n}} domains are loaded.",
+      "allow": "Never block",
+      "allow_hint": "One domain per line. Its subdomains are allowed too.",
+      "deny": "Always block",
+      "state_updating": "Updating lists",
+      "state_on": "{{n}} domains blocked",
+      "state_empty": "No list loaded yet",
+      "update": "Update lists"
+    },
+    "list": {
+      "hagezi_light": {
+        "name": "HaGeZi Light",
+        "about": "Basic protection that should never break a site. Recommended."
+      },
+      "hagezi_normal": {
+        "name": "HaGeZi Normal",
+        "about": "Broader ad, tracker and telemetry blocking."
+      },
+      "hagezi_pro": {
+        "name": "HaGeZi Pro",
+        "about": "Strict. A few sites or apps may need an exception."
+      },
+      "hagezi_tif_mini": {
+        "name": "HaGeZi Threats",
+        "about": "Malware, phishing and scam domains."
+      },
+      "stevenblack": {
+        "name": "StevenBlack",
+        "about": "The classic hosts list of ads and malware."
+      }
+    },
+    "activity": {
+      "title": "Activity",
+      "description": "Counted since DNS Privacy last started.",
+      "queries": "Lookups",
+      "blocked": "Blocked",
+      "encrypted": "Encrypted",
+      "fallback": "Sent to the carrier",
+      "latency": "Average answer time",
+      "memory": "Memory used",
+      "memory_hint": "How much of the modem's memory the DNS Privacy program uses right now.",
+      "top": "Most blocked",
+      "none": "Nothing blocked yet.",
+      "allow": "Allow",
+      "allowed": "Allowed"
+    },
+    "notice": {
+      "not_installed": "The DNS Privacy program is missing. Install the latest QManager update.",
+      "unavailable": "The modem's DNS proxy is switched off, so devices ask the operator directly and this page has no effect.",
+      "custom_dns": "Custom DNS is on. Turn it off to use DNS Privacy.",
+      "stopped": "DNS Privacy is not running. Devices use the carrier's DNS until it starts again.",
+      "paused": "DNS Privacy is starting. Devices switch over within a few minutes.",
+      "title_warning": "Attention",
+      "title_info": "Note",
+      "title_destructive": "Stopped",
+      "open_custom_dns": "Open Custom DNS"
+    }
+  },
+  "securityCheck": {
+    "page": {
+      "title": "Security Check",
+      "description": "What the internet can reach on your modem, and settings worth a look.",
+      "run": "Check again",
+      "retry": "Try again",
+      "checked": "Checked at {{time}}"
+    },
+    "errors": {
+      "load_failed": "The check could not run",
+      "save_failed": "The firewall could not be changed",
+      "copy_failed": "Could not copy"
+    },
+    "toast": {
+      "blocked": "{{name}} is now closed to the internet",
+      "unblocked": "{{name}} is open again",
+      "copied": "Command copied"
+    },
+    "summary": {
+      "fail_one": "{{count}} open to the internet",
+      "fail_other": "{{count}} open to the internet",
+      "warn_one": "{{count}} thing to look at",
+      "warn_other": "{{count}} things to look at",
+      "ok": "No problems found",
+      "fail_text": "Anyone on the internet can try to log in to these. Close the ones you do not use from outside.",
+      "warn_text": "Nothing is open to the whole internet, but some things are worth a look.",
+      "ok_text": "Nothing on the modem is reachable from the internet."
+    },
+    "service": {
+      "ssh": "SSH",
+      "telnet": "Telnet",
+      "web": "QManager web page",
+      "web_https": "QManager web page (HTTPS)",
+      "dns": "DNS",
+      "console": "Web console",
+      "rayhunter": "Rayhunter",
+      "bridge_monitor": "Traffic monitor",
+      "adb": "ADB over the network",
+      "ftp": "FTP",
+      "dns_privacy": "DNS Privacy",
+      "upnp": "UPnP",
+      "other": "Service on port {{port}}"
+    },
+    "ports": {
+      "title": "Reachable from the internet",
+      "description": "Services the modem offers, checked against its firewall on the cellular connection.",
+      "public": "public",
+      "cgnat": "carrier NAT",
+      "no_firewall": "The firewall rules could not be read, so this list may be incomplete.",
+      "offline": "No cellular connection right now, so nothing is reachable.",
+      "none": "Nothing is open on the cellular side",
+      "open": "open",
+      "closed": "closed",
+      "uncertain_label": "About this result",
+      "uncertain": "A firewall rule here uses a condition this check cannot evaluate, so the result may be wrong.",
+      "closed_by_us": "Closed by QManager",
+      "reachable": "Open to the internet",
+      "reachable_carrier": "Open inside the carrier network",
+      "block": "Close",
+      "unblock": "Open again",
+      "note": "Closing a port affects only the cellular side. Devices on your network and Tailscale keep access."
+    },
+    "device": {
+      "title": "Device settings",
+      "description": "Other things that affect who can control the modem.",
+      "good": "Good",
+      "note": "Note",
+      "attention": "Look at this",
+      "adb_title": "USB debugging (ADB)",
+      "adb_on": "Anyone who can plug into the modem's USB port gets full control. Turn it off with this AT command, then restart the modem:",
+      "adb_off": "USB debugging is off.",
+      "adb_unknown": "The modem did not report its USB settings.",
+      "copy": "Copy",
+      "open_terminal": "Open AT Terminal",
+      "login_title": "Sign-in protection",
+      "login_text": "Five wrong passwords lock sign-in for a growing time. Every sign-in is recorded.",
+      "open_activity": "Open Activity Log",
+      "cell_guard_title": "Cell Guard",
+      "cell_guard_on": "Watching for fake base stations and suspicious SMS.",
+      "cell_guard_off": "Cell Guard is off, so fake base stations go unnoticed.",
+      "open_cell_guard": "Open Cell Guard",
+      "dns_title": "Encrypted DNS",
+      "dns_on": "DNS lookups are encrypted.",
+      "dns_off": "Your operator can see which sites your devices look up.",
+      "open_dns": "Open DNS Privacy",
+      "console_title": "Web console",
+      "console_on": "A root terminal is available in the browser. Remove it if you do not use it.",
+      "https_title": "HTTPS",
+      "https_off": "The QManager page is served without encryption on your network."
+    }
+  },
+  "activityLog": {
+    "page": {
+      "title": "Activity Log",
+      "description": "Who signed in, and what was changed, from which address.",
+      "refresh": "Refresh",
+      "retry": "Try again"
+    },
+    "filter": {
+      "all": "All",
+      "logins": "Sign-ins",
+      "changes": "Changes",
+      "label": "Show"
+    },
+    "card": {
+      "title": "Recent activity",
+      "description": "The newest {{max}} entries are kept. A change repeated within 5 minutes is listed once."
+    },
+    "errors": {
+      "load_failed": "Could not load the log",
+      "clear_failed": "Could not clear the log"
+    },
+    "toast": {
+      "cleared": "Activity log cleared"
+    },
+    "empty": "Nothing recorded yet.",
+    "login": {
+      "ok": "Signed in",
+      "failed": "Wrong password",
+      "locked": "Sign-in blocked after too many wrong passwords"
+    },
+    "logout": "Signed out",
+    "area": {
+      "cellular": "Cellular",
+      "network": "Local network",
+      "monitoring": "Monitoring",
+      "system": "System",
+      "at_cmd": "AT command",
+      "auth": "Account",
+      "profiles": "Profiles",
+      "scenarios": "Scenarios",
+      "bands": "Band locking",
+      "tower": "Tower locking",
+      "frequency": "Frequency locking",
+      "settings": "Settings",
+      "vpn": "VPN",
+      "other": "Other"
+    },
+    "failed_count": "{{n}} failed sign-ins in the log",
+    "alert_hint": "Get a message for every sign-in:",
+    "alert_link": "Alerts",
+    "clear": "Clear log",
+    "confirm": {
+      "title": "Clear the activity log?",
+      "description": "All entries are deleted. The clearing itself is recorded.",
+      "cancel": "Cancel"
     }
   }
 }

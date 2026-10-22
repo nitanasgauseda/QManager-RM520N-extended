@@ -53,7 +53,10 @@
     "traffic_engine": "Mesin Lalu Lintas",
     "signal_history": "Riwayat Sinyal",
     "usage": "Paket Data & Suhu",
-    "backup": "Cadangan & Pemulihan"
+    "backup": "Cadangan & Pemulihan",
+    "dns_privacy": "Privasi DNS",
+    "security_check": "Pemeriksaan Keamanan",
+    "activity_log": "Log Aktivitas"
   },
   "header": {
     "role": "Admin"

@@ -398,7 +398,10 @@
       "new_cell": "新細胞",
       "data_limit": "數據方案",
       "temperature_high": "溫度過高",
-      "temperature_normal": "溫度恢復正常"
+      "temperature_normal": "溫度恢復正常",
+      "suspicious_sms": "可疑簡訊",
+      "dns_privacy": "DNS 隱私",
+      "login": "登入"
     }
   },
   "connection_quality": {

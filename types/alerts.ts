@@ -21,7 +21,8 @@ export type AlertEventKey =
   | "reboot"
   | "suspicious_cell"
   | "data_limit"
-  | "temperature";
+  | "temperature"
+  | "login";
 
 // ─── Channel transport state (identity + master enable) ──────────────────────
 
@@ -195,6 +196,7 @@ export const ALERT_EVENT_ORDER: AlertEventKey[] = [
   "suspicious_cell",
   "data_limit",
   "temperature",
+  "login",
 ];
 
 export const ALERT_CHANNEL_ORDER: AlertChannel[] = ["sms", "email", "telegram", "discord"];

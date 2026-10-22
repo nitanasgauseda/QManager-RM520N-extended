@@ -398,7 +398,10 @@
       "new_cell": "Nuova cella",
       "data_limit": "Piano dati",
       "temperature_high": "Temperatura alta",
-      "temperature_normal": "Temperatura normale"
+      "temperature_normal": "Temperatura normale",
+      "suspicious_sms": "SMS sospetto",
+      "dns_privacy": "Privacy DNS",
+      "login": "Accesso"
     }
   },
   "connection_quality": {

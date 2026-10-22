@@ -37,3 +37,10 @@ Alerts are rate-limited to one per 10 minutes (monotonic clock); suppressed find
 - **Service** `qmanager-rayhunter.service` is in `UCI_GATED_SERVICES`, gated on `cell_guard.json .rayhunter`, and `ConditionPathExists` on the daemon. Log: `/tmp/qmanager_rayhunter.log` (capped at 1 MB by Cell Guard).
 - **Requirement.** Rayhunter reads `/dev/diag`. Whether the RM520N's internal Linux exposes it is not verified; the page shows "Diagnostic interface: Not found" when it is absent, and the daemon then retries and exits.
 - **Uninstall** keeps recordings unless `--purge`.
+
+## SMS checks
+
+- `_cg_check_sms` runs every 300 s while Cell Guard is on and `cell_guard.json .sms_guard` is not `false`: `AT+CMGF=0` then `AT+CMGL=4`, parsed by `_cg_sms_classify` (BusyBox awk PDU reader).
+- Reported: TP-PID 0x40 (type 0, "silent"), 0x41–0x47 (replace), 0x7F (SIM data download), class 0 (flash), empty messages, WAP push that is not an MMS notification (content type ≠ 0xBE), and binary SMS to other application ports. Normal SMS and MMS notifications are not.
+- Each PDU is reported once (`/etc/qmanager/cell_guard_sms_seen`, md5 prefix, last 200 kept) as event `suspicious_sms`; warnings (type 0, SIM download, config push) alert through the `suspicious_cell` routing at most once per 10 minutes.
+- Limit: a modem may discard a type 0 SMS without storing it; then nothing is visible to QManager.

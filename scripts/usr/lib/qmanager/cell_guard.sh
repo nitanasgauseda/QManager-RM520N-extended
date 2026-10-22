@@ -14,6 +14,8 @@ _CELL_GUARD_LOADED=1
 : "${CG_TOWER_CONF:=/etc/qmanager/tower_map.json}"
 : "${CG_STATUS:=/tmp/qmanager_cell_guard.json}"
 : "${CG_RAYHUNTER_URL:=http://127.0.0.1:8686}"
+: "${CG_SMS_SEEN:=/etc/qmanager/cell_guard_sms_seen}"
+CG_SMS_EVERY=300
 CG_RELOAD_FLAG="/tmp/qmanager_cell_guard_reload"
 CG_MAX_KNOWN=3000
 CG_ALERT_GAP_SECS=600
@@ -22,6 +24,8 @@ CG_SANE_EPOCH=1700000000
 _cg_enabled="true"
 _cg_learn_hours=24
 _cg_rayhunter="false"
+_cg_sms="true"
+_cg_sms_next=0
 _cg_cfg_loaded=0
 _cg_last_sig=""
 _cg_last_rat=""
@@ -41,7 +45,9 @@ cg_load_config() {
         _cg_enabled=$(jq -r 'if .enabled == false then "false" else "true" end' "$CG_CONFIG" 2>/dev/null)
         _cg_learn_hours=$(jq -r '.learn_hours // 24' "$CG_CONFIG" 2>/dev/null)
         _cg_rayhunter=$(jq -r 'if .rayhunter == true then "true" else "false" end' "$CG_CONFIG" 2>/dev/null)
+        _cg_sms=$(jq -r 'if .sms_guard == false then "false" else "true" end' "$CG_CONFIG" 2>/dev/null)
     fi
+    case "$_cg_sms" in true|false) ;; *) _cg_sms="true" ;; esac
     case "$_cg_learn_hours" in ''|*[!0-9]*) _cg_learn_hours=24 ;; esac
     case "$_cg_enabled" in true|false) ;; *) _cg_enabled="true" ;; esac
     _cg_cfg_loaded=1
@@ -263,6 +269,141 @@ _cg_check_rayhunter() {
     fi
 }
 
+# _cg_sms_classify — read +CMGL (PDU mode) output on stdin; print "reasons|sender|pdu" for
+# SMS-DELIVER messages whose header marks them as silent, flash, SIM-directed or binary pushes.
+# BusyBox 1.31 awk reads "NAME (" as a function call: never put a variable before "(".
+_cg_sms_classify() {
+    awk '
+        function hx(s,   i, v, c) {
+            v = 0
+            for (i = 1; i <= length(s); i++) {
+                c = index("0123456789ABCDEF", substr(s, i, 1)) - 1
+                if (c < 0) return -1
+                v = v * 16 + c
+            }
+            return v
+        }
+        function classify(p,   pos, sl, fo, udhi, oal, toa, oct, oa, sender, i, pid, dcs, udl, r, cls, udhl, j, end, iei, iel, port, wsp, ct) {
+            sl = hx(substr(p, 1, 2))
+            pos = 3 + sl * 2
+            fo = hx(substr(p, pos, 2)); pos += 2
+            if (fo < 0 || fo % 4 != 0) return
+            udhi = int(fo / 64) % 2
+            oal = hx(substr(p, pos, 2)); pos += 2
+            toa = hx(substr(p, pos, 2)); pos += 2
+            oct = int((oal + 1) / 2)
+            oa = substr(p, pos, oct * 2); pos += oct * 2
+            if (int(toa / 16) % 8 == 5) {
+                sender = "alphanumeric sender"
+            } else {
+                sender = ""
+                for (i = 1; i < length(oa); i += 2) sender = sender substr(oa, i + 1, 1) substr(oa, i, 1)
+                sub(/F$/, "", sender)
+                if (int(toa / 16) % 8 == 1) sender = "+" sender
+            }
+            pid = hx(substr(p, pos, 2)); pos += 2
+            dcs = hx(substr(p, pos, 2)); pos += 2
+            pos += 14
+            udl = hx(substr(p, pos, 2)); pos += 2
+            if (pid < 0 || dcs < 0 || udl < 0) return
+            r = ""
+            if (pid == 64) r = r ",type0"
+            else if (pid >= 65 && pid <= 71) r = r ",replace"
+            else if (pid == 127) r = r ",sim_download"
+            cls = -1
+            if (int(dcs / 64) == 0 && int(dcs / 16) % 2 == 1) cls = dcs % 4
+            if (int(dcs / 16) == 15) cls = dcs % 4
+            if (cls == 0) r = r ",flash"
+            if (udl == 0) r = r ",empty"
+            if (udhi) {
+                udhl = hx(substr(p, pos, 2))
+                j = pos + 2
+                end = j + udhl * 2
+                while (udhl > 0 && j < end) {
+                    iei = hx(substr(p, j, 2)); iel = hx(substr(p, j + 2, 2))
+                    if (iel < 0) break
+                    port = -1
+                    if (iei == 5) port = hx(substr(p, j + 4, 4))
+                    if (iei == 4) port = hx(substr(p, j + 4, 2))
+                    if (port == 2948 || port == 2949) {
+                        # WAP push: MMS notifications (content type 0x3E) are normal; anything else is a config push.
+                        wsp = end
+                        ct = hx(substr(p, wsp + 6, 2))
+                        if (ct != 190) r = r ",wap_push"
+                    } else if (port >= 0) {
+                        r = r ",port" port
+                    }
+                    j += 4 + iel * 2
+                }
+            }
+            if (r != "") print substr(r, 2) "|" sender "|" p
+        }
+        { sub(/\r$/, "") }
+        /^\+CMGL:/ { want = 1; next }
+        want && $0 ~ /^[0-9A-Fa-f]+$/ { want = 0; classify(toupper($0)); next }
+        { want = 0 }'
+}
+
+_cg_sms_reason_text() {
+    case "$1" in
+        type0*) printf 'a silent SMS (type 0), which phones never show and which can be used to locate a device' ;;
+        *sim_download*) printf 'a message addressed to the SIM card itself (SIM data download)' ;;
+        *wap_push*) printf 'a configuration push message' ;;
+        *replace*) printf 'a replace-type SMS that overwrites an earlier message' ;;
+        *flash*) printf 'a flash SMS (shown once, not stored)' ;;
+        *port*) printf 'a binary SMS to application port %s' "$(printf '%s' "$1" | sed 's/.*port\([0-9]*\).*/\1/')" ;;
+        *empty*) printf 'an empty SMS' ;;
+        *) printf 'an unusual SMS' ;;
+    esac
+}
+
+# Every CG_SMS_EVERY seconds: list stored SMS in PDU mode and report new suspicious ones once.
+_cg_check_sms() {
+    [ "$_cg_sms" = "true" ] || return 0
+    local up out line reasons sender pdu key sev
+    up=$(_cg_up)
+    case "$up" in ''|*[!0-9]*) return 0 ;; esac
+    [ "$up" -ge "$_cg_sms_next" ] || return 0
+    _cg_sms_next=$((up + CG_SMS_EVERY))
+    command -v qcmd >/dev/null 2>&1 || return 0
+    qcmd 'AT+CMGF=0' >/dev/null 2>&1
+    out=$(qcmd 'AT+CMGL=4' 2>/dev/null) || return 0
+    printf '%s\n' "$out" | _cg_sms_classify > /tmp/qmanager_cg_sms.$$ 2>/dev/null
+    while IFS='|' read -r reasons sender pdu; do
+        [ -n "$pdu" ] || continue
+        key=$(printf '%s' "$pdu" | md5sum 2>/dev/null | cut -c1-16)
+        grep -qxF "$key" "$CG_SMS_SEEN" 2>/dev/null && continue
+        printf '%s\n' "$key" >> "$CG_SMS_SEEN" 2>/dev/null
+        sev=warning
+        case "$reasons" in type0*|*sim_download*|*wap_push*) ;; *) sev=info ;; esac
+        _cg_sms_finding "Suspicious SMS from ${sender:-an unknown sender}: $(_cg_sms_reason_text "$reasons")" "$sev"
+    done < /tmp/qmanager_cg_sms.$$
+    rm -f /tmp/qmanager_cg_sms.$$
+    if [ -f "$CG_SMS_SEEN" ] && [ "$(wc -l < "$CG_SMS_SEEN")" -gt 300 ]; then
+        tail -n 200 "$CG_SMS_SEEN" > "$CG_SMS_SEEN.tmp" 2>/dev/null && mv "$CG_SMS_SEEN.tmp" "$CG_SMS_SEEN"
+    fi
+    return 0
+}
+
+# SMS findings are their own event type; warnings alert through the Cell Guard routing.
+# A flood of silent SMS logs every one but alerts at most once per CG_ALERT_GAP_SECS.
+_cg_sms_alert_up=-100000
+_cg_sms_finding() {
+    local now ch
+    append_event "suspicious_sms" "$1" "$2"
+    _cg_last_finding="$1"
+    [ "$2" = "warning" ] || return 0
+    now=$(_cg_up)
+    case "$now" in ''|*[!0-9]*) now=0 ;; esac
+    [ $((now - _cg_sms_alert_up)) -ge "$CG_ALERT_GAP_SECS" ] || return 0
+    _cg_sms_alert_up="$now"
+    command -v _ae_effective_send >/dev/null 2>&1 || return 0
+    for ch in sms email telegram discord; do
+        _ae_effective_send suspicious_cell "$ch" && _ae_dispatch "$ch" suspicious_cell "$1"
+    done
+    return 0
+}
+
 # Called once per poll cycle, after detect_events.
 cell_guard_check() {
     if [ "$_cg_cfg_loaded" != "1" ] || [ -f "$CG_RELOAD_FLAG" ]; then
@@ -275,6 +416,7 @@ cell_guard_check() {
     _cg_check_rat
     _cg_check_cell
     _cg_check_rayhunter
+    _cg_check_sms
     if [ "$before" != "$_cg_last_sig$_cg_last_rat$_cg_rh_seen" ] || [ ! -f "$CG_STATUS" ] \
         || [ $((${cycle_count:-0} % 150)) -eq 0 ]; then
         _cg_status_write

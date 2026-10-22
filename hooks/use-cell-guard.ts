@@ -11,7 +11,7 @@ const POLL_INSTALL_MS = 2_000;
 
 export interface CellGuardFinding {
   timestamp: number;
-  type: "suspicious_cell" | "new_cell";
+  type: "suspicious_cell" | "new_cell" | "suspicious_sms";
   message: string;
   severity: "info" | "warning" | "error";
 }
@@ -23,7 +23,7 @@ export interface RayhunterWarning {
 }
 
 export interface CellGuardState {
-  config: { enabled: boolean; learn_hours: number; rayhunter: boolean };
+  config: { enabled: boolean; learn_hours: number; rayhunter: boolean; sms_guard: boolean };
   status: {
     enabled: boolean;
     learning: boolean;

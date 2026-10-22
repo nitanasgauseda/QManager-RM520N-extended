@@ -17,7 +17,8 @@ FORMAT=1
 ALLOW_FILES="qmanager.conf ping_profile.json quality_thresholds.json alert_routing.json email_alerts.json
 sms_alerts.json discord_bot.json telegram_alerts.json sms_forwarding.json tower_lock.json band_failover_enabled
 ttl_state ethernet_speed sites.json apn_setting.json apn_names.json ippt_config.json active_scenario
-active_profile video_domains.txt tailscale_ssh cell_guard.json tower_map.json insights.json"
+active_profile video_domains.txt tailscale_ssh cell_guard.json tower_map.json insights.json
+dnsguard.json wan_block.conf"
 ALLOW_DIRS="profiles scenarios"
 
 json_out() { printf 'Content-Type: application/json\r\nCache-Control: no-cache, no-store\r\n\r\n'; }
@@ -64,6 +65,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     (cd "$work/s" && tar -cf - ./*) 2>/dev/null | gzip -c > "$work/b.tar.gz"
     [ -s "$work/b.tar.gz" ] || fail "build_failed" "The backup could not be created"
     name="qmanager-settings-$(date +%Y%m%d-%H%M).tar.gz"
+    qm_audit change "system/backup.sh" "download"
     printf 'Content-Type: application/gzip\r\n'
     printf 'Content-Length: %s\r\n' "$(wc -c < "$work/b.tar.gz" | tr -d ' ')"
     printf 'Content-Disposition: attachment; filename="%s"\r\n' "$name"
@@ -153,6 +155,7 @@ touch /tmp/qmanager_sms_reload /tmp/qmanager_email_reload /tmp/qmanager_discord_
       /tmp/qmanager_telegram_reload /tmp/qmanager_alert_routing_reload /tmp/qmanager_events_reload \
       /tmp/qmanager_cell_guard_reload /tmp/qmanager_insights_reload 2>/dev/null
 qlog_info "settings restored: $restored files"
+qm_audit change "system/backup.sh" "restore"
 
 json_out
 jq -n --argjson m "$manifest" --argjson f "$files" --argjson n "$restored" --argjson s "$sec" \

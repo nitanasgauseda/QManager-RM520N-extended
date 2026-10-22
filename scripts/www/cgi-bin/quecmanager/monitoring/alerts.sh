@@ -93,7 +93,7 @@ MSMTP_INSTALL_PID="/tmp/qmanager_msmtp_install.pid"
 # exactly, since that's the backend truth the engine enforces regardless of
 # what's written here. Enforcing it again here just keeps the persisted
 # routing file honest for the GET response / future engine changes.
-ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true},"suspicious_cell":{"sms":true,"email":true,"discord":true,"telegram":true},"data_limit":{"sms":true,"email":true,"discord":true,"telegram":true},"temperature":{"sms":true,"email":true,"discord":true,"telegram":true}}'
+ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true},"suspicious_cell":{"sms":true,"email":true,"discord":true,"telegram":true},"data_limit":{"sms":true,"email":true,"discord":true,"telegram":true},"temperature":{"sms":true,"email":true,"discord":true,"telegram":true},"login":{"sms":false,"email":false,"discord":false,"telegram":false}}'
 
 TELEGRAM_CONFIG="/etc/qmanager/telegram_alerts.json"
 TELEGRAM_RELOAD="/tmp/qmanager_telegram_reload"
@@ -307,7 +307,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 reboot: { sms: true, email: true, discord: true, telegram: true },
                 suspicious_cell: { sms: true, email: true, discord: true, telegram: true },
                 data_limit: { sms: true, email: true, discord: true, telegram: true },
-                temperature: { sms: true, email: true, discord: true, telegram: true }
+                temperature: { sms: true, email: true, discord: true, telegram: true },
+                login: { sms: true, email: true, discord: true, telegram: true }
             },
             reboots: $reboots
         }'

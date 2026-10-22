@@ -53,7 +53,10 @@
     "traffic_engine": "流量引擎",
     "signal_history": "訊號歷史",
     "usage": "數據方案與溫度",
-    "backup": "備份與還原"
+    "backup": "備份與還原",
+    "dns_privacy": "DNS 隱私",
+    "security_check": "安全檢查",
+    "activity_log": "活動記錄"
   },
   "header": {
     "role": "管理員"

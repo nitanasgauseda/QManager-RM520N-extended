@@ -198,6 +198,50 @@ cgi_read_post() {
         cgi_error "no_body" "POST body is empty"
         exit 0
     fi
+    qm_audit_post
+}
+
+# ---------------------------------------------------------------------------
+# Audit log — sign-ins and settings changes, newest last, at most QM_AUDIT_MAX lines.
+# A repeat of the same change from the same address within 5 minutes is not logged again.
+# Never logs request bodies: only the script, its action (or AT command) and the client address.
+# ---------------------------------------------------------------------------
+: "${QM_AUDIT_LOG:=/etc/qmanager/audit.log}"
+: "${QM_AUDIT_RECENT:=/tmp/qmanager_audit_recent}"
+: "${QM_AUDIT_MAX:=500}"
+
+qm_audit() {
+    local kind="$1" what="$2" detail="$3" ip="${REMOTE_ADDR:-}" now key n
+    now=$(date +%s 2>/dev/null)
+    case "$now" in ''|*[!0-9]*) now=0 ;; esac
+    if [ "$kind" = "change" ] || [ "$what" = "locked" ]; then
+        key="$kind|$what|$detail|$ip"
+        if awk -v k="$key" -v now="$now" -F'\t' '$2 == k && now - $1 < 300 { found = 1 } END { exit !found }' "$QM_AUDIT_RECENT" 2>/dev/null; then
+            return 0
+        fi
+        { tail -n 30 "$QM_AUDIT_RECENT" 2>/dev/null; printf '%s\t%s\n' "$now" "$key"; } > "$QM_AUDIT_RECENT.$$" 2>/dev/null \
+            && mv "$QM_AUDIT_RECENT.$$" "$QM_AUDIT_RECENT" 2>/dev/null
+    fi
+    jq -n -c --argjson t "$now" --arg k "$kind" --arg w "$what" --arg d "$detail" --arg ip "$ip" \
+        '{t: $t, kind: $k, what: $w, detail: $d, ip: $ip}' >> "$QM_AUDIT_LOG" 2>/dev/null || return 0
+    n=$(wc -l < "$QM_AUDIT_LOG" 2>/dev/null)
+    case "$n" in ''|*[!0-9]*) n=0 ;; esac
+    if [ "$n" -gt $((QM_AUDIT_MAX + 50)) ]; then
+        tail -n "$QM_AUDIT_MAX" "$QM_AUDIT_LOG" > "$QM_AUDIT_LOG.$$" 2>/dev/null && mv "$QM_AUDIT_LOG.$$" "$QM_AUDIT_LOG" 2>/dev/null
+    fi
+    return 0
+}
+
+qm_audit_post() {
+    local what detail
+    what="${SCRIPT_NAME##*/quecmanager/}"
+    [ -n "$what" ] || return 0
+    detail=$(printf '%s' "$POST_DATA" | jq -r 'if type == "object" then (.action // .command // "") else "" end | tostring' 2>/dev/null \
+        | head -n 1 | tr -cd 'A-Za-z0-9_=+?.,:" -' | cut -c1-60)
+    case "$detail" in
+        get|get_*|list|list_*|status|fetch*|read|read_*|poll*|check|preview*|inspect) return 0 ;;
+    esac
+    qm_audit change "$what" "$detail"
 }
 
 # ---------------------------------------------------------------------------

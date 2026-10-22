@@ -3,6 +3,7 @@
 
 import {
   GaugeIcon,
+  LogInIcon,
   MailIcon,
   MessageCircleIcon,
   MessageSquareIcon,
@@ -30,6 +31,7 @@ export const EVENT_GLYPH: Record<AlertEventKey, LucideIcon> = {
   suspicious_cell: ShieldAlertIcon,
   data_limit: GaugeIcon,
   temperature: ThermometerIcon,
+  login: LogInIcon,
 };
 
 export const channelNameKey = (channel: AlertChannel) =>

@@ -123,7 +123,7 @@ SSH_BOOTSTRAP_STATUS="not_run"
 LOG_FILE="/tmp/qmanager_install.log"
 
 # Services gated on config: only re-enable if they were already enabled.
-UCI_GATED_SERVICES="qmanager-watchcat qmanager-tower-failover qmanager-discord qmanager-sms-forward qmanager-rayhunter"
+UCI_GATED_SERVICES="qmanager-watchcat qmanager-tower-failover qmanager-discord qmanager-sms-forward qmanager-rayhunter qmanager-dnsguard"
 
 # Conflict packages that must be removed before installing
 CONFLICT_PACKAGES="socat socat-at-bridge"
@@ -868,6 +868,23 @@ install_bundled_binaries() {
         info "qmanager_discord already installed"
     else
         info "qmanager_discord not bundled — Discord bot feature disabled"
+    fi
+
+    # --- qmanager_dnsguard (DNS Privacy forwarder) ----------------------------
+    # Lives on /usrdata, not the rootfs: root-owned 0755 like tpws, since a root unit execs it.
+    if [ -f "$SRC_DEPS/qmanager_dnsguard" ]; then
+        install -d -o root -g root -m 0755 /usrdata/qmanager/bin
+        if [ -x /usrdata/qmanager/bin/qmanager_dnsguard ] && cmp -s "$SRC_DEPS/qmanager_dnsguard" /usrdata/qmanager/bin/qmanager_dnsguard; then
+            info "qmanager_dnsguard already current"
+        else
+            install_file "$SRC_DEPS/qmanager_dnsguard" /usrdata/qmanager/bin/qmanager_dnsguard 755 \
+                && info "qmanager_dnsguard installed to /usrdata/qmanager/bin" \
+                || warn "Failed to install qmanager_dnsguard"
+            # A running forwarder keeps the old binary until restarted.
+            if systemctl is-active qmanager-dnsguard >/dev/null 2>&1; then
+                systemctl restart qmanager-dnsguard 2>/dev/null || true
+            fi
+        fi
     fi
 }
 
@@ -3768,6 +3785,10 @@ enable_services() {
     # here yet, which _apply_gated_symlink already treats as "leave alone".
     if [ -x "$BIN_DIR/qmanager_sms_forward" ]; then
         _apply_gated_symlink /etc/qmanager/sms_forwarding.json '.enabled' qmanager-sms-forward "SMS forwarding service"
+    fi
+
+    if [ -x /usrdata/qmanager/bin/qmanager_dnsguard ]; then
+        _apply_gated_symlink /etc/qmanager/dnsguard.json '((.encrypt.enabled == true) or (.block.enabled == true))' qmanager-dnsguard "DNS Privacy service"
     fi
 
     # Rayhunter is downloaded on demand from Monitoring -> Cell Guard; no daemon, nothing to gate.

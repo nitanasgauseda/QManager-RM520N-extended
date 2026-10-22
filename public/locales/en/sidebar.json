@@ -53,7 +53,10 @@
     "traffic_engine": "Traffic Engine",
     "signal_history": "Signal History",
     "usage": "Data Plan & Temperature",
-    "backup": "Backup & Restore"
+    "backup": "Backup & Restore",
+    "dns_privacy": "DNS Privacy",
+    "security_check": "Security Check",
+    "activity_log": "Activity Log"
   },
   "header": {
     "role": "Admin"

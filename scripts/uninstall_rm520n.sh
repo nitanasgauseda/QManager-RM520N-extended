@@ -219,6 +219,19 @@ fi
 
 info "Systemd services stopped"
 
+# DNS Privacy: its forwarder is gone now, so dnsmasq must stop pointing at it or LAN DNS breaks.
+if grep -qxF "# QMANAGER-DNSGUARD-BEGIN v1" /etc/data/dnsmasq.conf 2>/dev/null; then
+    awk '$0 == "# QMANAGER-DNSGUARD-BEGIN v1" { skip = 1; next }
+         $0 == "# QMANAGER-DNSGUARD-END v1" && skip { skip = 0; next }
+         !skip { print }' /etc/data/dnsmasq.conf > /etc/data/dnsmasq.conf.qm-tmp \
+        && mv /etc/data/dnsmasq.conf.qm-tmp /etc/data/dnsmasq.conf \
+        && chown radio:radio /etc/data/dnsmasq.conf 2>/dev/null
+    killall -HUP dnsmasq 2>/dev/null || true
+    info "DNS Privacy removed from dnsmasq (carrier DNS restored)"
+fi
+rm -f /usrdata/qmanager/bin/qmanager_dnsguard
+rm -rf /usrdata/qmanager/dnsguard
+
 # Scenario schedule timer teardown — this .timer is armed live at runtime
 # by qmanager_scenario_schedule_arm (see the profile Connection Scenario
 # schedule feature); it is never a static installer-shipped unit, so it is

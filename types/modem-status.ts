@@ -867,7 +867,10 @@ export type NetworkEventType =
   | "new_cell"            // Cell Guard: first time this cell was seen
   | "data_limit"          // Data plan threshold reached or billing cycle reset
   | "temperature_high"    // Modem temperature at or above the alert threshold
-  | "temperature_normal"; // Modem temperature back below the threshold
+  | "temperature_normal"  // Modem temperature back below the threshold
+  | "suspicious_sms"      // Cell Guard: silent, flash or SIM-directed SMS in storage
+  | "dns_privacy"         // DNS Privacy forwarder stopped or recovered
+  | "login";              // Someone signed in to QManager
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";

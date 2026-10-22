@@ -53,7 +53,10 @@
     "traffic_engine": "Motore di traffico",
     "signal_history": "Cronologia segnale",
     "usage": "Piano dati e temperatura",
-    "backup": "Backup e ripristino"
+    "backup": "Backup e ripristino",
+    "dns_privacy": "Privacy DNS",
+    "security_check": "Controllo sicurezza",
+    "activity_log": "Registro attività"
   },
   "header": {
     "role": "Admin"

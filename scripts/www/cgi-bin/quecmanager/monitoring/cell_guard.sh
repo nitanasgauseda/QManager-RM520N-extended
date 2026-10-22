@@ -2,7 +2,7 @@
 . /usr/lib/qmanager/cgi_base.sh
 # cell_guard.sh — Cell Guard (fake base station detection) settings, findings and the optional Rayhunter daemon.
 #   GET                       config, detector status, recent findings, Rayhunter state
-#   POST save {enabled, learn_hours} | reset_baseline
+#   POST save {enabled, learn_hours, sms_guard?} | reset_baseline
 #   POST rayhunter_install | rayhunter_install_status | rayhunter_enable | rayhunter_disable | rayhunter_uninstall
 # See docs/reference/cell-guard.md.
 
@@ -52,7 +52,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     findings='[]'
     if [ -s "$EVENTS" ]; then
         findings=$(jq -R -s -c '[split("\n")[] | fromjson? | select(type == "object")
-            | select(.type == "suspicious_cell" or .type == "new_cell")] | reverse | .[0:40]' "$EVENTS" 2>/dev/null)
+            | select(.type == "suspicious_cell" or .type == "new_cell" or .type == "suspicious_sms")] | reverse | .[0:40]' "$EVENTS" 2>/dev/null)
         [ -n "$findings" ] || findings='[]'
     fi
 
@@ -90,7 +90,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         config: {
             enabled: ($c.enabled != false),
             learn_hours: ($c.learn_hours // 24),
-            rayhunter: ($c.rayhunter == true)
+            rayhunter: ($c.rayhunter == true),
+            sms_guard: ($c.sms_guard != false)
         },
         status: $status,
         findings: $findings,
@@ -113,7 +114,10 @@ case "$ACTION" in
         case "$en" in true|false) ;; *) cgi_error "invalid_enabled" "enabled must be a boolean"; exit 0 ;; esac
         case "$lh" in ''|*[!0-9]*|????*) cgi_error "invalid_learn_hours" "learn_hours must be 0-168"; exit 0 ;; esac
         [ "$lh" -le 168 ] || { cgi_error "invalid_learn_hours" "learn_hours must be 0-168"; exit 0; }
-        conf_merge '.enabled = ($e == "true") | .learn_hours = ($l | tonumber)' --arg e "$en" --arg l "$lh" \
+        sg=$(printf '%s' "$POST_DATA" | jq -r 'if has("sms_guard") then (.sms_guard | tostring) else "keep" end' 2>/dev/null)
+        case "$sg" in true|false|keep) ;; *) cgi_error "invalid_enabled" "sms_guard must be a boolean"; exit 0 ;; esac
+        conf_merge '.enabled = ($e == "true") | .learn_hours = ($l | tonumber)
+            | (if $s == "keep" then . else .sms_guard = ($s == "true") end)' --arg e "$en" --arg l "$lh" --arg s "$sg" \
             || { cgi_error "write_failed" "Could not save"; exit 0; }
         cgi_success
         ;;

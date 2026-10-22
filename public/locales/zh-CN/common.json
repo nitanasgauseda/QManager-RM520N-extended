@@ -1070,6 +1070,9 @@
         },
         "temperature": {
           "name": "温度过高"
+        },
+        "login": {
+          "name": "登录 QManager"
         }
       },
       "loading": "正在加载覆盖范围",
@@ -1669,7 +1672,8 @@
       "protect_link": "打开蜂窝设置",
       "unsaved": "有未保存的更改",
       "reset": "忘记已知小区",
-      "save": "保存"
+      "save": "保存",
+      "sms": "检查收到的短信"
     },
     "findings": {
       "title": "发现",
@@ -1892,6 +1896,278 @@
       "later": "稍后",
       "rebooting": "正在重启…",
       "now": "立即重启"
+    }
+  },
+  "dnsPrivacy": {
+    "page": {
+      "title": "DNS 隐私",
+      "description": "加密网络中所有设备的 DNS 查询，并在广告和跟踪器加载前将其拦截。",
+      "refresh": "刷新",
+      "retry": "重试"
+    },
+    "errors": {
+      "load_failed": "无法加载 DNS 隐私",
+      "failed": "模组没有响应",
+      "custom_dns_active": "请先关闭自定义 DNS",
+      "not_installed": "未安装 DNS 隐私程序。请更新 QManager 以获取。",
+      "unavailable": "模组未使用自身的 DNS 代理，因此不会生效",
+      "daemon_failed": "DNS 隐私未能启动，DNS 保持不变。",
+      "apply_failed": "已保存，但无法切换模组的 DNS 代理",
+      "invalid_nextdns_id": "NextDNS ID 为 4 到 16 个字母或数字",
+      "invalid_custom_host": "请输入解析器的 TLS 主机名",
+      "invalid_custom_ip": "请输入解析器的 IPv4 地址",
+      "too_many_lists": "最多选择 3 个列表",
+      "no_lists": "请至少选择一个列表",
+      "invalid_allow": "允许列表中有一项不是域名",
+      "invalid_deny": "拦截列表中有一项不是域名",
+      "too_many": "每个列表最多 200 个域名",
+      "not_running": "DNS 隐私未运行"
+    },
+    "toast": {
+      "saved": "DNS 隐私已保存",
+      "update_started": "正在更新拦截列表",
+      "allowed": "{{domain}} 不再被拦截"
+    },
+    "unsaved": "有未保存的更改",
+    "save": "保存",
+    "encrypt": {
+      "title": "加密 DNS",
+      "description": "通过加密连接（DNS over TLS）发送每个查询，运营商无法看到您访问的网站。",
+      "enabled": "加密 DNS",
+      "provider": "提供商",
+      "custom": "自定义",
+      "about": {
+        "quad9": "瑞士非营利组织。拦截已知恶意域名，不记录 IP。",
+        "cloudflare": "速度快，公开承诺不记录日志。",
+        "google": "Google 公共 DNS。速度快，会保留临时日志。",
+        "adguard": "在提供商端同时拦截广告和跟踪器。",
+        "mullvad": "来自 Mullvad VPN 团队，不记录日志。"
+      },
+      "nextdns_id": "NextDNS ID",
+      "custom_host": "TLS 主机名",
+      "custom_ip": "IPv4 地址",
+      "if_fails": "失败时",
+      "fallback_carrier": "使用运营商 DNS",
+      "fallback_stop": "停止查询",
+      "fallback_hint_carrier": "无法连接提供商时，查询将不加密地发送给运营商，以保证网络可用。",
+      "fallback_hint_stop": "无法连接提供商时查询失败。不会泄露任何信息，但在恢复前无法上网。",
+      "state_clock": "正在等待时钟设置",
+      "state_fallback": "当前使用运营商 DNS",
+      "state_on": "已通过 {{provider}} 加密"
+    },
+    "block": {
+      "title": "广告和跟踪器拦截",
+      "description": "对网络中所有设备的广告、跟踪器和恶意域名查询不予解析。",
+      "enabled": "拦截广告和跟踪器",
+      "lists": "列表（最多 {{max}} 个）",
+      "domains": "{{n}} 个域名",
+      "list_error": "上次更新失败，正在使用之前的副本",
+      "list_pending": "正在下载…",
+      "memory": "约占用模组 {{mb}} MB 内存。",
+      "capped": "只加载前 {{n}} 个域名。",
+      "allow": "永不拦截",
+      "allow_hint": "每行一个域名，其子域名也会被允许。",
+      "deny": "始终拦截",
+      "state_updating": "正在更新列表",
+      "state_on": "已拦截 {{n}} 个域名",
+      "state_empty": "尚未加载列表",
+      "update": "更新列表"
+    },
+    "list": {
+      "hagezi_light": {
+        "name": "HaGeZi Light",
+        "about": "基础保护，几乎不会影响网站。推荐。"
+      },
+      "hagezi_normal": {
+        "name": "HaGeZi Normal",
+        "about": "更广泛地拦截广告、跟踪器和遥测。"
+      },
+      "hagezi_pro": {
+        "name": "HaGeZi Pro",
+        "about": "严格。部分网站或应用可能需要例外。"
+      },
+      "hagezi_tif_mini": {
+        "name": "HaGeZi Threats",
+        "about": "恶意软件、钓鱼和诈骗域名。"
+      },
+      "stevenblack": {
+        "name": "StevenBlack",
+        "about": "经典的广告和恶意软件 hosts 列表。"
+      }
+    },
+    "activity": {
+      "title": "活动",
+      "description": "自 DNS 隐私上次启动以来的统计。",
+      "queries": "查询",
+      "blocked": "已拦截",
+      "encrypted": "已加密",
+      "fallback": "发给运营商",
+      "latency": "平均响应时间",
+      "memory": "内存占用",
+      "memory_hint": "DNS 隐私程序当前占用的模组内存。",
+      "top": "拦截最多",
+      "none": "尚未拦截任何内容。",
+      "allow": "允许",
+      "allowed": "已允许"
+    },
+    "notice": {
+      "not_installed": "缺少 DNS 隐私程序。请安装最新的 QManager 更新。",
+      "unavailable": "模组的 DNS 代理已关闭，设备直接向运营商查询，此页面不会生效。",
+      "custom_dns": "自定义 DNS 已开启。关闭后才能使用 DNS 隐私。",
+      "stopped": "DNS 隐私未运行。在其重新启动前，设备使用运营商 DNS。",
+      "paused": "DNS 隐私正在启动，设备将在几分钟内切换。",
+      "title_warning": "注意",
+      "title_info": "提示",
+      "title_destructive": "已停止",
+      "open_custom_dns": "打开自定义 DNS"
+    }
+  },
+  "securityCheck": {
+    "page": {
+      "title": "安全检查",
+      "description": "互联网能访问到模组上的哪些服务，以及值得查看的设置。",
+      "run": "重新检查",
+      "retry": "重试",
+      "checked": "检查于 {{time}}"
+    },
+    "errors": {
+      "load_failed": "无法运行检查",
+      "save_failed": "无法更改防火墙",
+      "copy_failed": "无法复制"
+    },
+    "toast": {
+      "blocked": "{{name}} 已对互联网关闭",
+      "unblocked": "{{name}} 已重新开放",
+      "copied": "命令已复制"
+    },
+    "summary": {
+      "fail_one": "{{count}} 项向互联网开放",
+      "fail_other": "{{count}} 项向互联网开放",
+      "warn_one": "{{count}} 项需要查看",
+      "warn_other": "{{count}} 项需要查看",
+      "ok": "未发现问题",
+      "fail_text": "互联网上的任何人都可以尝试登录这些服务。请关闭不需要从外部使用的服务。",
+      "warn_text": "没有服务向整个互联网开放，但有些项目值得查看。",
+      "ok_text": "模组上没有任何服务可从互联网访问。"
+    },
+    "service": {
+      "ssh": "SSH",
+      "telnet": "Telnet",
+      "web": "QManager 网页",
+      "web_https": "QManager 网页（HTTPS）",
+      "dns": "DNS",
+      "console": "网页终端",
+      "rayhunter": "Rayhunter",
+      "bridge_monitor": "流量监视器",
+      "adb": "网络 ADB",
+      "ftp": "FTP",
+      "dns_privacy": "DNS 隐私",
+      "upnp": "UPnP",
+      "other": "端口 {{port}} 上的服务"
+    },
+    "ports": {
+      "title": "可从互联网访问",
+      "description": "模组提供的服务，按其蜂窝连接上的防火墙检查。",
+      "public": "公网",
+      "cgnat": "运营商 NAT",
+      "no_firewall": "无法读取防火墙规则，此列表可能不完整。",
+      "offline": "当前没有蜂窝连接，因此无法从外部访问。",
+      "none": "蜂窝侧没有开放的服务",
+      "open": "开放",
+      "closed": "关闭",
+      "uncertain_label": "关于此结果",
+      "uncertain": "某条防火墙规则使用了此检查无法评估的条件，结果可能不准确。",
+      "closed_by_us": "已由 QManager 关闭",
+      "reachable": "向互联网开放",
+      "reachable_carrier": "在运营商网络内开放",
+      "block": "关闭",
+      "unblock": "重新开放",
+      "note": "关闭端口只影响蜂窝侧。局域网设备和 Tailscale 仍可访问。"
+    },
+    "device": {
+      "title": "设备设置",
+      "description": "其他影响谁能控制模组的项目。",
+      "good": "良好",
+      "note": "提示",
+      "attention": "需要查看",
+      "adb_title": "USB 调试（ADB）",
+      "adb_on": "任何能接入模组 USB 口的人都能完全控制它。使用此 AT 命令关闭，然后重启模组：",
+      "adb_off": "USB 调试已关闭。",
+      "adb_unknown": "模组未报告其 USB 设置。",
+      "copy": "复制",
+      "open_terminal": "打开 AT 终端",
+      "login_title": "登录保护",
+      "login_text": "连续输错五次密码后，登录会被锁定且时间逐步延长。每次登录都会被记录。",
+      "open_activity": "打开活动日志",
+      "cell_guard_title": "Cell Guard",
+      "cell_guard_on": "正在监测伪基站和可疑短信。",
+      "cell_guard_off": "Cell Guard 已关闭，伪基站将无法被发现。",
+      "open_cell_guard": "打开 Cell Guard",
+      "dns_title": "加密 DNS",
+      "dns_on": "DNS 查询已加密。",
+      "dns_off": "运营商可以看到您的设备查询了哪些网站。",
+      "open_dns": "打开 DNS 隐私",
+      "console_title": "网页终端",
+      "console_on": "浏览器中可使用 root 终端。如不使用请移除。",
+      "https_title": "HTTPS",
+      "https_off": "QManager 页面在局域网中未加密传输。"
+    }
+  },
+  "activityLog": {
+    "page": {
+      "title": "活动日志",
+      "description": "谁从哪个地址登录，以及更改了什么。",
+      "refresh": "刷新",
+      "retry": "重试"
+    },
+    "filter": {
+      "all": "全部",
+      "logins": "登录",
+      "changes": "更改",
+      "label": "显示"
+    },
+    "card": {
+      "title": "最近活动",
+      "description": "保留最新的 {{max}} 条记录。5 分钟内重复的更改只记录一次。"
+    },
+    "errors": {
+      "load_failed": "无法加载日志",
+      "clear_failed": "无法清空日志"
+    },
+    "toast": {
+      "cleared": "活动日志已清空"
+    },
+    "empty": "暂无记录。",
+    "login": {
+      "ok": "已登录",
+      "failed": "密码错误",
+      "locked": "密码错误次数过多，登录已被阻止"
+    },
+    "logout": "已退出",
+    "area": {
+      "cellular": "蜂窝",
+      "network": "局域网",
+      "monitoring": "监控",
+      "system": "系统",
+      "at_cmd": "AT 命令",
+      "auth": "账户",
+      "profiles": "配置文件",
+      "scenarios": "场景",
+      "bands": "频段锁定",
+      "tower": "基站锁定",
+      "frequency": "频点锁定",
+      "settings": "设置",
+      "vpn": "VPN",
+      "other": "其他"
+    },
+    "failed_count": "日志中有 {{n}} 次登录失败",
+    "alert_hint": "每次登录时收到通知：",
+    "alert_link": "提醒",
+    "clear": "清空日志",
+    "confirm": {
+      "title": "清空活动日志？",
+      "description": "所有记录都将被删除，清空操作本身会被记录。",
+      "cancel": "取消"
     }
   }
 }

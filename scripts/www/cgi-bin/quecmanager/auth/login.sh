@@ -78,7 +78,13 @@ fi
 # ---------------------------------------------------------------------------
 # Normal login
 # ---------------------------------------------------------------------------
+# Login alerts go through the poller's alert engine (routing for "login" is off unless the user turns it on).
+qm_login_alert() {
+    printf 'login\t%s\n' "$1" >> /tmp/qmanager_alert_queue 2>/dev/null
+}
+
 if ! qm_check_rate_limit; then
+    qm_audit login locked
     echo "Status: 429 Too Many Requests"
     cgi_headers
     jq -n --argjson retry "$RATE_LIMIT_RETRY_AFTER" --argjson remaining "$RATE_LIMIT_ATTEMPTS_REMAINING" \
@@ -91,6 +97,10 @@ if ! qm_verify_password "$_password"; then
     # Read-only re-check to report how many attempts remain after the failure
     # that just happened. Never mutates state (see qm_get_rate_limit_status).
     qm_get_rate_limit_status
+    qm_audit login failed
+    if [ "${RATE_LIMIT_ATTEMPTS_REMAINING:-1}" = "0" ]; then
+        qm_login_alert "QManager sign-in locked after repeated wrong passwords from ${REMOTE_ADDR:-an unknown address}"
+    fi
     qlog_warn "Failed login attempt"
     cgi_headers
     jq -n --argjson remaining "$RATE_LIMIT_ATTEMPTS_REMAINING" \
@@ -102,6 +112,8 @@ fi
 qm_clear_attempts
 qm_cleanup_sessions
 _token=$(qm_create_session)
+qm_audit login ok
+qm_login_alert "Someone signed in to QManager from ${REMOTE_ADDR:-an unknown address}"
 qlog_info "Successful login"
 
 qm_set_session_cookies "$_token"

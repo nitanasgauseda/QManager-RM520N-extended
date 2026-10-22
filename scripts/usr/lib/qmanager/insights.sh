@@ -262,7 +262,25 @@ _in_write_status() {
         > "${IN_STATUS}.tmp" 2>/dev/null && mv "${IN_STATUS}.tmp" "$IN_STATUS" 2>/dev/null
 }
 
+# Alerts raised by CGIs (sign-ins) arrive as "event<TAB>message" lines; at most 10 per cycle.
+: "${IN_ALERT_QUEUE:=/tmp/qmanager_alert_queue}"
+_in_drain_queue() {
+    [ -s "$IN_ALERT_QUEUE" ] || return 0
+    local tmp="${IN_ALERT_QUEUE}.work" ev msg n=0
+    mv "$IN_ALERT_QUEUE" "$tmp" 2>/dev/null || return 0
+    while IFS="$(printf '\t')" read -r ev msg; do
+        n=$((n + 1))
+        [ "$n" -le 10 ] || break
+        case "$ev" in login) ;; *) continue ;; esac
+        [ -n "$msg" ] || continue
+        command -v append_event >/dev/null 2>&1 && append_event "login" "$msg" "info"
+        _in_alert "$ev" "$msg"
+    done < "$tmp"
+    rm -f "$tmp"
+}
+
 insights_check() {
+    _in_drain_queue
     if [ "$_in_loaded" != "1" ] || [ -f "$IN_RELOAD_FLAG" ]; then
         rm -f "$IN_RELOAD_FLAG" 2>/dev/null
         insights_load_config || return 0
