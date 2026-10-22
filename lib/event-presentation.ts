@@ -232,6 +232,7 @@ const RECOVERY_TYPES: ReadonlySet<NetworkEventType> = new Set([
   "packet_loss_recovered",
   "watchcat_recovery",
   "profile_applied",
+  "temperature_normal",
 ]);
 
 /** Family glyphs for routine info events, so a row is scannable by shape

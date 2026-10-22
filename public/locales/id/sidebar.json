@@ -50,7 +50,10 @@
     "about_device": "Tentang Perangkat",
     "support": "Dukungan",
     "donate": "Donasi untuk Proyek",
-    "traffic_engine": "Mesin Lalu Lintas"
+    "traffic_engine": "Mesin Lalu Lintas",
+    "signal_history": "Riwayat Sinyal",
+    "usage": "Paket Data & Suhu",
+    "backup": "Cadangan & Pemulihan"
   },
   "header": {
     "role": "Admin"

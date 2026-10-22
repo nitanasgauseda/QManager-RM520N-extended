@@ -1064,6 +1064,12 @@
         },
         "suspicious_cell": {
           "name": "Cella sospetta"
+        },
+        "data_limit": {
+          "name": "Limite piano dati"
+        },
+        "temperature": {
+          "name": "Temperatura alta"
         }
       },
       "loading": "Caricamento della copertura…",
@@ -1717,6 +1723,175 @@
     "errors": {
       "load_failed": "Impossibile caricare Cell Guard.",
       "save_failed": "Salvataggio non riuscito. Riprova."
+    }
+  },
+  "longHistory": {
+    "page": {
+      "title": "Cronologia segnale",
+      "description": "Segnale, traffico e temperatura registrati ogni minuto e conservati sul modem per settimane.",
+      "refresh": "Aggiorna",
+      "retry": "Riprova"
+    },
+    "range": {
+      "label": "Intervallo",
+      "24h": "24 h",
+      "7d": "7 giorni",
+      "30d": "30 giorni"
+    },
+    "errors": {
+      "load_failed": "Impossibile caricare la cronologia"
+    },
+    "empty": {
+      "title": "Ancora nessuna cronologia",
+      "description": "Il modem scrive un punto al minuto. I primi punti compaiono qui entro 15 minuti."
+    },
+    "signal": {
+      "title": "Segnale",
+      "description": "Potenza e qualità medie del segnale per fascia oraria.",
+      "rsrp_aria": "Potenza del segnale nel tempo",
+      "sinr_aria": "Qualità del segnale nel tempo"
+    },
+    "traffic": {
+      "title": "Traffico e temperatura",
+      "description": "Quanti dati sono passati e quanto si è scaldato il modem.",
+      "downloaded": "Scaricati",
+      "uploaded": "Caricati",
+      "aria": "Velocità media nel tempo",
+      "download": "Download",
+      "upload": "Upload",
+      "temp_aria": "Temperatura del modem nel tempo",
+      "temp_avg": "Media",
+      "temp_max": "Massima"
+    },
+    "advisor": {
+      "title": "Le celle migliori qui",
+      "description": "Ogni cella usata dal modem, ordinata per qualità media in questo periodo.",
+      "empty": "Dati insufficienti. Una cella appare qui dopo 30 minuti di utilizzo.",
+      "suggest_title": "È disponibile una cella migliore",
+      "suggest_body": "{{cell}} ha avuto in media una qualità del segnale migliore di {{gain}} dB rispetto alla cella attuale. Bloccarla può dare un collegamento più stabile e veloce.",
+      "lock_band": "Blocco bande",
+      "lock_tower": "Blocco torre",
+      "on_best": "Sei sulla cella migliore",
+      "time_on": "{{time}} su questa cella",
+      "current": "Attuale"
+    },
+    "storage": "{{days}} giorni salvati, {{size}}.",
+    "storage_hint_label": "Informazioni sull'archiviazione",
+    "storage_hint": "I punti vengono scritti nella memoria flash ogni 15 minuti per preservarla. I giorni più vecchi vengono eliminati automaticamente.",
+    "storage_link": "Modifica"
+  },
+  "usage": {
+    "page": {
+      "title": "Piano dati e temperatura",
+      "description": "Avvisi prima che il piano dati finisca o che il modem si surriscaldi."
+    },
+    "errors": {
+      "load_failed": "Impossibile caricare le impostazioni",
+      "save_failed": "Impossibile salvare le impostazioni",
+      "invalid_limit": "Inserisci una dimensione del piano maggiore di 0 GB",
+      "invalid_billing_day": "Il giorno di fatturazione deve essere da 1 a 28",
+      "invalid_used": "Inserisci il consumo come numero, ad esempio 12.5",
+      "invalid_temperature": "Scegli una temperatura tra 50 e 100 °C"
+    },
+    "retry": "Riprova",
+    "unsaved": "Modifiche non salvate",
+    "discard": "Annulla",
+    "save": "Salva",
+    "alerts_link": "Scegli dove inviare gli avvisi",
+    "toast": {
+      "plan_saved": "Piano dati salvato",
+      "temp_saved": "Avviso temperatura salvato",
+      "history_saved": "Impostazioni cronologia salvate"
+    },
+    "plan": {
+      "title": "Piano dati",
+      "description": "Conta il traffico del periodo di fatturazione e ti avvisa prima che il piano finisca.",
+      "used_up": "Piano esaurito",
+      "percent": "{{pct}} % usato",
+      "resets": "Si azzera il {{date}}, tra {{days}} giorni",
+      "enabled": "Monitora il piano",
+      "size": "Dimensione piano",
+      "billing_day": "Giorno di fatturazione",
+      "warn_at": "Avvisa al",
+      "used_so_far": "Già usati in questo periodo",
+      "used_hint": "Inserisci una volta il consumo indicato dall'operatore per allineare il conteggio. Ricevi un avviso alla soglia scelta e di nuovo al 100 %."
+    },
+    "temp": {
+      "title": "Temperatura",
+      "description": "Ti avvisa quando il modem resta caldo più di un istante.",
+      "current": "Ora",
+      "enabled": "Avviso temperatura",
+      "alert_at": "Avvisa a",
+      "hint": "Si annulla quando il modem scende di 5 °C sotto il limite. Il calore prolungato rallenta il modem e ne accorcia la vita."
+    },
+    "history": {
+      "title": "Cronologia segnale",
+      "description": "Conserva sul modem una registrazione minuto per minuto.",
+      "enabled": "Registra cronologia",
+      "keep": "Giorni da conservare",
+      "hint": "Trenta giorni occupano circa 3 MB.",
+      "open": "Apri cronologia segnale",
+      "recording": "In registrazione",
+      "off": "Disattivata"
+    }
+  },
+  "backup": {
+    "page": {
+      "title": "Backup e ripristino",
+      "description": "Salva tutte le impostazioni di QManager in un file e ricaricale dopo un reset o su un altro modem."
+    },
+    "errors": {
+      "download_failed": "Impossibile creare il backup",
+      "too_large": "Il file è troppo grande per essere un backup delle impostazioni",
+      "not_a_backup": "Questo non è un backup delle impostazioni di QManager",
+      "bad_member": "Il backup contiene qualcosa di inatteso e non è stato usato",
+      "write_failed": "Alcune impostazioni non sono state scritte",
+      "failed": "Il modem non ha risposto"
+    },
+    "toast": {
+      "downloaded": "Backup scaricato",
+      "restored": "{{n}} file di impostazioni ripristinati"
+    },
+    "save": {
+      "title": "Backup",
+      "description": "Scarica un piccolo file con le tue impostazioni.",
+      "included_title": "Incluso",
+      "included": "Profili, scenari, APN, blocchi di banda e torre, avvisi, Watchdog, Cell Guard, mappa torri, piano dati, impostazioni di rete e TTL.",
+      "excluded": "Password e token dei bot non vengono mai inseriti nel file. Inseriscili di nuovo dopo il ripristino.",
+      "download": "Scarica backup"
+    },
+    "restore": {
+      "title": "Ripristino",
+      "description": "Carica un file di backup. Vedi cosa contiene prima che cambi qualcosa.",
+      "created": "Creato",
+      "version": "Versione QManager",
+      "model": "Modem",
+      "files": "File di impostazioni",
+      "show_files": "Mostra file",
+      "overwrite_note": "Il ripristino sostituisce queste impostazioni sul modem. Un riavvio le applica.",
+      "done": "{{n}} file di impostazioni ripristinati",
+      "secrets_title": "Inserisci di nuovo",
+      "reboot_note": "Riavvia il modem perché tutte le impostazioni abbiano effetto.",
+      "pick_hint": "Scegli un file creato con Scarica backup.",
+      "cancel": "Annulla",
+      "restore": "Ripristina",
+      "choose": "Scegli file"
+    },
+    "secret": {
+      "telegram_bot_token": "Token del bot Telegram",
+      "email_app_password": "Password app email",
+      "discord_bot_token": "Token del bot Discord"
+    },
+    "confirm": {
+      "title": "Ripristinare queste impostazioni?",
+      "description": "Le impostazioni del file sostituiscono quelle attuali. L'operazione non si può annullare: scarica prima un backup delle impostazioni attuali se potrebbero servirti."
+    },
+    "reboot": {
+      "title": "Riavviare ora?",
+      "description": "Le impostazioni sono state ripristinate. Un riavvio le fa usare a tutti i servizi.",
+      "later": "Più tardi",
+      "rebooting": "Riavvio…",
+      "now": "Riavvia ora"
     }
   }
 }

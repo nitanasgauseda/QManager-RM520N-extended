@@ -474,6 +474,15 @@ else
     cell_guard_check() { :; }
 fi
 
+# Signal history, data-plan limit, temperature alerts (optional; a missing file must not abort the poller).
+if [ -f /usr/lib/qmanager/insights.sh ]; then
+    . /usr/lib/qmanager/insights.sh
+else
+    qlog_warn "insights.sh not found, history and limits disabled"
+    insights_check() { :; }
+    insights_flush() { :; }
+fi
+
 # Shared ping.json reader + staleness rule. Fail-closed stub: no lib = always stale.
 # Guarded with -f: BusyBox ash exits when `.` cannot find its file.
 if [ -f /usr/lib/qmanager/conn_state.sh ]; then
@@ -2462,6 +2471,7 @@ poll_cycle() {
     determine_service_status
     detect_events
     cell_guard_check
+    insights_check
     write_cache
 
     cycle_count=$((cycle_count + 1))
@@ -2501,6 +2511,9 @@ main() {
     write_cache
 
     qlog_info "Boot data collected, entering poll loop"
+
+    # Keep up to 15 minutes of buffered history across a clean stop.
+    trap 'insights_flush force; exit 0' TERM INT
 
     while true; do
         cycle_start=$(date +%s)

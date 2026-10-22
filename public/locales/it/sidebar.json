@@ -50,7 +50,10 @@
     "about_device": "Informazioni sul dispositivo",
     "support": "Supporto",
     "donate": "Dona al progetto",
-    "traffic_engine": "Motore di traffico"
+    "traffic_engine": "Motore di traffico",
+    "signal_history": "Cronologia segnale",
+    "usage": "Piano dati e temperatura",
+    "backup": "Backup e ripristino"
   },
   "header": {
     "role": "Admin"

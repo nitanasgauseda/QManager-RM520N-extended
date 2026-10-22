@@ -864,7 +864,10 @@ export type NetworkEventType =
   | "profile_deactivated" // Custom SIM Profile deactivated by user
   | "tower_failover"      // Tower lock failover activated (signal below threshold)
   | "suspicious_cell"     // Cell Guard finding (possible fake base station)
-  | "new_cell";           // Cell Guard: first time this cell was seen
+  | "new_cell"            // Cell Guard: first time this cell was seen
+  | "data_limit"          // Data plan threshold reached or billing cycle reset
+  | "temperature_high"    // Modem temperature at or above the alert threshold
+  | "temperature_normal"; // Modem temperature back below the threshold
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";

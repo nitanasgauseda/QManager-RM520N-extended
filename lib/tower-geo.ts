@@ -103,3 +103,8 @@ export function cellMapperUrl(mcc: number, mnc: number, at: LatLon, nr: boolean)
   });
   return `https://www.cellmapper.net/map?${q.toString()}`;
 }
+
+/** eNB / gNB id from a full cell identity: LTE ECI = eNB·256 + cell, NR NCI = gNB·2^14 + cell (as the index is built). */
+export function towerIdFromCell(type: "L" | "N", cell: number): number {
+  return Math.floor(cell / (type === "N" ? 16384 : 256));
+}

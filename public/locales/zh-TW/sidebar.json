@@ -50,7 +50,10 @@
     "about_device": "關於裝置",
     "support": "支援",
     "donate": "捐贈專案",
-    "traffic_engine": "流量引擎"
+    "traffic_engine": "流量引擎",
+    "signal_history": "訊號歷史",
+    "usage": "數據方案與溫度",
+    "backup": "備份與還原"
   },
   "header": {
     "role": "管理員"

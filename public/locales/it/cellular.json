@@ -2653,6 +2653,18 @@
       "retry": "Riprova",
       "no_sim_title": "Nessuna SIM rilevata",
       "no_sim_desc": "Inserisci una SIM così il modem sa di quale operatore mostrare le torri."
+    },
+    "scan": {
+      "title": "Torri rilevate",
+      "description": "Avvia la scansione celle per vedere tutte le torri intorno a te sulla mappa.",
+      "description_at": "Dalla scansione celle del {{time}}. Scegli una torre per tracciarne la direzione.",
+      "empty": "Nessuna scansione.",
+      "open_scanner": "Apri scansione celle",
+      "not_in_db": "Non nel database",
+      "compass_short": "bussola ≈ {{deg}}°",
+      "set_home_first": "Imposta la tua posizione per vedere la direzione",
+      "aim": "Punta",
+      "aiming": "Puntata"
     }
   }
 }

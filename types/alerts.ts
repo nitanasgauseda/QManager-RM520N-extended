@@ -15,7 +15,13 @@ export type AlertChannel = "sms" | "email" | "discord" | "telegram";
 
 /** The trigger events a channel can be routed to. Extensible by design — new
  *  events are an additive key here + a backend capability entry. */
-export type AlertEventKey = "connection_lost" | "connection_restored" | "reboot" | "suspicious_cell";
+export type AlertEventKey =
+  | "connection_lost"
+  | "connection_restored"
+  | "reboot"
+  | "suspicious_cell"
+  | "data_limit"
+  | "temperature";
 
 // ─── Channel transport state (identity + master enable) ──────────────────────
 
@@ -187,6 +193,8 @@ export const ALERT_EVENT_ORDER: AlertEventKey[] = [
   "connection_restored",
   "reboot",
   "suspicious_cell",
+  "data_limit",
+  "temperature",
 ];
 
 export const ALERT_CHANNEL_ORDER: AlertChannel[] = ["sms", "email", "telegram", "discord"];

@@ -1064,6 +1064,12 @@
         },
         "suspicious_cell": {
           "name": "可疑細胞"
+        },
+        "data_limit": {
+          "name": "數據方案上限"
+        },
+        "temperature": {
+          "name": "溫度過高"
         }
       },
       "loading": "正在載入涵蓋範圍",
@@ -1717,6 +1723,175 @@
     "errors": {
       "load_failed": "無法載入 Cell Guard。",
       "save_failed": "儲存失敗，請重試。"
+    }
+  },
+  "longHistory": {
+    "page": {
+      "title": "訊號歷史",
+      "description": "每分鐘記錄訊號、流量與溫度，並在模組上保存數週。",
+      "refresh": "重新整理",
+      "retry": "重試"
+    },
+    "range": {
+      "label": "時間範圍",
+      "24h": "24 小時",
+      "7d": "7 天",
+      "30d": "30 天"
+    },
+    "errors": {
+      "load_failed": "無法載入歷史記錄"
+    },
+    "empty": {
+      "title": "尚無歷史記錄",
+      "description": "模組每分鐘寫入一個資料點。15 分鐘內這裡會出現第一批資料。"
+    },
+    "signal": {
+      "title": "訊號",
+      "description": "每個時段的平均訊號強度與品質。",
+      "rsrp_aria": "訊號強度隨時間變化",
+      "sinr_aria": "訊號品質隨時間變化"
+    },
+    "traffic": {
+      "title": "流量與溫度",
+      "description": "傳輸了多少資料，以及模組的溫度。",
+      "downloaded": "已下載",
+      "uploaded": "已上傳",
+      "aria": "平均速率隨時間變化",
+      "download": "下載",
+      "upload": "上傳",
+      "temp_aria": "模組溫度隨時間變化",
+      "temp_avg": "平均",
+      "temp_max": "最高"
+    },
+    "advisor": {
+      "title": "此處最佳細胞",
+      "description": "模組使用過的每個細胞，依本時段的平均品質排序。",
+      "empty": "資料不足。細胞使用 30 分鐘後會顯示在這裡。",
+      "suggest_title": "有更好的細胞可用",
+      "suggest_body": "{{cell}} 的平均訊號品質比目前細胞高 {{gain}} dB。鎖定到該細胞可能獲得更穩定、更快的連線。",
+      "lock_band": "頻段鎖定",
+      "lock_tower": "基地台鎖定",
+      "on_best": "您已在最佳細胞",
+      "time_on": "在此細胞 {{time}}",
+      "current": "目前"
+    },
+    "storage": "已保存 {{days}} 天，{{size}}。",
+    "storage_hint_label": "關於歷史儲存",
+    "storage_hint": "資料每 15 分鐘寫入一次快閃記憶體以減少磨損。較早的日期會自動刪除。",
+    "storage_link": "變更"
+  },
+  "usage": {
+    "page": {
+      "title": "數據方案與溫度",
+      "description": "在數據方案用完或模組過熱之前提醒您。"
+    },
+    "errors": {
+      "load_failed": "無法載入設定",
+      "save_failed": "無法儲存設定",
+      "invalid_limit": "請輸入大於 0 GB 的方案容量",
+      "invalid_billing_day": "結帳日必須為 1 到 28",
+      "invalid_used": "請以數字輸入已用量，例如 12.5",
+      "invalid_temperature": "請選擇 50 到 100 °C 之間的溫度"
+    },
+    "retry": "重試",
+    "unsaved": "有未儲存的變更",
+    "discard": "捨棄",
+    "save": "儲存",
+    "alerts_link": "選擇提醒傳送方式",
+    "toast": {
+      "plan_saved": "數據方案已儲存",
+      "temp_saved": "溫度提醒已儲存",
+      "history_saved": "歷史設定已儲存"
+    },
+    "plan": {
+      "title": "數據方案",
+      "description": "統計本結帳週期的流量，並在方案用完前提醒您。",
+      "used_up": "方案已用完",
+      "percent": "已用 {{pct}} %",
+      "resets": "將於 {{date}} 重設，還有 {{days}} 天",
+      "enabled": "追蹤我的方案",
+      "size": "方案容量",
+      "billing_day": "每月結帳日",
+      "warn_at": "提醒門檻",
+      "used_so_far": "本週期已用",
+      "used_hint": "輸入一次電信業者顯示的已用量，使統計與其一致。達到所選比例時提醒一次，達到 100 % 時再提醒一次。"
+    },
+    "temp": {
+      "title": "溫度",
+      "description": "模組持續發熱時提醒您。",
+      "current": "目前",
+      "enabled": "溫度提醒",
+      "alert_at": "提醒溫度",
+      "hint": "模組降到上限以下 5 °C 後提醒解除。長時間高溫會降低模組速度並縮短壽命。"
+    },
+    "history": {
+      "title": "訊號歷史",
+      "description": "在模組上保存逐分鐘的記錄。",
+      "enabled": "記錄歷史",
+      "keep": "保留天數",
+      "hint": "三十天約佔 3 MB。",
+      "open": "開啟訊號歷史",
+      "recording": "正在記錄",
+      "off": "關閉"
+    }
+  },
+  "backup": {
+    "page": {
+      "title": "備份與還原",
+      "description": "將所有 QManager 設定儲存為檔案，並在重設後或在另一台模組上重新載入。"
+    },
+    "errors": {
+      "download_failed": "無法建立備份",
+      "too_large": "該檔案太大，不是設定備份",
+      "not_a_backup": "這不是 QManager 設定備份",
+      "bad_member": "備份包含非預期內容，未被使用",
+      "write_failed": "部分設定無法寫入",
+      "failed": "模組沒有回應"
+    },
+    "toast": {
+      "downloaded": "備份已下載",
+      "restored": "已還原 {{n}} 個設定檔"
+    },
+    "save": {
+      "title": "備份",
+      "description": "下載一個包含您設定的小檔案。",
+      "included_title": "包含內容",
+      "included": "設定檔、情境、APN、頻段與基地台鎖定、提醒、看門狗、Cell Guard、基地台地圖、數據方案、網路與 TTL 設定。",
+      "excluded": "密碼與機器人權杖絕不會寫入檔案。還原後請重新輸入。",
+      "download": "下載備份"
+    },
+    "restore": {
+      "title": "還原",
+      "description": "載入備份檔。在任何變更之前，您會先看到其中的內容。",
+      "created": "建立時間",
+      "version": "QManager 版本",
+      "model": "模組",
+      "files": "設定檔",
+      "show_files": "顯示檔案",
+      "overwrite_note": "還原會取代此模組上的這些設定。重新啟動後生效。",
+      "done": "已還原 {{n}} 個設定檔",
+      "secrets_title": "請重新輸入",
+      "reboot_note": "請重新啟動模組，使所有設定生效。",
+      "pick_hint": "選擇以「下載備份」建立的檔案。",
+      "cancel": "取消",
+      "restore": "還原",
+      "choose": "選擇檔案"
+    },
+    "secret": {
+      "telegram_bot_token": "Telegram 機器人權杖",
+      "email_app_password": "電子郵件應用程式密碼",
+      "discord_bot_token": "Discord 機器人權杖"
+    },
+    "confirm": {
+      "title": "還原這些設定？",
+      "description": "檔案中的設定將取代目前設定。此操作無法復原，如有需要請先下載目前設定的備份。"
+    },
+    "reboot": {
+      "title": "立即重新啟動？",
+      "description": "設定已還原。重新啟動後所有服務都會使用這些設定。",
+      "later": "稍後",
+      "rebooting": "正在重新啟動…",
+      "now": "立即重新啟動"
     }
   }
 }

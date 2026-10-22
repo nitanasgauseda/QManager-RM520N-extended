@@ -1064,6 +1064,12 @@
         },
         "suspicious_cell": {
           "name": "Sel mencurigakan"
+        },
+        "data_limit": {
+          "name": "Batas paket data"
+        },
+        "temperature": {
+          "name": "Suhu tinggi"
         }
       },
       "loading": "Memuat cakupan",
@@ -1717,6 +1723,175 @@
     "errors": {
       "load_failed": "Cell Guard tidak dapat dimuat.",
       "save_failed": "Gagal menyimpan. Coba lagi."
+    }
+  },
+  "longHistory": {
+    "page": {
+      "title": "Riwayat Sinyal",
+      "description": "Sinyal, lalu lintas, dan suhu dicatat setiap menit dan disimpan di modem selama berminggu-minggu.",
+      "refresh": "Muat ulang",
+      "retry": "Coba lagi"
+    },
+    "range": {
+      "label": "Rentang waktu",
+      "24h": "24 jam",
+      "7d": "7 hari",
+      "30d": "30 hari"
+    },
+    "errors": {
+      "load_failed": "Tidak dapat memuat riwayat"
+    },
+    "empty": {
+      "title": "Belum ada riwayat",
+      "description": "Modem menulis satu titik per menit. Titik pertama muncul di sini dalam 15 menit."
+    },
+    "signal": {
+      "title": "Sinyal",
+      "description": "Rata-rata kekuatan dan kualitas sinyal per slot waktu.",
+      "rsrp_aria": "Kekuatan sinyal dari waktu ke waktu",
+      "sinr_aria": "Kualitas sinyal dari waktu ke waktu"
+    },
+    "traffic": {
+      "title": "Lalu lintas dan suhu",
+      "description": "Berapa banyak data yang mengalir, dan seberapa panas modem.",
+      "downloaded": "Diunduh",
+      "uploaded": "Diunggah",
+      "aria": "Kecepatan rata-rata dari waktu ke waktu",
+      "download": "Unduh",
+      "upload": "Unggah",
+      "temp_aria": "Suhu modem dari waktu ke waktu",
+      "temp_avg": "Rata-rata",
+      "temp_max": "Tertinggi"
+    },
+    "advisor": {
+      "title": "Sel terbaik di sini",
+      "description": "Setiap sel yang dipakai modem, diurutkan menurut kualitas rata-rata pada periode ini.",
+      "empty": "Data belum cukup. Sel muncul di sini setelah dipakai modem selama 30 menit.",
+      "suggest_title": "Ada sel yang lebih baik",
+      "suggest_body": "{{cell}} rata-rata {{gain}} dB lebih baik kualitas sinyalnya daripada sel saat ini. Mengunci ke sel itu dapat memberi koneksi yang lebih stabil dan cepat.",
+      "lock_band": "Penguncian band",
+      "lock_tower": "Penguncian menara",
+      "on_best": "Anda berada di sel terbaik",
+      "time_on": "{{time}} di sel ini",
+      "current": "Saat ini"
+    },
+    "storage": "{{days}} hari tersimpan, {{size}}.",
+    "storage_hint_label": "Tentang penyimpanan riwayat",
+    "storage_hint": "Titik ditulis ke flash setiap 15 menit agar flash awet. Hari yang lebih lama dihapus otomatis.",
+    "storage_link": "Ubah"
+  },
+  "usage": {
+    "page": {
+      "title": "Paket Data & Suhu",
+      "description": "Peringatan sebelum paket data habis atau modem terlalu panas."
+    },
+    "errors": {
+      "load_failed": "Tidak dapat memuat pengaturan",
+      "save_failed": "Tidak dapat menyimpan pengaturan",
+      "invalid_limit": "Masukkan ukuran paket di atas 0 GB",
+      "invalid_billing_day": "Tanggal tagihan harus 1 sampai 28",
+      "invalid_used": "Masukkan pemakaian sebagai angka, misalnya 12.5",
+      "invalid_temperature": "Pilih suhu antara 50 dan 100 °C"
+    },
+    "retry": "Coba lagi",
+    "unsaved": "Perubahan belum disimpan",
+    "discard": "Buang",
+    "save": "Simpan",
+    "alerts_link": "Pilih tujuan peringatan",
+    "toast": {
+      "plan_saved": "Paket data disimpan",
+      "temp_saved": "Peringatan suhu disimpan",
+      "history_saved": "Pengaturan riwayat disimpan"
+    },
+    "plan": {
+      "title": "Paket data",
+      "description": "Menghitung lalu lintas periode tagihan ini dan memperingatkan sebelum paket habis.",
+      "used_up": "Paket habis",
+      "percent": "{{pct}} % terpakai",
+      "resets": "Diatur ulang pada {{date}}, {{days}} hari lagi",
+      "enabled": "Pantau paket saya",
+      "size": "Ukuran paket",
+      "billing_day": "Tanggal tagihan",
+      "warn_at": "Peringatkan pada",
+      "used_so_far": "Terpakai pada periode ini",
+      "used_hint": "Masukkan pemakaian yang ditampilkan operator sekali saja agar hitungan selaras. Anda mendapat peringatan pada level yang dipilih dan lagi pada 100 %."
+    },
+    "temp": {
+      "title": "Suhu",
+      "description": "Memperingatkan saat modem panas lebih dari sesaat.",
+      "current": "Sekarang",
+      "enabled": "Peringatan suhu",
+      "alert_at": "Peringatkan pada",
+      "hint": "Peringatan hilang setelah modem turun 5 °C di bawah batas. Panas berkepanjangan memperlambat modem dan memperpendek umurnya."
+    },
+    "history": {
+      "title": "Riwayat sinyal",
+      "description": "Menyimpan catatan per menit di modem.",
+      "enabled": "Rekam riwayat",
+      "keep": "Hari disimpan",
+      "hint": "Tiga puluh hari memakan sekitar 3 MB.",
+      "open": "Buka Riwayat Sinyal",
+      "recording": "Merekam",
+      "off": "Mati"
+    }
+  },
+  "backup": {
+    "page": {
+      "title": "Cadangan & Pemulihan",
+      "description": "Simpan semua pengaturan QManager ke file, lalu muat kembali setelah reset atau di modem lain."
+    },
+    "errors": {
+      "download_failed": "Tidak dapat membuat cadangan",
+      "too_large": "File terlalu besar untuk cadangan pengaturan",
+      "not_a_backup": "Ini bukan cadangan pengaturan QManager",
+      "bad_member": "Cadangan berisi sesuatu yang tidak terduga dan tidak dipakai",
+      "write_failed": "Beberapa pengaturan tidak dapat ditulis",
+      "failed": "Modem tidak menjawab"
+    },
+    "toast": {
+      "downloaded": "Cadangan diunduh",
+      "restored": "{{n}} file pengaturan dipulihkan"
+    },
+    "save": {
+      "title": "Cadangkan",
+      "description": "Mengunduh satu file kecil berisi pengaturan Anda.",
+      "included_title": "Termasuk",
+      "included": "Profil, skenario, APN, kunci band dan menara, peringatan, Watchdog, Cell Guard, peta menara, paket data, pengaturan jaringan dan TTL.",
+      "excluded": "Kata sandi dan token bot tidak pernah dimasukkan ke file. Masukkan lagi setelah pemulihan.",
+      "download": "Unduh cadangan"
+    },
+    "restore": {
+      "title": "Pulihkan",
+      "description": "Muat file cadangan. Anda melihat isinya sebelum ada yang berubah.",
+      "created": "Dibuat",
+      "version": "Versi QManager",
+      "model": "Modem",
+      "files": "File pengaturan",
+      "show_files": "Tampilkan file",
+      "overwrite_note": "Pemulihan mengganti pengaturan ini di modem. Mulai ulang untuk menerapkannya.",
+      "done": "{{n}} file pengaturan dipulihkan",
+      "secrets_title": "Masukkan lagi",
+      "reboot_note": "Mulai ulang modem agar semua pengaturan berlaku.",
+      "pick_hint": "Pilih file cadangan yang dibuat dengan Unduh cadangan.",
+      "cancel": "Batal",
+      "restore": "Pulihkan",
+      "choose": "Pilih file"
+    },
+    "secret": {
+      "telegram_bot_token": "Token bot Telegram",
+      "email_app_password": "Kata sandi aplikasi email",
+      "discord_bot_token": "Token bot Discord"
+    },
+    "confirm": {
+      "title": "Pulihkan pengaturan ini?",
+      "description": "Pengaturan dalam file menggantikan yang sekarang. Ini tidak dapat dibatalkan, jadi unduh dulu cadangan pengaturan saat ini jika mungkin diperlukan."
+    },
+    "reboot": {
+      "title": "Mulai ulang sekarang?",
+      "description": "Pengaturan sudah dipulihkan. Mulai ulang agar semua layanan memakainya.",
+      "later": "Nanti",
+      "rebooting": "Memulai ulang…",
+      "now": "Mulai ulang sekarang"
     }
   }
 }

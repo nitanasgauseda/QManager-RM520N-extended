@@ -395,7 +395,10 @@
       "profile_deactivated": "Profilo disattivato",
       "tower_failover": "Failover blocco BTS",
       "suspicious_cell": "Cella sospetta",
-      "new_cell": "Nuova cella"
+      "new_cell": "Nuova cella",
+      "data_limit": "Piano dati",
+      "temperature_high": "Temperatura alta",
+      "temperature_normal": "Temperatura normale"
     }
   },
   "connection_quality": {

@@ -395,7 +395,10 @@
       "profile_deactivated": "Profile Deactivated",
       "tower_failover": "Tower Lock Failover",
       "suspicious_cell": "Suspicious Cell",
-      "new_cell": "New Cell"
+      "new_cell": "New Cell",
+      "data_limit": "Data Plan",
+      "temperature_high": "High Temperature",
+      "temperature_normal": "Temperature Normal"
     }
   },
   "connection_quality": {

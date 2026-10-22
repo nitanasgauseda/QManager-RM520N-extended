@@ -23,6 +23,10 @@ export interface MapViewProps {
   home: LatLon | null;
   serving: (MapTower & { corrected: boolean }) | null;
   others: MapTower[];
+  /** Towers from the last Cell Scanner sweep. */
+  scanned: MapTower[];
+  /** The tower being aimed at: drawn as a dashed line from home. */
+  aim: LatLon | null;
   /** Timing-advance distance, metres: drawn as a ring around home. */
   taRadiusM: number | null;
   mode: MapMode;
@@ -64,6 +68,7 @@ export function MapView(props: MapViewProps) {
   const tiles = useRef<Leaflet.TileLayer | null>(null);
   const overlay = useRef<Leaflet.LayerGroup | null>(null);
   const fitted = useRef(0);
+  const aimed = useRef("");
   const latest = useRef(props);
 
   useEffect(() => {
@@ -107,7 +112,7 @@ export function MapView(props: MapViewProps) {
   // Overlay, redrawn from props on every render that changes them.
   useEffect(() => {
     draw();
-  }, [props.home, props.serving, props.others, props.taRadiusM, props.mode]);
+  }, [props.home, props.serving, props.others, props.scanned, props.aim, props.taRadiusM, props.mode]);
 
   function draw() {
     const lf = L.current;
@@ -119,7 +124,7 @@ export function MapView(props: MapViewProps) {
       tiles.current = lf.tileLayer(t.url, { attribution: t.attribution, maxZoom: t.maxZoom }).addTo(m);
     }
     g.clearLayers();
-    const { home, serving, others, taRadiusM, mode } = latest.current;
+    const { home, serving, others, scanned, aim, taRadiusM, mode } = latest.current;
 
     for (const o of others) {
       lf.circleMarker([o.at.lat, o.at.lon], {
@@ -130,6 +135,27 @@ export function MapView(props: MapViewProps) {
       })
         .bindPopup(escapeHtml(o.label))
         .addTo(g);
+    }
+
+    for (const o of scanned) {
+      lf.circleMarker([o.at.lat, o.at.lon], {
+        radius: 7,
+        weight: 2,
+        className: "stroke-primary fill-primary-container",
+        fillOpacity: 0.95,
+      })
+        .bindPopup(escapeHtml(o.label))
+        .addTo(g);
+    }
+
+    if (home && aim) {
+      lf.polyline(
+        [
+          [home.lat, home.lon],
+          [aim.lat, aim.lon],
+        ],
+        { weight: 3, dashArray: "8 6", className: "stroke-warning", interactive: false },
+      ).addTo(g);
     }
 
     if (home && taRadiusM) {
@@ -196,6 +222,17 @@ export function MapView(props: MapViewProps) {
       else m.setView(pts[0], 14);
       fitted.current = pts.length;
     }
+    const aimSig = home && aim ? `${aim.lat},${aim.lon}` : "";
+    if (aimSig && aimSig !== aimed.current && home && aim) {
+      m.fitBounds(
+        [
+          [home.lat, home.lon],
+          [aim.lat, aim.lon],
+        ],
+        { padding: [48, 48], maxZoom: 16 },
+      );
+    }
+    aimed.current = aimSig;
     m.getContainer().style.cursor = mode === "view" ? "" : "crosshair";
   }
 

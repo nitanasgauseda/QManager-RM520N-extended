@@ -2653,6 +2653,18 @@
       "retry": "Coba lagi",
       "no_sim_title": "SIM tidak terdeteksi",
       "no_sim_desc": "Pasang SIM agar modem tahu menara operator mana yang ditampilkan."
+    },
+    "scan": {
+      "title": "Menara hasil pindai",
+      "description": "Jalankan Pemindai Sel untuk melihat semua menara di sekitar Anda pada peta.",
+      "description_at": "Dari pemindaian sel pada {{time}}. Pilih menara untuk menggambar arahnya.",
+      "empty": "Belum ada pemindaian.",
+      "open_scanner": "Buka Pemindai Sel",
+      "not_in_db": "Tidak ada di basis data",
+      "compass_short": "kompas ≈ {{deg}}°",
+      "set_home_first": "Atur lokasi Anda untuk melihat arah",
+      "aim": "Arahkan",
+      "aiming": "Diarahkan"
     }
   }
 }

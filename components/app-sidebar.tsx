@@ -131,6 +131,7 @@ const navSystem: NavItem[] = [
         url: "/system-settings/system-health-check",
       },
       { t_key: "languages", url: "/system-settings/languages" },
+      { t_key: "backup", url: "/system-settings/backup" },
     ],
   },
   {
@@ -163,8 +164,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         items: [
           { t_key: "latency_monitor", url: "/monitoring/latency" },
           { t_key: "network_events", url: "/monitoring/events" },
+          { t_key: "signal_history", url: "/monitoring/signal-history" },
         ],
       },
+      { t_key: "usage", url: "/monitoring/usage", icon: "thermostat" },
       { t_key: "alerts", url: "/monitoring/alerts", icon: "notifications" },
       {
         t_key: "watchdog",

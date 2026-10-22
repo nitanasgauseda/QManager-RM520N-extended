@@ -395,7 +395,10 @@
       "profile_deactivated": "配置文件已停用",
       "tower_failover": "基站锁定故障切换",
       "suspicious_cell": "可疑小区",
-      "new_cell": "新小区"
+      "new_cell": "新小区",
+      "data_limit": "流量套餐",
+      "temperature_high": "温度过高",
+      "temperature_normal": "温度恢复正常"
     }
   },
   "connection_quality": {

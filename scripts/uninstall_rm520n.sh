@@ -685,6 +685,8 @@ if [ "$PURGE" = "1" ]; then
     # Sites monitor history sits directly under $QMANAGER_ROOT and would block the rmdir below.
     rm -rf "$QMANAGER_ROOT/sites"
     info "Purged sites monitor history"
+    rm -rf "$QMANAGER_ROOT/sighist"
+    info "Purged long-term signal history"
 elif [ -d "$CONF_DIR" ]; then
     warn "Config preserved at $CONF_DIR, /etc/qmanager.env, /etc/qmanager-secrets and /etc/qmanager-backups (use --purge to remove)"
     warn "/etc/qmanager-secrets still holds the Discord token / email app password (root-only, 0700)"

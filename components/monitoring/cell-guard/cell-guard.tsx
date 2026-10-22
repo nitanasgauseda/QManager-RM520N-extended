@@ -342,10 +342,12 @@ function RayhunterCard({ state, act, busy }: { state: CellGuardState; act: Act; 
         </div>
 
         <div className="flex flex-col gap-[0.3125rem]">
-          <span className="text-on-surface-variant px-1 text-[0.6875rem] font-semibold tracking-[0.09em] uppercase">
-            {t(`${K}.rayhunter.warnings`)}
-          </span>
-          {!live || live.warnings.length === 0 ? (
+          {rh.diag_present || live ? (
+            <span className="text-on-surface-variant px-1 text-[0.6875rem] font-semibold tracking-[0.09em] uppercase">
+              {t(`${K}.rayhunter.warnings`)}
+            </span>
+          ) : null}
+          {!rh.diag_present && !live ? null : !live || live.warnings.length === 0 ? (
             <p className="text-on-surface-variant px-1 text-sm">
               {rh.running ? t(`${K}.rayhunter.no_warnings`) : t(`${K}.rayhunter.not_running_hint`)}
             </p>

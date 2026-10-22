@@ -2653,6 +2653,18 @@
       "retry": "Try again",
       "no_sim_title": "No SIM detected",
       "no_sim_desc": "Insert a SIM so the modem knows which operator's towers to show."
+    },
+    "scan": {
+      "title": "Scanned towers",
+      "description": "Run the Cell Scanner to see every tower around you, located on the map.",
+      "description_at": "From the Cell Scanner run on {{time}}. Pick a tower to draw its direction.",
+      "empty": "No scan yet.",
+      "open_scanner": "Open Cell Scanner",
+      "not_in_db": "Not in database",
+      "compass_short": "compass ≈ {{deg}}°",
+      "set_home_first": "Set your location to see the direction",
+      "aim": "Aim",
+      "aiming": "Aiming"
     }
   }
 }

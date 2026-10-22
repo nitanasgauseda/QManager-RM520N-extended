@@ -395,7 +395,10 @@
       "profile_deactivated": "Profil Dinonaktifkan",
       "tower_failover": "Failover Penguncian Tower",
       "suspicious_cell": "Sel Mencurigakan",
-      "new_cell": "Sel Baru"
+      "new_cell": "Sel Baru",
+      "data_limit": "Paket Data",
+      "temperature_high": "Suhu Tinggi",
+      "temperature_normal": "Suhu Normal"
     }
   },
   "connection_quality": {

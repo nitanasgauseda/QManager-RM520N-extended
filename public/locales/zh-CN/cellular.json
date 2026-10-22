@@ -2653,6 +2653,18 @@
       "retry": "重试",
       "no_sim_title": "未检测到 SIM 卡",
       "no_sim_desc": "请插入 SIM 卡，以便调制解调器知道要显示哪家运营商的基站。"
+    },
+    "scan": {
+      "title": "扫描到的基站",
+      "description": "运行小区扫描，即可在地图上看到周围所有基站。",
+      "description_at": "来自 {{time}} 的小区扫描。选择一个基站以绘制其方向。",
+      "empty": "尚无扫描结果。",
+      "open_scanner": "打开小区扫描",
+      "not_in_db": "数据库中没有",
+      "compass_short": "指南针 ≈ {{deg}}°",
+      "set_home_first": "设置您的位置以查看方向",
+      "aim": "对准",
+      "aiming": "已对准"
     }
   }
 }

@@ -2653,6 +2653,18 @@
       "retry": "重試",
       "no_sim_title": "未偵測到 SIM 卡",
       "no_sim_desc": "請插入 SIM 卡，讓數據機知道要顯示哪家電信業者的基地台。"
+    },
+    "scan": {
+      "title": "掃描到的基地台",
+      "description": "執行細胞掃描，即可在地圖上看到周圍所有基地台。",
+      "description_at": "來自 {{time}} 的細胞掃描。選擇一個基地台以繪製其方向。",
+      "empty": "尚無掃描結果。",
+      "open_scanner": "開啟細胞掃描",
+      "not_in_db": "資料庫中沒有",
+      "compass_short": "指南針 ≈ {{deg}}°",
+      "set_home_first": "設定您的位置以查看方向",
+      "aim": "對準",
+      "aiming": "已對準"
     }
   }
 }

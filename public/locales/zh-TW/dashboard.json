@@ -395,7 +395,10 @@
       "profile_deactivated": "設定檔已停用",
       "tower_failover": "基站鎖定容錯移轉",
       "suspicious_cell": "可疑細胞",
-      "new_cell": "新細胞"
+      "new_cell": "新細胞",
+      "data_limit": "數據方案",
+      "temperature_high": "溫度過高",
+      "temperature_normal": "溫度恢復正常"
     }
   },
   "connection_quality": {

@@ -26,6 +26,9 @@ export const EVENT_LABELS: Record<NetworkEventType, string> = {
   tower_failover: "Tower Lock Failover",
   suspicious_cell: "Suspicious Cell",
   new_cell: "New Cell",
+  data_limit: "Data Plan",
+  temperature_high: "High Temperature",
+  temperature_normal: "Temperature Normal",
 };
 
 /** Tab categories used by the monitoring Network Events card */
@@ -58,6 +61,9 @@ export const EVENT_TAB_CATEGORIES: Record<NetworkEventType, EventTabCategory> =
     tower_failover: "dataConnection",
     suspicious_cell: "networkMode",
     new_cell: "bandChanges",
+    data_limit: "dataConnection",
+    temperature_high: "networkMode",
+    temperature_normal: "networkMode",
   };
 
 /** The filter rail on `/monitoring`, in render order. `all` is not a category. */

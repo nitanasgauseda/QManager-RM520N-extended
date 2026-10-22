@@ -22,9 +22,12 @@ import {
   distanceM,
   magneticBearing,
   taAgreement,
+  towerIdFromCell,
   towerKey,
   type LatLon,
 } from "@/lib/tower-geo";
+import { Tag } from "@/components/ui/tag";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { calculateLteDistance, calculateNrDistance } from "@/types/modem-status";
 
@@ -48,6 +51,17 @@ function fmtDistance(m: number): string {
   return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(m < 10_000 ? 2 : 1)} km`;
 }
 
+interface ScannedTower {
+  key: string;
+  r: "L" | "N";
+  mnc: number;
+  id: number;
+  provider: string;
+  bands: number[];
+  rsrp: number;
+  at: LatLon | null;
+}
+
 function Row({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
   return (
     <div className={ROW}>
@@ -58,7 +72,7 @@ function Row({ label, value, children }: { label: string; value?: string; childr
 }
 
 export default function TowerMapComponent() {
-  const { t } = useTranslation("cellular");
+  const { t, i18n } = useTranslation("cellular");
   const { data, isLoading: statusLoading, error: statusError } = useModemStatus();
 
   const plmn = simPlmnFromImsi(data?.device?.imsi);
@@ -67,6 +81,7 @@ export default function TowerMapComponent() {
   const tm = useTowerMap(mcc);
 
   const [mode, setMode] = useState<MapMode>("view");
+  const [aimKey, setAimKey] = useState<string | null>(null);
   const [layer, setLayer] = useState<BaseLayer>("map");
 
   // Serving cell identity: the NR gNB in SA, the LTE eNB otherwise (NSA anchors on LTE).
@@ -91,10 +106,10 @@ export default function TowerMapComponent() {
   const agreement = dist !== null && taM !== null ? taAgreement(dist, taM) : null;
   const idLabel = radio === "N" ? "gNB" : "eNB";
 
-  const towerLabel = (id: number, at: LatLon) => {
-    if (!home) return `${idLabel} ${id}`;
+  const towerLabel = (id: number, at: LatLon, prefix: string = idLabel) => {
+    if (!home) return `${prefix} ${id}`;
     const b = bearingDeg(home, at);
-    return `${idLabel} ${id} · ${fmtDistance(distanceM(home, at))} · ${Math.round(b)}° ${compassPoint(b)}`;
+    return `${prefix} ${id} · ${fmtDistance(distanceM(home, at))} · ${Math.round(b)}° ${compassPoint(b)}`;
   };
 
   const serving = useMemo(
@@ -119,6 +134,49 @@ export default function TowerMapComponent() {
       .filter((o) => distanceM(centre, o.at) <= NEARBY_M);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tm.index, tm.state?.overrides, mnc, mcc, radio, servingId, home?.lat, home?.lon, towerAt?.lat, towerAt?.lon]);
+
+  // Towers from the last Cell Scanner sweep, located through the same index and corrections.
+  const indexMap = useMemo(() => {
+    const m = new Map<string, { lat: number; lon: number }>();
+    for (const r of tm.index?.towers ?? []) m.set(`${r.r}|${r.m}|${r.e}`, { lat: r.la, lon: r.lo });
+    return m;
+  }, [tm.index]);
+
+  const scanned: ScannedTower[] = useMemo(() => {
+    const cells = tm.state?.scan?.cells ?? [];
+    if (mcc === null) return [];
+    const groups = new Map<string, ScannedTower>();
+    for (const c of cells) {
+      if (c.mcc !== mcc || !c.cell) continue;
+      const r: "L" | "N" = c.type === "NR5G" ? "N" : "L";
+      const id = towerIdFromCell(r, c.cell);
+      const k = `${r}-${towerKey(mcc, c.mnc, id)}`;
+      const g = groups.get(k) ?? { key: k, r, mnc: c.mnc, id, provider: c.provider, bands: [], rsrp: c.rsrp, at: null };
+      if (c.band && !g.bands.includes(c.band)) g.bands.push(c.band);
+      if (c.rsrp > g.rsrp) g.rsrp = c.rsrp;
+      groups.set(k, g);
+    }
+    const out = [...groups.values()];
+    for (const g of out) {
+      g.bands.sort((a, b) => a - b);
+      g.at = tm.state?.overrides[towerKey(mcc, g.mnc, g.id)] ?? indexMap.get(`${g.r}|${g.mnc}|${g.id}`) ?? null;
+    }
+    return out.sort((a, b) => b.rsrp - a.rsrp);
+  }, [tm.state?.scan, tm.state?.overrides, indexMap, mcc]);
+
+  const scannedOnMap: MapTower[] = useMemo(
+    () =>
+      scanned
+        .filter((g) => g.at)
+        .map((g) => ({
+          key: `scan-${g.key}`,
+          at: g.at!,
+          label: `${g.provider} · ${towerLabel(g.id, g.at!, g.r === "N" ? "gNB" : "eNB")} · ${g.rsrp} dBm`,
+        })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scanned, home?.lat, home?.lon],
+  );
+  const aim = scanned.find((g) => g.key === aimKey && g.at)?.at ?? null;
 
   // --- Handlers (each finished mutation toasts once) ---------------------------
   const onMapClick = async (p: LatLon) => {
@@ -238,6 +296,8 @@ export default function TowerMapComponent() {
             home={home}
             serving={serving}
             others={others}
+            scanned={scannedOnMap}
+            aim={aim}
             taRadiusM={taM}
             mode={mode}
             layer={layer}
@@ -355,6 +415,93 @@ export default function TowerMapComponent() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className={CARD}>
+        <CardHeader className={PAD}>
+          <CardTitle className="text-lg leading-tight">{t(`${K}.scan.title`)}</CardTitle>
+          <CardDescription className="text-on-surface-variant text-sm">
+            {tm.state?.scan
+              ? t(`${K}.scan.description_at`, {
+                  time: new Date(tm.state.scan.at * 1000).toLocaleString(i18n.language, { dateStyle: "short", timeStyle: "short" }),
+                })
+              : t(`${K}.scan.description`)}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className={cn(PAD, "flex flex-col gap-[0.3125rem]")}>
+          {scanned.length === 0 ? (
+            <p className="text-on-surface-variant py-2 text-sm text-pretty">
+              {t(`${K}.scan.empty`)}{" "}
+              <Link href="/cellular/cell-scanner" className="text-primary-on-surface font-medium underline-offset-4 hover:underline">
+                {t(`${K}.scan.open_scanner`)}
+              </Link>
+            </p>
+          ) : (
+            scanned.map((g) => {
+              const d = home && g.at ? distanceM(home, g.at) : null;
+              const b = home && g.at ? bearingDeg(home, g.at) : null;
+              const selected = aimKey === g.key;
+              return (
+                <div
+                  key={g.key}
+                  className={cn(
+                    "flex flex-col gap-2 rounded-card px-4 py-3 @2xl/card:flex-row @2xl/card:items-center @2xl/card:justify-between",
+                    selected ? "bg-primary-container text-on-primary-container" : "bg-surface-container",
+                  )}
+                >
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="flex flex-wrap items-center gap-1.5 text-sm font-semibold">
+                      <span className="truncate">{g.provider}</span>
+                      <span className="text-[0.8125rem] font-medium tabular-nums opacity-80">
+                        {g.r === "N" ? "gNB" : "eNB"} {g.id}
+                      </span>
+                    </span>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {g.bands.map((band) => (
+                        <Tag key={band} variant={g.r === "N" ? "nr" : "lte"}>
+                          {g.r === "N" ? `n${band}` : `B${band}`}
+                        </Tag>
+                      ))}
+                      <span className="text-xs font-semibold tabular-nums">{g.rsrp} dBm</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.8125rem] font-semibold tabular-nums">
+                    {!g.at ? (
+                      <Badge variant="muted">
+                        <MaterialSymbol name="location_on" size={12} />
+                        {t(`${K}.scan.not_in_db`)}
+                      </Badge>
+                    ) : d !== null && b !== null ? (
+                      <>
+                        <span>{fmtDistance(d)}</span>
+                        <span>
+                          {Math.round(b)}° {compassPoint(b)}
+                        </span>
+                        <span className="opacity-80">
+                          {t(`${K}.scan.compass_short`, { deg: Math.round(magneticBearing(b)) })}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="opacity-80">{t(`${K}.scan.set_home_first`)}</span>
+                    )}
+                    {g.at && home ? (
+                      <Button
+                        type="button"
+                        size="action"
+                        variant={selected ? "default" : "tonal-neutral"}
+                        onClick={() => setAimKey(selected ? null : g.key)}
+                        aria-pressed={selected}
+                      >
+                        <MaterialSymbol name="explore" size={18} />
+                        {selected ? t(`${K}.scan.aiming`) : t(`${K}.scan.aim`)}
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

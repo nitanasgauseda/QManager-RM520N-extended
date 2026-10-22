@@ -50,7 +50,10 @@
     "about_device": "关于设备",
     "support": "支持",
     "donate": "捐赠项目",
-    "traffic_engine": "流量引擎"
+    "traffic_engine": "流量引擎",
+    "signal_history": "信号历史",
+    "usage": "流量套餐与温度",
+    "backup": "备份与恢复"
   },
   "header": {
     "role": "管理员"

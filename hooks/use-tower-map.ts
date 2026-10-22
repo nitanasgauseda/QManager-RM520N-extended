@@ -15,11 +15,26 @@ export interface TowerDbSummary {
   towers: number;
 }
 
+export interface ScanCell {
+  /** "LTE" or "NR5G" */
+  type: string;
+  mcc: number;
+  mnc: number;
+  /** Full cell identity (ECI / NCI), decimal */
+  cell: number;
+  pci: number;
+  band: number;
+  rsrp: number;
+  provider: string;
+}
+
 export interface TowerMapState {
   home: LatLon | null;
   overrides: Record<string, LatLon>;
   databases: TowerDbSummary[];
   attribution: string;
+  /** The last Cell Scanner sweep, kept across reboots. */
+  scan: { at: number; cells: ScanCell[] } | null;
 }
 
 export interface TowerMutationResult extends MutationResult {
@@ -68,6 +83,7 @@ export function useTowerMap(mcc: number | null) {
         overrides: json.overrides ?? {},
         databases: json.databases ?? [],
         attribution: json.attribution ?? "",
+        scan: json.scan && Array.isArray(json.scan.cells) ? json.scan : null,
       });
       setError(null);
     } catch (e) {

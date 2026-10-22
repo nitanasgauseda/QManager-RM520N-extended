@@ -19,5 +19,6 @@
 - **Operator.** The MCC/MNC comes from the SIM IMSI (`simPlmnFromImsi`), not the serving PLMN.
 - **Corrections win.** A user correction replaces the database position everywhere (map, distance, Cell Guard).
 - **Leaflet** loads inside an effect (`next/dynamic`, `ssr:false`); the map redraws only when its inputs change, and refits only when home or the tower first appears. Tiles: OpenStreetMap and Esri World Imagery, loaded by the browser.
+- **Scanned towers.** GET also returns `scan` — the last Cell Scanner sweep (`/tmp/qmanager_cell_scan_result.json`, copied to `/etc/qmanager/towers/last_scan.json` so it survives a reboot). The page groups cells per eNB/gNB (same divisors as the index), locates them through the index and corrections, and draws an aim line with distance and true/compass bearing. Only `[0-9][0-9][0-9].json` files count as databases.
 - **Location** is set by tapping the map: QManager is served over `http://`, where browsers refuse geolocation.
 - **BusyBox awk** on the build host has no math functions; the index builder uses only arithmetic, and Cell Guard's distance check uses `jq`.

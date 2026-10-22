@@ -17,6 +17,8 @@ cgi_handle_options
 CONF="${QM_TOWER_CONF:-/etc/qmanager/tower_map.json}"
 DB_DIR="${QM_TOWER_DB_DIR:-/etc/qmanager/towers}"
 MIRROR="${QM_TOWER_MIRROR:-https://github.com/NorthveilSystems/treadstone-celldata/releases/latest/download}"
+SCAN_TMP="${QM_TOWER_SCAN_TMP:-/tmp/qmanager_cell_scan_result.json}"
+SCAN_SAVED="${QM_TOWER_DB_DIR:-/etc/qmanager/towers}/last_scan.json"
 ATTRIBUTION="Cell tower data from OpenCelliD (https://opencellid.org), CC BY-SA 4.0"
 
 conf_json() {
@@ -111,16 +113,30 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     fi
 
     dbs="[]"
-    for f in "$DB_DIR"/*.json; do
+    for f in "$DB_DIR"/[0-9][0-9][0-9].json; do
         [ -s "$f" ] || continue
         _row=$(jq -c '{mcc, generated, built, towers: (.towers | length)}' "$f" 2>/dev/null) || continue
         dbs=$(printf '%s' "$dbs" | jq -c --argjson r "$_row" '. + [$r]')
     done
-    jq -n --argjson c "$(conf_json)" --argjson dbs "$dbs" --arg attr "$ATTRIBUTION" '{
+    # The last Cell Scanner sweep lives in /tmp; keep a copy so the map still shows it after a reboot.
+    scan='null'
+    if [ -s "$SCAN_TMP" ] && { [ ! -f "$SCAN_SAVED" ] || [ "$SCAN_TMP" -nt "$SCAN_SAVED" ]; }; then
+        if jq -e 'type == "array"' "$SCAN_TMP" >/dev/null 2>&1; then
+            mkdir -p "$DB_DIR" 2>/dev/null
+            jq -c --argjson t "$(date +%s)" '{at: $t, cells: .}' "$SCAN_TMP" > "$SCAN_SAVED.tmp" 2>/dev/null \
+                && mv "$SCAN_SAVED.tmp" "$SCAN_SAVED" 2>/dev/null
+        fi
+    fi
+    [ -s "$SCAN_SAVED" ] && scan=$(jq -c '{at, cells: [.cells[] | {type: .networkType, mcc, mnc, cell: .cellID,
+        pci, band, rsrp: .signalStrength, provider}]}' "$SCAN_SAVED" 2>/dev/null)
+    [ -n "$scan" ] || scan='null'
+
+    jq -n --argjson c "$(conf_json)" --argjson dbs "$dbs" --arg attr "$ATTRIBUTION" --argjson scan "$scan" '{
         success: true,
         home: ($c.home // null),
         overrides: ($c.overrides // {}),
         databases: $dbs,
+        scan: $scan,
         attribution: $attr
     }'
     exit 0

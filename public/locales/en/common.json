@@ -854,6 +854,12 @@
         },
         "suspicious_cell": {
           "name": "Suspicious cell"
+        },
+        "data_limit": {
+          "name": "Data plan limit"
+        },
+        "temperature": {
+          "name": "High temperature"
         }
       },
       "reason": {
@@ -1717,6 +1723,175 @@
     "errors": {
       "load_failed": "Cell Guard could not load.",
       "save_failed": "Could not save. Try again."
+    }
+  },
+  "longHistory": {
+    "page": {
+      "title": "Signal History",
+      "description": "Signal, traffic and temperature recorded every minute, kept on the modem for weeks.",
+      "refresh": "Refresh",
+      "retry": "Try again"
+    },
+    "range": {
+      "label": "Time range",
+      "24h": "24 h",
+      "7d": "7 days",
+      "30d": "30 days"
+    },
+    "errors": {
+      "load_failed": "Could not load the history"
+    },
+    "empty": {
+      "title": "No history yet",
+      "description": "The modem writes one point a minute. The first points appear here within 15 minutes."
+    },
+    "signal": {
+      "title": "Signal",
+      "description": "Average signal strength and quality per time slot.",
+      "rsrp_aria": "Signal strength over time",
+      "sinr_aria": "Signal quality over time"
+    },
+    "traffic": {
+      "title": "Traffic and temperature",
+      "description": "How much data moved, and how warm the modem ran.",
+      "downloaded": "Downloaded",
+      "uploaded": "Uploaded",
+      "aria": "Average speed over time",
+      "download": "Download",
+      "upload": "Upload",
+      "temp_aria": "Modem temperature over time",
+      "temp_avg": "Average",
+      "temp_max": "Highest"
+    },
+    "advisor": {
+      "title": "Best cells here",
+      "description": "Each cell the modem used, ranked by its average quality over this period.",
+      "empty": "Not enough data yet. A cell shows here after the modem has used it for 30 minutes.",
+      "suggest_title": "A better cell is available",
+      "suggest_body": "{{cell}} averaged {{gain}} dB better signal quality than the cell you are on now. Locking to it may give a steadier, faster link.",
+      "lock_band": "Band locking",
+      "lock_tower": "Tower locking",
+      "on_best": "You are on the best cell",
+      "time_on": "{{time}} on this cell",
+      "current": "Current"
+    },
+    "storage": "{{days}} days stored, {{size}}.",
+    "storage_hint_label": "About history storage",
+    "storage_hint": "Points are written to flash once every 15 minutes to spare it. Older days are deleted automatically.",
+    "storage_link": "Change"
+  },
+  "usage": {
+    "page": {
+      "title": "Data Plan & Temperature",
+      "description": "Warnings before your data plan runs out or the modem overheats."
+    },
+    "errors": {
+      "load_failed": "Could not load the settings",
+      "save_failed": "Could not save the settings",
+      "invalid_limit": "Enter a plan size above 0 GB",
+      "invalid_billing_day": "The billing day must be 1 to 28",
+      "invalid_used": "Enter the used amount as a number, like 12.5",
+      "invalid_temperature": "Choose a temperature between 50 and 100 °C"
+    },
+    "retry": "Try again",
+    "unsaved": "Unsaved changes",
+    "discard": "Discard",
+    "save": "Save",
+    "alerts_link": "Choose where alerts go",
+    "toast": {
+      "plan_saved": "Data plan saved",
+      "temp_saved": "Temperature alert saved",
+      "history_saved": "History settings saved"
+    },
+    "plan": {
+      "title": "Data plan",
+      "description": "Counts this billing period's traffic and warns you before the plan runs out.",
+      "used_up": "Plan used up",
+      "percent": "{{pct}} % used",
+      "resets": "Resets on {{date}}, in {{days}} days",
+      "enabled": "Track my plan",
+      "size": "Plan size",
+      "billing_day": "Billing day of month",
+      "warn_at": "Warn at",
+      "used_so_far": "Used so far this period",
+      "used_hint": "Enter what your operator shows as used, once, to line the count up with theirs. You get a warning at the chosen level and again at 100 %."
+    },
+    "temp": {
+      "title": "Temperature",
+      "description": "Warns you when the modem runs hot for more than a moment.",
+      "current": "Now",
+      "enabled": "Temperature alert",
+      "alert_at": "Alert at",
+      "hint": "It clears once the modem cools 5 °C below the limit. Lasting heat slows the modem down and shortens its life."
+    },
+    "history": {
+      "title": "Signal history",
+      "description": "Keeps a minute-by-minute record on the modem.",
+      "enabled": "Record history",
+      "keep": "Days to keep",
+      "hint": "Thirty days take about 3 MB.",
+      "open": "Open Signal History",
+      "recording": "Recording",
+      "off": "Off"
+    }
+  },
+  "backup": {
+    "page": {
+      "title": "Backup & Restore",
+      "description": "Save all QManager settings to a file, and load them back after a reset or on another modem."
+    },
+    "errors": {
+      "download_failed": "Could not create the backup",
+      "too_large": "That file is too large to be a settings backup",
+      "not_a_backup": "This is not a QManager settings backup",
+      "bad_member": "The backup contains something unexpected and was not used",
+      "write_failed": "Some settings could not be written",
+      "failed": "The modem did not answer"
+    },
+    "toast": {
+      "downloaded": "Backup downloaded",
+      "restored": "{{n}} settings files restored"
+    },
+    "save": {
+      "title": "Back up",
+      "description": "Downloads one small file with your settings.",
+      "included_title": "Included",
+      "included": "Profiles, scenarios, APN, band and tower locks, alerts, Watchdog, Cell Guard, tower map, data plan, network and TTL settings.",
+      "excluded": "Passwords and bot tokens are never put in the file. Enter them again after a restore.",
+      "download": "Download backup"
+    },
+    "restore": {
+      "title": "Restore",
+      "description": "Load a backup file. You see what is in it before anything changes.",
+      "created": "Made",
+      "version": "QManager version",
+      "model": "Modem",
+      "files": "Settings files",
+      "show_files": "Show files",
+      "overwrite_note": "Restoring replaces these settings on this modem. A restart applies them.",
+      "done": "{{n}} settings files restored",
+      "secrets_title": "Enter these again",
+      "reboot_note": "Restart the modem so every setting takes effect.",
+      "pick_hint": "Choose a backup file made with Download backup.",
+      "cancel": "Cancel",
+      "restore": "Restore",
+      "choose": "Choose file"
+    },
+    "secret": {
+      "telegram_bot_token": "Telegram bot token",
+      "email_app_password": "Email app password",
+      "discord_bot_token": "Discord bot token"
+    },
+    "confirm": {
+      "title": "Restore these settings?",
+      "description": "The settings in the file replace the current ones. This cannot be undone, so download a backup of the current settings first if you may need them."
+    },
+    "reboot": {
+      "title": "Restart now?",
+      "description": "The settings are restored. A restart makes every service use them.",
+      "later": "Later",
+      "rebooting": "Restarting…",
+      "now": "Restart now"
     }
   }
 }

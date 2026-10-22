@@ -2,11 +2,13 @@
 // nothing here may encode which (event, channel) pairs are possible.
 
 import {
+  GaugeIcon,
   MailIcon,
   MessageCircleIcon,
   MessageSquareIcon,
   RotateCcwIcon,
   SendHorizontalIcon,
+  ThermometerIcon,
   ShieldAlertIcon,
   WifiIcon,
   WifiOffIcon,
@@ -26,6 +28,8 @@ export const EVENT_GLYPH: Record<AlertEventKey, LucideIcon> = {
   connection_restored: WifiIcon,
   reboot: RotateCcwIcon,
   suspicious_cell: ShieldAlertIcon,
+  data_limit: GaugeIcon,
+  temperature: ThermometerIcon,
 };
 
 export const channelNameKey = (channel: AlertChannel) =>
