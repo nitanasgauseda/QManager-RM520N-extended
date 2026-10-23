@@ -1901,7 +1901,7 @@
   "dnsPrivacy": {
     "page": {
       "title": "DNS 隐私",
-      "description": "加密网络中所有设备的 DNS 查询，并在广告和跟踪器加载前将其拦截。",
+      "description": "加密网络中每台设备的 DNS 查询，让运营商无法看到您访问了哪些网站。",
       "refresh": "刷新",
       "retry": "重试"
     },
@@ -1916,18 +1916,10 @@
       "invalid_nextdns_id": "NextDNS ID 为 4 到 16 个字母或数字",
       "invalid_custom_host": "请输入解析器的 TLS 主机名",
       "invalid_custom_ip": "请输入解析器的 IPv4 地址",
-      "too_many_lists": "最多选择 3 个列表",
-      "no_lists": "请至少选择一个列表",
-      "invalid_allow": "允许列表中有一项不是域名",
-      "invalid_deny": "拦截列表中有一项不是域名",
-      "too_many": "每个列表最多 200 个域名",
-      "not_running": "DNS 隐私未运行",
       "redirect_failed": "来自您网络的查询未能到达 DNS 隐私，已重新关闭。您的网络未受影响。"
     },
     "toast": {
-      "saved": "DNS 隐私已保存",
-      "update_started": "正在更新拦截列表",
-      "allowed": "{{domain}} 不再被拦截"
+      "saved": "DNS 隐私已保存"
     },
     "unsaved": "有未保存的更改",
     "save": "保存",
@@ -1956,60 +1948,15 @@
       "state_fallback": "当前使用运营商 DNS",
       "state_on": "已通过 {{provider}} 加密"
     },
-    "block": {
-      "title": "广告和跟踪器拦截",
-      "description": "对网络中所有设备的广告、跟踪器和恶意域名查询不予解析。",
-      "enabled": "拦截广告和跟踪器",
-      "lists": "列表（最多 {{max}} 个）",
-      "domains": "{{n}} 个域名",
-      "list_error": "上次更新失败，正在使用之前的副本",
-      "list_pending": "正在下载…",
-      "memory": "约占用模组 {{mb}} MB 内存。",
-      "capped": "只加载前 {{n}} 个域名。",
-      "allow": "永不拦截",
-      "allow_hint": "每行一个域名，其子域名也会被允许。",
-      "deny": "始终拦截",
-      "state_updating": "正在更新列表",
-      "state_on": "已拦截 {{n}} 个域名",
-      "state_empty": "尚未加载列表",
-      "update": "更新列表"
-    },
-    "list": {
-      "hagezi_light": {
-        "name": "HaGeZi Light",
-        "about": "基础保护，几乎不会影响网站。推荐。"
-      },
-      "hagezi_normal": {
-        "name": "HaGeZi Normal",
-        "about": "更广泛地拦截广告、跟踪器和遥测。"
-      },
-      "hagezi_pro": {
-        "name": "HaGeZi Pro",
-        "about": "严格。部分网站或应用可能需要例外。"
-      },
-      "hagezi_tif_mini": {
-        "name": "HaGeZi Threats",
-        "about": "恶意软件、钓鱼和诈骗域名。"
-      },
-      "stevenblack": {
-        "name": "StevenBlack",
-        "about": "经典的广告和恶意软件 hosts 列表。"
-      }
-    },
     "activity": {
       "title": "活动",
       "description": "自 DNS 隐私上次启动以来的统计。",
       "queries": "查询",
-      "blocked": "已拦截",
       "encrypted": "已加密",
       "fallback": "发给运营商",
       "latency": "平均响应时间",
       "memory": "内存占用",
-      "memory_hint": "DNS 隐私程序当前占用的模组内存。",
-      "top": "拦截最多",
-      "none": "尚未拦截任何内容。",
-      "allow": "允许",
-      "allowed": "已允许"
+      "memory_hint": "DNS 隐私程序当前占用的模组内存。"
     },
     "notice": {
       "not_installed": "缺少 DNS 隐私程序。请安装最新的 QManager 更新。",

@@ -1901,7 +1901,7 @@
   "dnsPrivacy": {
     "page": {
       "title": "Privasi DNS",
-      "description": "Enkripsi pencarian DNS semua perangkat di jaringan Anda dan blokir iklan serta pelacak sebelum dimuat.",
+      "description": "Enkripsi pencarian DNS setiap perangkat di jaringan Anda agar operator tidak dapat membaca situs yang Anda kunjungi.",
       "refresh": "Muat ulang",
       "retry": "Coba lagi"
     },
@@ -1916,18 +1916,10 @@
       "invalid_nextdns_id": "ID NextDNS terdiri dari 4 sampai 16 huruf atau angka",
       "invalid_custom_host": "Masukkan nama host TLS resolver",
       "invalid_custom_ip": "Masukkan alamat IPv4 resolver",
-      "too_many_lists": "Pilih paling banyak 3 daftar",
-      "no_lists": "Pilih setidaknya satu daftar",
-      "invalid_allow": "Daftar izin berisi entri yang bukan domain",
-      "invalid_deny": "Daftar blokir berisi entri yang bukan domain",
-      "too_many": "Satu daftar memuat paling banyak 200 domain",
-      "not_running": "Privasi DNS tidak berjalan",
       "redirect_failed": "Pencarian dari jaringan Anda tidak sampai ke Privasi DNS, jadi fitur ini dimatikan lagi. Internet Anda tidak terpengaruh."
     },
     "toast": {
-      "saved": "Privasi DNS disimpan",
-      "update_started": "Daftar blokir sedang diperbarui",
-      "allowed": "{{domain}} tidak lagi diblokir"
+      "saved": "Privasi DNS disimpan"
     },
     "unsaved": "Perubahan belum disimpan",
     "save": "Simpan",
@@ -1956,60 +1948,15 @@
       "state_fallback": "Saat ini memakai DNS operator",
       "state_on": "Terenkripsi via {{provider}}"
     },
-    "block": {
-      "title": "Pemblokiran iklan & pelacak",
-      "description": "Tidak menjawab pencarian untuk domain iklan, pelacak, dan malware bagi semua perangkat di jaringan Anda.",
-      "enabled": "Blokir iklan dan pelacak",
-      "lists": "Daftar (maks. {{max}})",
-      "domains": "{{n}} domain",
-      "list_error": "Pembaruan terakhir gagal; salinan sebelumnya yang dipakai",
-      "list_pending": "Mengunduh…",
-      "memory": "Memakai sekitar {{mb}} MB memori modem.",
-      "capped": "Hanya {{n}} domain pertama yang dimuat.",
-      "allow": "Jangan pernah blokir",
-      "allow_hint": "Satu domain per baris. Subdomainnya juga diizinkan.",
-      "deny": "Selalu blokir",
-      "state_updating": "Memperbarui daftar",
-      "state_on": "{{n}} domain diblokir",
-      "state_empty": "Belum ada daftar yang dimuat",
-      "update": "Perbarui daftar"
-    },
-    "list": {
-      "hagezi_light": {
-        "name": "HaGeZi Light",
-        "about": "Perlindungan dasar yang seharusnya tidak merusak situs. Disarankan."
-      },
-      "hagezi_normal": {
-        "name": "HaGeZi Normal",
-        "about": "Pemblokiran iklan, pelacak, dan telemetri yang lebih luas."
-      },
-      "hagezi_pro": {
-        "name": "HaGeZi Pro",
-        "about": "Ketat. Beberapa situs atau aplikasi mungkin perlu pengecualian."
-      },
-      "hagezi_tif_mini": {
-        "name": "HaGeZi Threats",
-        "about": "Domain malware, phishing, dan penipuan."
-      },
-      "stevenblack": {
-        "name": "StevenBlack",
-        "about": "Daftar hosts klasik untuk iklan dan malware."
-      }
-    },
     "activity": {
       "title": "Aktivitas",
       "description": "Dihitung sejak Privasi DNS terakhir dijalankan.",
       "queries": "Pencarian",
-      "blocked": "Diblokir",
       "encrypted": "Terenkripsi",
       "fallback": "Dikirim ke operator",
       "latency": "Rata-rata waktu jawab",
       "memory": "Memori terpakai",
-      "memory_hint": "Berapa banyak memori modem yang sedang dipakai program Privasi DNS.",
-      "top": "Paling sering diblokir",
-      "none": "Belum ada yang diblokir.",
-      "allow": "Izinkan",
-      "allowed": "Diizinkan"
+      "memory_hint": "Berapa banyak memori modem yang sedang dipakai program Privasi DNS."
     },
     "notice": {
       "not_installed": "Program Privasi DNS tidak ada. Pasang pembaruan QManager terbaru.",

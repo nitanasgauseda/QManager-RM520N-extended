@@ -881,6 +881,9 @@ install_bundled_binaries() {
             && chown radio:radio /etc/data/dnsmasq.conf 2>/dev/null \
             && info "Old DNS Privacy block removed from dnsmasq.conf"
     fi
+    # Ad blocking was removed from DNS Privacy; its downloaded lists are dead weight on /usrdata.
+    rm -rf /usrdata/qmanager/dnsguard 2>/dev/null
+
     # --- qmanager_dnsguard (DNS Privacy forwarder) ----------------------------
     # Lives on /usrdata, not the rootfs: root-owned 0755 like tpws, since a root unit execs it.
     if [ -f "$SRC_DEPS/qmanager_dnsguard" ]; then
@@ -3799,7 +3802,7 @@ enable_services() {
     fi
 
     if [ -x /usrdata/qmanager/bin/qmanager_dnsguard ]; then
-        _apply_gated_symlink /etc/qmanager/dnsguard.json '((.encrypt.enabled == true) or (.block.enabled == true))' qmanager-dnsguard "DNS Privacy service"
+        _apply_gated_symlink /etc/qmanager/dnsguard.json '.encrypt.enabled == true' qmanager-dnsguard "DNS Privacy service"
     fi
 
     # Rayhunter is downloaded on demand from Monitoring -> Cell Guard; no daemon, nothing to gate.

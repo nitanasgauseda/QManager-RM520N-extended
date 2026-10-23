@@ -3,25 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
 
-// DNS Privacy: encrypted DNS (DNS over TLS) and ad/tracker blocking through qmanager_dnsguard.
+// DNS Privacy: encrypted DNS (DNS over TLS) through qmanager_dnsguard.
 const CGI = "/cgi-bin/quecmanager/network/dns_privacy.sh";
 const POLL_MS = 15_000;
 
 export type DnsProvider = "quad9" | "cloudflare" | "google" | "adguard" | "mullvad" | "nextdns" | "custom";
-export type BlockListId = "hagezi_light" | "hagezi_normal" | "hagezi_pro" | "hagezi_tif_mini" | "stevenblack";
 
 export const DNS_PROVIDERS: DnsProvider[] = ["quad9", "cloudflare", "mullvad", "adguard", "google", "nextdns", "custom"];
-
-/** Approximate sizes, for the memory estimate shown beside each list. */
-export const BLOCK_LISTS: { id: BlockListId; domains: number }[] = [
-  { id: "hagezi_light", domains: 69_000 },
-  { id: "hagezi_normal", domains: 171_000 },
-  { id: "hagezi_pro", domains: 208_000 },
-  { id: "hagezi_tif_mini", domains: 212_000 },
-  { id: "stevenblack", domains: 74_000 },
-];
-export const MAX_LISTS = 3;
-export const MAX_DOMAINS = 300_000;
 
 export interface DnsPrivacyConfig {
   encrypt: {
@@ -32,7 +20,6 @@ export interface DnsPrivacyConfig {
     custom_host: string;
     custom_ip: string;
   };
-  block: { enabled: boolean; lists: BlockListId[]; allow: string[]; deny: string[] };
 }
 
 export interface DnsPrivacyStatus {
@@ -49,13 +36,7 @@ export interface DnsPrivacyStatus {
     avg_ms: number;
     carrier: string[] | null;
   };
-  stats: { queries: number; blocked: number; encrypted: number; fallback: number; failed: number };
-  domains_total: number;
-  lists: { id: string; domains: number; updated: number; error?: string }[] | null;
-  lists_loading: boolean;
-  lists_updating: boolean;
-  top_blocked: { d: string; n: number }[] | null;
-  recent_blocked: { d: string; t: number }[] | null;
+  stats: { queries: number; encrypted: number; fallback: number; failed: number };
 }
 
 export interface DnsPrivacyState {
@@ -129,8 +110,6 @@ export function useDnsPrivacy() {
   );
 
   const save = useCallback((config: DnsPrivacyConfig) => post({ action: "save", ...config }, "save"), [post]);
-  const updateLists = useCallback(() => post({ action: "update_lists" }, "update"), [post]);
-  const allow = useCallback((domain: string) => post({ action: "allow", domain }, `allow:${domain}`), [post]);
 
-  return { state, isLoading, error, busy, refresh: load, save, updateLists, allow };
+  return { state, isLoading, error, busy, refresh: load, save };
 }

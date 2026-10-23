@@ -61,23 +61,6 @@ func TestParseQuery(t *testing.T) {
 	}
 }
 
-func TestBlockedReply(t *testing.T) {
-	m := buildQuery(0x1234, "ads.example.com", typeA, 0)
-	q, _ := parseQuery(m)
-	r := blockedReply(m, q)
-	if r[0] != 0x12 || r[1] != 0x34 || r[2]&0x80 == 0 || r[3]&0x0F != 0 {
-		t.Fatalf("bad header % x", r[:4])
-	}
-	if binary.BigEndian.Uint16(r[6:8]) != 1 || !strings.HasSuffix(string(r), string([]byte{0, 4, 0, 0, 0, 0})) {
-		t.Fatalf("bad answer % x", r)
-	}
-	m = buildQuery(1, "ads.example.com", 16, 0) // TXT
-	q, _ = parseQuery(m)
-	if r := blockedReply(m, q); binary.BigEndian.Uint16(r[6:8]) != 0 {
-		t.Fatal("TXT should get no data")
-	}
-}
-
 func TestFitUDP(t *testing.T) {
 	m := buildQuery(9, "big.example", typeA, 0)
 	q, _ := parseQuery(m)
@@ -88,58 +71,6 @@ func TestFitUDP(t *testing.T) {
 	}
 	if r := fitUDP(answer(m, 2), q, 512); r[2]&0x02 != 0 {
 		t.Fatal("small reply truncated")
-	}
-}
-
-func TestListParsing(t *testing.T) {
-	cases := map[string]string{
-		"0.0.0.0 ads.example.com":    "ads.example.com",
-		"127.0.0.1 Tracker.Net  # x": "tracker.net",
-		"||ads.foo.org^":             "ads.foo.org",
-		"||ads.foo.org^$third-party": "",
-		"local=/bad.io/":             "bad.io",
-		"address=/bad.io/0.0.0.0":    "bad.io",
-		"*.wild.example":             "wild.example",
-		"# comment":                  "",
-		"0.0.0.0 localhost":          "",
-		"0.0.0.0 0.0.0.0":            "",
-		"1.2.3.4 ads.example.com":    "",
-		"com":                        "",
-		"bad..name.com":              "",
-		"exa mple.com x y":           "",
-		"plain-domain.lt":            "plain-domain.lt",
-	}
-	for in, want := range cases {
-		if got := parseListLine(in); got != want {
-			t.Errorf("%q: got %q want %q", in, got, want)
-		}
-	}
-}
-
-func TestDomainSet(t *testing.T) {
-	s := newDomainSet([]string{"ads.example.com", "tracker.net", "tracker.net", "zz.top"})
-	if s.len() != 3 {
-		t.Fatalf("dedupe: %d", s.len())
-	}
-	for name, want := range map[string]bool{
-		"ads.example.com":     true,
-		"x.y.ads.example.com": true,
-		"example.com":         false,
-		"notads.example.com":  false,
-		"cdn.tracker.net":     true,
-		"tracker.net":         true,
-		"net":                 false,
-		"top":                 false,
-		"zz.top":              true,
-		"":                    false,
-	} {
-		if _, got := s.match(name); got != want {
-			t.Errorf("%q: %v", name, got)
-		}
-	}
-	var nilSet *domainSet
-	if _, ok := nilSet.match("a.b"); ok {
-		t.Fatal("nil set matched")
 	}
 }
 
@@ -258,16 +189,12 @@ func TestDoTExchange(t *testing.T) {
 func newTestEngine(t *testing.T, cfg config, resolvFile string) *engine {
 	dir := t.TempDir()
 	e := &engine{
-		plain:      &plainResolver{files: []string{resolvFile}},
-		roots:      x509.NewCertPool(),
-		listDir:    dir,
-		statPath:   filepath.Join(dir, "status.json"),
-		started:    time.Now(),
-		topBlocked: map[string]uint64{},
+		plain:    &plainResolver{files: []string{resolvFile}},
+		roots:    x509.NewCertPool(),
+		statPath: filepath.Join(dir, "status.json"),
+		started:  time.Now(),
 	}
 	e.cfg.Store(&cfg)
-	e.allow.Store(newDomainSet(cleanDomains(cfg.Block.Allow)))
-	e.deny.Store(newDomainSet(cleanDomains(cfg.Block.Deny)))
 	return e
 }
 
@@ -279,7 +206,7 @@ func writeResolv(t *testing.T, addr string) string {
 	return p
 }
 
-func TestEngineBlockingAndFallback(t *testing.T) {
+func TestEngineFallback(t *testing.T) {
 	carrier := plainServer(t, 1)
 	host, port, _ := net.SplitHostPort(carrier)
 	resolv := filepath.Join(t.TempDir(), "resolv.conf")
@@ -291,26 +218,13 @@ func TestEngineBlockingAndFallback(t *testing.T) {
 	f := false
 	cfg := config{
 		Encrypt: encryptConfig{Enabled: true, Provider: "quad9", Protocol: "dot", Fallback: &f},
-		Block:   blockConfig{Enabled: true, Allow: []string{"good.ads.example.com"}, Deny: []string{"mine.example"}},
 	}
 	e := newTestEngine(t, cfg, resolv)
-	e.blocked.Store(newDomainSet([]string{"ads.example.com"}))
-
-	// Blocked, allowed and user-denied names.
-	for name, blocked := range map[string]bool{"x.ads.example.com": true, "good.ads.example.com": false, "a.mine.example": true} {
-		if got := e.isBlocked(name); got != blocked {
-			t.Errorf("%s blocked=%v", name, got)
-		}
-	}
-	resp := e.handle(buildQuery(5, "x.ads.example.com", typeA, 0), 4096)
-	if binary.BigEndian.Uint16(resp[6:8]) != 1 || e.blockedN.Load() != 1 {
-		t.Fatal("blocked query not answered locally")
-	}
 
 	// Encryption on, upstream unreachable, no fallback: SERVFAIL.
 	ca := newTestCA(t, "dns.test")
 	e.enc.Store(&resolverBox{kind: "dot", r: &dotResolver{host: "dns.test", addrs: []string{"127.0.0.1:1"}, conf: &tls.Config{ServerName: "dns.test", RootCAs: ca.pool}}})
-	resp = e.handle(buildQuery(6, "ok.example.org", typeA, 0), 4096)
+	resp := e.handle(buildQuery(6, "ok.example.org", typeA, 0), 4096)
 	if resp[3]&0x0F != 2 {
 		t.Fatalf("want SERVFAIL, got rcode %d", resp[3]&0x0F)
 	}
@@ -346,7 +260,7 @@ func TestEngineBlockingAndFallback(t *testing.T) {
 
 	e.writeStatus()
 	b, _ := os.ReadFile(e.statPath)
-	if !strings.Contains(string(b), `"blocked":1`) || !strings.Contains(string(b), `"x.ads.example.com"`) {
+	if !strings.Contains(string(b), `"encrypted":1`) || strings.Contains(string(b), "blocked") {
 		t.Fatalf("status: %s", b)
 	}
 }
@@ -379,21 +293,6 @@ func TestProviders(t *testing.T) {
 	}
 }
 
-func TestLoadListsCap(t *testing.T) {
-	cfg := config{Block: blockConfig{Enabled: true, Lists: []string{"hagezi_light", "stevenblack", "bogus"}}}
-	e := newTestEngine(t, cfg, "/nonexistent")
-	os.WriteFile(e.listPath("hagezi_light"), []byte("# h\nads.one.com\nads.two.com\n"), 0o644)
-	e.loadLists()
-	if e.blocked.Load().len() != 2 {
-		t.Fatalf("loaded %d", e.blocked.Load().len())
-	}
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if len(e.lists) != 3 || e.lists[1].Error != "not_downloaded" || e.lists[2].Error != "unknown list" || e.lists[0].Domains != 2 {
-		t.Fatalf("states %+v", e.lists)
-	}
-}
-
 func TestTruncationThroughEngine(t *testing.T) {
 	carrier := plainServer(t, 60) // ~1 KB answer
 	host, port, _ := net.SplitHostPort(carrier)
@@ -413,30 +312,6 @@ func TestTruncationThroughEngine(t *testing.T) {
 	tcp := e.handle(buildQuery(3, "big.example", typeA, 0), 0)
 	if tcp[2]&0x02 != 0 {
 		t.Fatal("TCP answer truncated")
-	}
-}
-
-func TestPruneLists(t *testing.T) {
-	cfg := config{Block: blockConfig{Enabled: true, Lists: []string{"hagezi_light"}}}
-	e := newTestEngine(t, cfg, "/nonexistent")
-	for _, n := range []string{"hagezi_light.txt", "hagezi_pro.txt", "stevenblack.txt.part", "keep.json"} {
-		os.WriteFile(filepath.Join(e.listDir, n), []byte("x.example.com\n"), 0o644)
-	}
-	e.loadLists()
-	for n, want := range map[string]bool{"hagezi_light.txt": true, "hagezi_pro.txt": false, "stevenblack.txt.part": false, "keep.json": true} {
-		_, err := os.Stat(filepath.Join(e.listDir, n))
-		if (err == nil) != want {
-			t.Errorf("%s present=%v", n, err == nil)
-		}
-	}
-	off := config{}
-	e.cfg.Store(&off)
-	e.loadLists()
-	if _, err := os.Stat(filepath.Join(e.listDir, "hagezi_light.txt")); err == nil {
-		t.Error("list kept after blocking was turned off")
-	}
-	if rssKB() <= 0 {
-		t.Error("rss not read")
 	}
 }
 

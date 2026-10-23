@@ -126,32 +126,6 @@ func header(b []byte, rcode byte, an uint16) []byte {
 	return h
 }
 
-// blockedReply answers A with 0.0.0.0, AAAA with ::, anything else with no data.
-func blockedReply(b []byte, q query) []byte {
-	var rdata []byte
-	switch q.qtype {
-	case typeA:
-		rdata = make([]byte, 4)
-	case typeAAAA:
-		rdata = make([]byte, 16)
-	}
-	var an uint16
-	if rdata != nil {
-		an = 1
-	}
-	out := append(header(b, 0, an), b[12:q.qend]...)
-	if rdata != nil {
-		rr := make([]byte, 12)
-		rr[0], rr[1] = 0xC0, 0x0C
-		binary.BigEndian.PutUint16(rr[2:4], q.qtype)
-		binary.BigEndian.PutUint16(rr[4:6], 1)
-		binary.BigEndian.PutUint32(rr[6:10], blockTTL)
-		binary.BigEndian.PutUint16(rr[10:12], uint16(len(rdata)))
-		out = append(append(out, rr...), rdata...)
-	}
-	return out
-}
-
 // failReply is SERVFAIL with the question echoed when it could be parsed.
 func failReply(b []byte, q query) []byte {
 	if len(b) < 12 {

@@ -1901,7 +1901,7 @@
   "dnsPrivacy": {
     "page": {
       "title": "DNS 隱私",
-      "description": "加密網路中所有裝置的 DNS 查詢，並在廣告與追蹤器載入前將其封鎖。",
+      "description": "加密網路中每台裝置的 DNS 查詢，讓電信商無法看到您造訪了哪些網站。",
       "refresh": "重新整理",
       "retry": "重試"
     },
@@ -1916,18 +1916,10 @@
       "invalid_nextdns_id": "NextDNS ID 為 4 到 16 個字母或數字",
       "invalid_custom_host": "請輸入解析器的 TLS 主機名稱",
       "invalid_custom_ip": "請輸入解析器的 IPv4 位址",
-      "too_many_lists": "最多選擇 3 個清單",
-      "no_lists": "請至少選擇一個清單",
-      "invalid_allow": "允許清單中有一項不是網域",
-      "invalid_deny": "封鎖清單中有一項不是網域",
-      "too_many": "每個清單最多 200 個網域",
-      "not_running": "DNS 隱私未執行",
       "redirect_failed": "來自您網路的查詢未能到達 DNS 隱私，已重新關閉。您的網路未受影響。"
     },
     "toast": {
-      "saved": "DNS 隱私已儲存",
-      "update_started": "正在更新封鎖清單",
-      "allowed": "{{domain}} 不再被封鎖"
+      "saved": "DNS 隱私已儲存"
     },
     "unsaved": "有未儲存的變更",
     "save": "儲存",
@@ -1956,60 +1948,15 @@
       "state_fallback": "目前使用電信業者 DNS",
       "state_on": "已透過 {{provider}} 加密"
     },
-    "block": {
-      "title": "廣告與追蹤器封鎖",
-      "description": "對網路中所有裝置的廣告、追蹤器與惡意網域查詢不予解析。",
-      "enabled": "封鎖廣告與追蹤器",
-      "lists": "清單（最多 {{max}} 個）",
-      "domains": "{{n}} 個網域",
-      "list_error": "上次更新失敗，正在使用先前的副本",
-      "list_pending": "正在下載…",
-      "memory": "約占用模組 {{mb}} MB 記憶體。",
-      "capped": "只載入前 {{n}} 個網域。",
-      "allow": "永不封鎖",
-      "allow_hint": "每行一個網域，其子網域也會被允許。",
-      "deny": "一律封鎖",
-      "state_updating": "正在更新清單",
-      "state_on": "已封鎖 {{n}} 個網域",
-      "state_empty": "尚未載入清單",
-      "update": "更新清單"
-    },
-    "list": {
-      "hagezi_light": {
-        "name": "HaGeZi Light",
-        "about": "基本防護，幾乎不會影響網站。建議使用。"
-      },
-      "hagezi_normal": {
-        "name": "HaGeZi Normal",
-        "about": "更廣泛地封鎖廣告、追蹤器與遙測。"
-      },
-      "hagezi_pro": {
-        "name": "HaGeZi Pro",
-        "about": "嚴格。部分網站或應用程式可能需要例外。"
-      },
-      "hagezi_tif_mini": {
-        "name": "HaGeZi Threats",
-        "about": "惡意軟體、網路釣魚與詐騙網域。"
-      },
-      "stevenblack": {
-        "name": "StevenBlack",
-        "about": "經典的廣告與惡意軟體 hosts 清單。"
-      }
-    },
     "activity": {
       "title": "活動",
       "description": "自 DNS 隱私上次啟動以來的統計。",
       "queries": "查詢",
-      "blocked": "已封鎖",
       "encrypted": "已加密",
       "fallback": "送給電信業者",
       "latency": "平均回應時間",
       "memory": "記憶體用量",
-      "memory_hint": "DNS 隱私程式目前占用的模組記憶體。",
-      "top": "封鎖最多",
-      "none": "尚未封鎖任何內容。",
-      "allow": "允許",
-      "allowed": "已允許"
+      "memory_hint": "DNS 隱私程式目前占用的模組記憶體。"
     },
     "notice": {
       "not_installed": "缺少 DNS 隱私程式。請安裝最新的 QManager 更新。",

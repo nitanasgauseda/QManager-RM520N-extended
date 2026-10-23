@@ -1,6 +1,6 @@
 # /lib/systemd/system/qmanager-dnsguard.service
-# DNS Privacy forwarder (encrypted DNS + ad blocking); enabled from Local Network -> DNS Privacy.
-# Gated by /etc/qmanager/dnsguard.json (.encrypt.enabled or .block.enabled).
+# DNS Privacy forwarder (encrypted DNS); enabled from Local Network -> DNS Privacy.
+# Gated by /etc/qmanager/dnsguard.json (.encrypt.enabled).
 [Unit]
 Description=QManager DNS Privacy forwarder
 After=network.target qmanager-setup.service
@@ -14,7 +14,7 @@ ExecStart=/usrdata/qmanager/bin/qmanager_dnsguard
 Restart=always
 RestartSec=3
 Nice=5
-MemoryLimit=48M
+MemoryLimit=24M
 NoNewPrivileges=yes
 
 [Install]

@@ -1,5 +1,5 @@
 #!/bin/sh
-# dns_privacy.sh — DNS Privacy (encrypted DNS + ad blocking) helpers shared by the CGI and the poller.
+# dns_privacy.sh — DNS Privacy (encrypted DNS) helpers shared by the CGI and the poller.
 # LAN DNS (port 53 arriving on bridge0) is redirected to qmanager_dnsguard with an iptables nat rule.
 # dnsmasq is never edited, reloaded or restarted: on the RM520N it cannot be restarted at all in
 # IP Passthrough mode (it fails to bind the passthrough address). See docs/reference/dns-privacy.md.
@@ -31,7 +31,7 @@ _dp_priv() {
 
 dp_wanted() {
     [ -f "$DP_CONFIG" ] || return 1
-    [ "$(jq -r '(.encrypt.enabled == true) or (.block.enabled == true)' "$DP_CONFIG" 2>/dev/null)" = "true" ]
+    [ "$(jq -r '.encrypt.enabled == true' "$DP_CONFIG" 2>/dev/null)" = "true" ]
 }
 
 dp_custom_dns_active() { grep -qxF "$DP_CUSTOM_BEGIN" "$DP_DNSMASQ_CONF" 2>/dev/null; }

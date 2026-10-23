@@ -356,7 +356,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         # --- DNS Privacy takes over LAN DNS while it is on, so custom servers would never be used ---
-        if [ "$ENABLED" = "true" ] && [ "$(jq -r '(.encrypt.enabled == true) or (.block.enabled == true)' "${DP_CONFIG:-/etc/qmanager/dnsguard.json}" 2>/dev/null)" = "true" ]; then
+        if [ "$ENABLED" = "true" ] && [ "$(jq -r '.encrypt.enabled == true' "${DP_CONFIG:-/etc/qmanager/dnsguard.json}" 2>/dev/null)" = "true" ]; then
             jq -n '{"ok":false,"error":"Turn off DNS Privacy (Local Network → DNS Privacy) before setting custom DNS servers","field":"servers"}'
             exit 0
         fi

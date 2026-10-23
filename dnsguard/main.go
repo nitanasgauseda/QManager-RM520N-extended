@@ -1,7 +1,6 @@
 // qmanager_dnsguard — local DNS forwarder for QManager's DNS Privacy page.
-// LAN DNS (port 53 on bridge0) is redirected here by an iptables nat rule; names on the block lists are answered with
-// 0.0.0.0 / ::, everything else goes to an encrypted resolver (DNS over TLS) or the
-// carrier's DNS. See docs/reference/dns-privacy.md.
+// LAN DNS (port 53 on bridge0) is redirected here by an iptables nat rule and sent to an
+// encrypted resolver (DNS over TLS) or the carrier's DNS. See docs/reference/dns-privacy.md.
 package main
 
 import (
@@ -16,11 +15,8 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"runtime/debug"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,61 +41,31 @@ type encryptConfig struct {
 	CustomIP   string `json:"custom_ip"`
 }
 
-type blockConfig struct {
-	Enabled bool     `json:"enabled"`
-	Lists   []string `json:"lists"`
-	Allow   []string `json:"allow"`
-	Deny    []string `json:"deny"`
-}
-
 type config struct {
 	Encrypt encryptConfig `json:"encrypt"`
-	Block   blockConfig   `json:"block"`
 }
 
 func (c config) fallback() bool { return c.Encrypt.Fallback == nil || *c.Encrypt.Fallback }
-
-type listState struct {
-	ID      string `json:"id"`
-	Domains int    `json:"domains"`
-	Updated int64  `json:"updated"`
-	Error   string `json:"error,omitempty"`
-}
 
 type engine struct {
 	cfg      atomic.Pointer[config]
 	enc      atomic.Pointer[resolverBox]
 	plain    *plainResolver
-	blocked  atomic.Pointer[domainSet]
-	allow    atomic.Pointer[domainSet]
-	deny     atomic.Pointer[domainSet]
 	roots    *x509.CertPool
-	listDir  string
 	statPath string
 	started  time.Time
 
-	queries, blockedN, encrypted, fallbackN, failed atomic.Uint64
-	latencySum, latencyN                            atomic.Uint64
+	queries, encrypted, fallbackN, failed atomic.Uint64
+	latencySum, latencyN                  atomic.Uint64
 
-	mu          sync.Mutex
-	lists       []listState
-	topBlocked  map[string]uint64
-	recent      []recentBlock
-	upOK        int64
-	upErr       string
-	upErrAt     int64
-	fallbackAt  int64
-	loading     bool
-	reloadAgain bool
-	updating    bool
+	mu         sync.Mutex
+	upOK       int64
+	upErr      string
+	upErrAt    int64
+	fallbackAt int64
 
 	localDNS  func() string // LAN dnsmasq for local names; "" when unknown
 	listening []string
-}
-
-type recentBlock struct {
-	D string `json:"d"`
-	T int64  `json:"t"`
 }
 
 type resolverBox struct {
@@ -113,7 +79,6 @@ func clockSane() bool { return time.Now().Unix() >= saneEpoch }
 func loadConfig(path string) config {
 	var c config
 	c.Encrypt.Provider, c.Encrypt.Protocol = "quad9", "dot"
-	c.Block.Lists = []string{"hagezi_light"}
 	b, err := os.ReadFile(path)
 	if err == nil {
 		if err := json.Unmarshal(b, &c); err != nil {
@@ -137,100 +102,6 @@ func (e *engine) applyConfig(c config) {
 			e.enc.Store(&resolverBox{r: r, kind: "dot", close: r.close})
 		}
 	}
-	e.allow.Store(newDomainSet(cleanDomains(c.Block.Allow)))
-	e.deny.Store(newDomainSet(cleanDomains(c.Block.Deny)))
-	go e.loadLists()
-}
-
-func cleanDomains(in []string) []string {
-	var out []string
-	for _, s := range in {
-		if d := normalizeDomain(s); d != "" {
-			out = append(out, d)
-		}
-	}
-	return out
-}
-
-func (e *engine) listPath(id string) string { return filepath.Join(e.listDir, id+".txt") }
-
-// loadLists rebuilds the merged block set from the downloaded files.
-func (e *engine) loadLists() {
-	e.mu.Lock()
-	if e.loading {
-		e.reloadAgain = true
-		e.mu.Unlock()
-		return
-	}
-	e.loading = true
-	e.mu.Unlock()
-	defer func() {
-		e.mu.Lock()
-		again := e.reloadAgain
-		e.loading, e.reloadAgain = false, false
-		e.mu.Unlock()
-		if again {
-			e.loadLists()
-		}
-	}()
-
-	c := e.cfg.Load()
-	e.pruneLists(c)
-	if !c.Block.Enabled {
-		e.blocked.Store(nil)
-		e.mu.Lock()
-		e.lists = nil
-		e.mu.Unlock()
-		debug.FreeOSMemory()
-		return
-	}
-	var all []string
-	states := make([]listState, 0, len(c.Block.Lists))
-	for _, id := range c.Block.Lists {
-		st := listState{ID: id}
-		if _, ok := catalog[id]; !ok {
-			st.Error = "unknown list"
-			states = append(states, st)
-			continue
-		}
-		p := e.listPath(id)
-		if fi, err := os.Stat(p); err == nil {
-			st.Updated = fi.ModTime().Unix()
-			var n int
-			all, n, _ = readListFile(p, all, maxDomains)
-			st.Domains = n
-			if len(all) >= maxDomains {
-				st.Error = "too_many"
-			}
-		} else {
-			st.Error = "not_downloaded"
-		}
-		states = append(states, e.keepError(st))
-	}
-	set := newDomainSet(all)
-	all = nil
-	e.blocked.Store(set)
-	e.mu.Lock()
-	e.lists = states
-	e.mu.Unlock()
-	debug.FreeOSMemory()
-	log.Printf("block lists loaded: %d names", set.len())
-}
-
-// pruneLists deletes downloaded lists that are no longer selected, to give the flash back.
-func (e *engine) pruneLists(c *config) {
-	keep := map[string]bool{}
-	if c.Block.Enabled {
-		for _, id := range c.Block.Lists {
-			keep[id+".txt"] = true
-		}
-	}
-	entries, _ := os.ReadDir(e.listDir)
-	for _, de := range entries {
-		if n := de.Name(); !de.IsDir() && !keep[n] && (strings.HasSuffix(n, ".txt") || strings.HasSuffix(n, ".part")) {
-			os.Remove(filepath.Join(e.listDir, n))
-		}
-	}
 }
 
 // rssKB reads the process's resident memory, the number that matters on a 178 MB modem.
@@ -249,132 +120,10 @@ func rssKB() int {
 	return 0
 }
 
-// keepError carries a recent download error over a reload.
-func (e *engine) keepError(st listState) listState {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	for _, old := range e.lists {
-		if old.ID == st.ID && old.Error != "" && old.Error != "not_downloaded" && st.Error == "" {
-			if old.Updated == st.Updated {
-				st.Error = old.Error
-			}
-		}
-	}
-	return st
-}
-
-func (e *engine) setListError(id, msg string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	for i := range e.lists {
-		if e.lists[i].ID == id {
-			e.lists[i].Error = msg
-			return
-		}
-	}
-	e.lists = append(e.lists, listState{ID: id, Error: msg})
-}
-
-// updateLists downloads lists that are missing, or all of them when forced.
-func (e *engine) updateLists(force bool) {
-	c := e.cfg.Load()
-	if !c.Block.Enabled || !clockSane() {
-		return
-	}
-	e.mu.Lock()
-	if e.updating {
-		e.mu.Unlock()
-		return
-	}
-	e.updating = true
-	e.mu.Unlock()
-	defer func() { e.mu.Lock(); e.updating = false; e.mu.Unlock() }()
-
-	changed := false
-	for _, id := range c.Block.Lists {
-		spec, ok := catalog[id]
-		if !ok {
-			continue
-		}
-		p := e.listPath(id)
-		if fi, err := os.Stat(p); err == nil && !force && time.Since(fi.ModTime()) < 24*time.Hour {
-			continue
-		}
-		if err := e.download(spec.URL, p); err != nil {
-			log.Printf("list %s: %v", id, err)
-			e.setListError(id, "download_failed")
-			continue
-		}
-		changed = true
-	}
-	if changed {
-		e.loadLists()
-	}
-}
-
-// curlPath: downloads go through the system curl so the daemon carries no HTTP stack.
-var curlPath = "curl"
-
-func (e *engine) download(url, dest string) error {
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-		return err
-	}
-	tmp := dest + ".part"
-	cmd := exec.Command(curlPath, "-fsSL", "--max-time", "120", "--max-filesize", "33554432", "-o", tmp, url)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		os.Remove(tmp)
-		return fmt.Errorf("curl: %v %s", err, strings.TrimSpace(string(out)))
-	}
-	if fi, serr := os.Stat(tmp); serr != nil || fi.Size() < 64 {
-		err = fmt.Errorf("list is empty")
-	}
-	if err == nil {
-		// A list must parse to at least one name before it replaces the old copy.
-		var got int
-		_, got, _ = readListFile(tmp, nil, 1)
-		if got == 0 {
-			err = fmt.Errorf("list has no domains")
-		}
-	}
-	if err != nil {
-		os.Remove(tmp)
-		return err
-	}
-	return os.Rename(tmp, dest)
-}
-
 func (e *engine) setUpstreamError(msg string) {
 	e.mu.Lock()
 	e.upErr, e.upErrAt = msg, time.Now().Unix()
 	e.mu.Unlock()
-}
-
-func (e *engine) noteBlocked(name string) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if _, ok := e.topBlocked[name]; ok || len(e.topBlocked) < 3000 {
-		e.topBlocked[name]++
-	}
-	e.recent = append(e.recent, recentBlock{name, time.Now().Unix()})
-	if len(e.recent) > 60 {
-		e.recent = e.recent[len(e.recent)-50:]
-	}
-}
-
-func (e *engine) isBlocked(name string) bool {
-	c := e.cfg.Load()
-	if !c.Block.Enabled || name == "" {
-		return false
-	}
-	if _, ok := e.allow.Load().match(name); ok {
-		return false
-	}
-	if _, ok := e.deny.Load().match(name); ok {
-		return true
-	}
-	_, ok := e.blocked.Load().match(name)
-	return ok
 }
 
 // handle answers one query; maxUDP is 0 for TCP.
@@ -384,11 +133,6 @@ func (e *engine) handle(msg []byte, maxUDP int) []byte {
 		return nil
 	}
 	e.queries.Add(1)
-	if q.single && e.isBlocked(q.name) {
-		e.blockedN.Add(1)
-		e.noteBlocked(q.name)
-		return blockedReply(msg, q)
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	// Host names of LAN devices and reverse lookups of private addresses are dnsmasq's to answer.
@@ -610,34 +354,12 @@ func (e *engine) serveTCP(l net.Listener) {
 
 // --- status file read by the CGI
 
-type topEntry struct {
-	D string `json:"d"`
-	N uint64 `json:"n"`
-}
-
 func (e *engine) writeStatus() {
 	c := e.cfg.Load()
 	e.mu.Lock()
-	top := make([]topEntry, 0, len(e.topBlocked))
-	for d, n := range e.topBlocked {
-		top = append(top, topEntry{d, n})
-	}
-	recent := make([]recentBlock, len(e.recent))
-	copy(recent, e.recent)
-	lists := make([]listState, len(e.lists))
-	copy(lists, e.lists)
-	upOK, upErr, upErrAt, fbAt, loading, updating := e.upOK, e.upErr, e.upErrAt, e.fallbackAt, e.loading, e.updating
+	upOK, upErr, upErrAt, fbAt := e.upOK, e.upErr, e.upErrAt, e.fallbackAt
+	listening := append([]string(nil), e.listening...)
 	e.mu.Unlock()
-	sort.Slice(top, func(i, j int) bool { return top[i].N > top[j].N || top[i].N == top[j].N && top[i].D < top[j].D })
-	if len(top) > 10 {
-		top = top[:10]
-	}
-	for i, j := 0, len(recent)-1; i < j; i, j = i+1, j-1 {
-		recent[i], recent[j] = recent[j], recent[i]
-	}
-	if len(recent) > 20 {
-		recent = recent[:20]
-	}
 	kind := "plain"
 	if b := e.enc.Load(); b != nil && c.Encrypt.Enabled {
 		kind = b.kind
@@ -646,9 +368,6 @@ func (e *engine) writeStatus() {
 	if n := e.latencyN.Load(); n > 0 {
 		avg = e.latencySum.Load() / n
 	}
-	e.mu.Lock()
-	listening := append([]string(nil), e.listening...)
-	e.mu.Unlock()
 	st := map[string]any{
 		"listening": listening,
 		"running":   true,
@@ -657,7 +376,7 @@ func (e *engine) writeStatus() {
 		"updated":   time.Now().Unix(),
 		"clock_ok":  clockSane(),
 		"mem_kb":    rssKB(),
-		"mode":      map[string]bool{"encrypt": c.Encrypt.Enabled, "block": c.Block.Enabled},
+		"mode":      map[string]bool{"encrypt": c.Encrypt.Enabled},
 		"upstream": map[string]any{
 			"kind":          kind,
 			"provider":      c.Encrypt.Provider,
@@ -670,17 +389,10 @@ func (e *engine) writeStatus() {
 		},
 		"stats": map[string]uint64{
 			"queries":   e.queries.Load(),
-			"blocked":   e.blockedN.Load(),
 			"encrypted": e.encrypted.Load(),
 			"fallback":  e.fallbackN.Load(),
 			"failed":    e.failed.Load(),
 		},
-		"domains_total":  e.blocked.Load().len(),
-		"lists":          lists,
-		"lists_loading":  loading,
-		"lists_updating": updating,
-		"top_blocked":    top,
-		"recent_blocked": recent,
 	}
 	b, _ := json.Marshal(st)
 	tmp := e.statPath + ".tmp"
@@ -702,10 +414,8 @@ func main() {
 	listen := flag.String("listen", "127.0.0.1:5335,lan:5335", "addresses to listen on; lan:PORT is the private IPv4 of -lan-if")
 	localDNS := flag.String("local-dns", "auto", "dnsmasq for LAN host names: host:port, auto (private IPv4 of -lan-if) or off")
 	lanIf := flag.String("lan-if", "bridge0", "LAN interface for -local-dns auto")
-	listDir := flag.String("lists", "/usrdata/qmanager/dnsguard", "downloaded block lists")
 	statPath := flag.String("status", "/tmp/qmanager_dnsguard.json", "status file")
 	reloadFlag := flag.String("reload-flag", "/tmp/qmanager_dnsguard_reload", "touch to reload settings")
-	updateFlag := flag.String("update-flag", "/tmp/qmanager_dnsguard_update", "touch to re-download lists")
 	resolvFiles := flag.String("resolv", "/run/resolv.conf,/etc/resolv.conf", "carrier resolver files, first with entries wins")
 	extraCA := flag.String("ca", "", "extra PEM roots (testing)")
 	allowLocal := flag.Bool("allow-local-resolvers", false, "accept loopback carrier resolvers (testing)")
@@ -714,7 +424,7 @@ func main() {
 	log.SetPrefix("dnsguard: ")
 
 	debug.SetGCPercent(50)
-	debug.SetMemoryLimit(32 << 20)
+	debug.SetMemoryLimit(16 << 20)
 
 	roots := x509.NewCertPool()
 	if !roots.AppendCertsFromPEM(embeddedRoots) {
@@ -725,20 +435,11 @@ func main() {
 			roots.AppendCertsFromPEM(pem)
 		}
 	}
-	for _, c := range []string{"/opt/bin/curl", "/usr/bin/curl"} {
-		if _, err := os.Stat(c); err == nil {
-			curlPath = c
-			break
-		}
-	}
-
 	e := &engine{
-		plain:      &plainResolver{files: strings.Split(*resolvFiles, ","), allowLocal: *allowLocal},
-		roots:      roots,
-		listDir:    *listDir,
-		statPath:   *statPath,
-		started:    time.Now(),
-		topBlocked: map[string]uint64{},
+		plain:    &plainResolver{files: strings.Split(*resolvFiles, ","), allowLocal: *allowLocal},
+		roots:    roots,
+		statPath: *statPath,
+		started:  time.Now(),
 	}
 	switch *localDNS {
 	case "off", "":
@@ -771,10 +472,9 @@ func main() {
 	term := make(chan os.Signal, 1)
 	signal.Notify(term, syscall.SIGTERM, syscall.SIGINT)
 
-	go e.updateLists(false)
 	e.writeStatus()
 	tick := time.NewTicker(2 * time.Second)
-	lastStatus, lastUpdateCheck := time.Now(), time.Now()
+	lastStatus := time.Now()
 	for {
 		select {
 		case <-term:
@@ -786,16 +486,7 @@ func main() {
 		case <-tick.C:
 			if takeFlag(*reloadFlag) {
 				e.applyConfig(loadConfig(*cfgPath))
-				go e.updateLists(false)
 				e.writeStatus()
-			}
-			if takeFlag(*updateFlag) {
-				go func() { e.updateLists(true); e.writeStatus() }()
-				e.writeStatus()
-			}
-			if time.Since(lastUpdateCheck) > 10*time.Minute {
-				lastUpdateCheck = time.Now()
-				go e.updateLists(false)
 			}
 			if time.Since(lastStatus) >= 5*time.Second {
 				lastStatus = time.Now()

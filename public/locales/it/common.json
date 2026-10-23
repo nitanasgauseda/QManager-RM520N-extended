@@ -1901,7 +1901,7 @@
   "dnsPrivacy": {
     "page": {
       "title": "Privacy DNS",
-      "description": "Cifra le richieste DNS di tutti i dispositivi della rete e blocca pubblicità e tracker prima che si carichino.",
+      "description": "Cifra le richieste DNS di ogni dispositivo della tua rete, così l'operatore non può leggere quali siti visiti.",
       "refresh": "Aggiorna",
       "retry": "Riprova"
     },
@@ -1916,18 +1916,10 @@
       "invalid_nextdns_id": "Un ID NextDNS è composto da 4 a 16 lettere o cifre",
       "invalid_custom_host": "Inserisci il nome host TLS del resolver",
       "invalid_custom_ip": "Inserisci l'indirizzo IPv4 del resolver",
-      "too_many_lists": "Scegli al massimo 3 liste",
-      "no_lists": "Scegli almeno una lista",
-      "invalid_allow": "La lista consentiti contiene una voce che non è un dominio",
-      "invalid_deny": "La lista bloccati contiene una voce che non è un dominio",
-      "too_many": "Una lista contiene al massimo 200 domini",
-      "not_running": "Privacy DNS non è in esecuzione",
       "redirect_failed": "Le richieste dalla tua rete non raggiungevano Privacy DNS, quindi è stata disattivata. Internet non è stato toccato."
     },
     "toast": {
-      "saved": "Privacy DNS salvato",
-      "update_started": "Aggiornamento delle liste in corso",
-      "allowed": "{{domain}} non è più bloccato"
+      "saved": "Privacy DNS salvato"
     },
     "unsaved": "Modifiche non salvate",
     "save": "Salva",
@@ -1956,60 +1948,15 @@
       "state_fallback": "Ora usa il DNS dell'operatore",
       "state_on": "Cifrato tramite {{provider}}"
     },
-    "block": {
-      "title": "Blocco pubblicità e tracker",
-      "description": "Non risponde alle richieste per domini di pubblicità, tracker e malware, per tutti i dispositivi della rete.",
-      "enabled": "Blocca pubblicità e tracker",
-      "lists": "Liste (fino a {{max}})",
-      "domains": "{{n}} domini",
-      "list_error": "L'ultimo aggiornamento non è riuscito; è in uso la copia precedente",
-      "list_pending": "Download in corso…",
-      "memory": "Usa circa {{mb}} MB della memoria del modem.",
-      "capped": "Vengono caricati solo i primi {{n}} domini.",
-      "allow": "Non bloccare mai",
-      "allow_hint": "Un dominio per riga. Sono consentiti anche i sottodomini.",
-      "deny": "Blocca sempre",
-      "state_updating": "Aggiornamento liste",
-      "state_on": "{{n}} domini bloccati",
-      "state_empty": "Nessuna lista ancora caricata",
-      "update": "Aggiorna liste"
-    },
-    "list": {
-      "hagezi_light": {
-        "name": "HaGeZi Light",
-        "about": "Protezione di base che non dovrebbe mai rompere un sito. Consigliata."
-      },
-      "hagezi_normal": {
-        "name": "HaGeZi Normal",
-        "about": "Blocco più ampio di pubblicità, tracker e telemetria."
-      },
-      "hagezi_pro": {
-        "name": "HaGeZi Pro",
-        "about": "Rigorosa. Alcuni siti o app potrebbero richiedere un'eccezione."
-      },
-      "hagezi_tif_mini": {
-        "name": "HaGeZi Threats",
-        "about": "Domini di malware, phishing e truffe."
-      },
-      "stevenblack": {
-        "name": "StevenBlack",
-        "about": "La classica lista hosts di pubblicità e malware."
-      }
-    },
     "activity": {
       "title": "Attività",
       "description": "Conteggio dall'ultimo avvio di Privacy DNS.",
       "queries": "Richieste",
-      "blocked": "Bloccate",
       "encrypted": "Cifrate",
       "fallback": "Inviate all'operatore",
       "latency": "Tempo medio di risposta",
       "memory": "Memoria usata",
-      "memory_hint": "Quanta memoria del modem usa ora il programma Privacy DNS.",
-      "top": "Più bloccati",
-      "none": "Ancora nulla di bloccato.",
-      "allow": "Consenti",
-      "allowed": "Consentito"
+      "memory_hint": "Quanta memoria del modem usa ora il programma Privacy DNS."
     },
     "notice": {
       "not_installed": "Manca il programma Privacy DNS. Installa l'ultimo aggiornamento di QManager.",

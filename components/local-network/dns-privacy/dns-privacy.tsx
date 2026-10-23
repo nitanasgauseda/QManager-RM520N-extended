@@ -6,9 +6,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   AlertCircleIcon,
-  CheckCircle2Icon,
   CheckIcon,
-  Loader2Icon,
   LockIcon,
   MinusCircleIcon,
   RefreshCwIcon,
@@ -20,24 +18,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CardFoot } from "@/components/ui/card-foot";
-import { Checkbox } from "@/components/ui/checkbox";
 import { HintIcon } from "@/components/ui/hint-icon";
 import { Input } from "@/components/ui/input";
 import { SaveButton } from "@/components/ui/save-button";
 import { SegmentedField, SEGMENTED } from "@/components/ui/segmented-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  BLOCK_LISTS,
-  DNS_PROVIDERS,
-  MAX_DOMAINS,
-  MAX_LISTS,
-  useDnsPrivacy,
-  type BlockListId,
-  type DnsPrivacyState,
-  type DnsProvider,
-} from "@/hooks/use-dns-privacy";
+import { DNS_PROVIDERS, useDnsPrivacy, type DnsPrivacyState, type DnsProvider } from "@/hooks/use-dns-privacy";
 import { cn } from "@/lib/utils";
 
 const K = "dnsPrivacy";
@@ -48,8 +35,6 @@ const ROW_WRAP = "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ro
 const ROW_LABEL = "shrink-0 text-[0.8125rem] font-semibold leading-5 text-on-surface-variant";
 const ROW_VALUE = "min-w-0 truncate text-right text-[0.8125rem] font-semibold leading-5 tabular-nums";
 const INPUT = "bg-surface h-9 w-44 text-sm aria-invalid:ring-[3px] aria-invalid:ring-destructive/50";
-/** Bytes per listed name in the forwarder's packed set, for the estimate beside the lists. */
-const BYTES_PER_NAME = 25;
 
 const PROVIDER_NAME: Record<DnsProvider, string> = {
   quad9: "Quad9",
@@ -109,21 +94,10 @@ const KNOWN_ERRORS = [
   "invalid_nextdns_id",
   "invalid_custom_host",
   "invalid_custom_ip",
-  "too_many_lists",
-  "no_lists",
-  "invalid_allow",
-  "invalid_deny",
-  "too_many",
   "not_running",
   "redirect_failed",
 ];
 const errorKey = (code: string) => `${K}.errors.${KNOWN_ERRORS.includes(code) ? code : "failed"}`;
-
-const lines = (s: string) =>
-  s
-    .split(/[\n,\s]+/)
-    .map((x) => x.trim())
-    .filter(Boolean);
 
 function fmtMB(kb: number) {
   return `${(kb / 1024).toFixed(1)} MB`;
@@ -277,223 +251,28 @@ function EncryptCard({ state, api }: { state: DnsPrivacyState; api: Api }) {
   );
 }
 
-function BlockCard({ state, api }: { state: DnsPrivacyState; api: Api }) {
-  const { t, i18n } = useTranslation("common");
-  const saved = state.config.block;
-  const [d, setD, dirtyCfg] = useDraft({
-    enabled: saved.enabled,
-    lists: saved.lists,
-    allow: saved.allow.join("\n"),
-    deny: saved.deny.join("\n"),
-  });
-  const dirty = dirtyCfg;
-  const total = BLOCK_LISTS.filter((l) => d.lists.includes(l.id)).reduce((a, l) => a + l.domains, 0);
-  const capped = Math.min(total, MAX_DOMAINS);
-  const valid = !d.enabled || d.lists.length > 0;
-  const st = state.status;
-  const nf = new Intl.NumberFormat(i18n.language);
-
-  const toggle = (id: BlockListId, on: boolean) => {
-    if (on && d.lists.length >= MAX_LISTS) return;
-    setD({ ...d, lists: on ? [...d.lists, id] : d.lists.filter((x) => x !== id) });
-  };
-
-  const onSave = async () => {
-    const r = await api.save({
-      ...state.config,
-      block: { enabled: d.enabled, lists: d.lists, allow: lines(d.allow), deny: lines(d.deny) },
-    });
-    if (r.ok) toast.success(t(`${K}.toast.saved`));
-    else toast.error(t(errorKey(r.code)));
-  };
-  const onUpdate = async () => {
-    const r = await api.updateLists();
-    if (r.ok) toast.success(t(`${K}.toast.update_started`));
-    else toast.error(t(errorKey(r.code)));
-  };
-
-  return (
-    <Card className={CARD}>
-      <CardHeader className={PAD}>
-        <CardTitle className="text-lg leading-tight">{t(`${K}.block.title`)}</CardTitle>
-        <CardDescription className="text-on-surface-variant text-sm">{t(`${K}.block.description`)}</CardDescription>
-      </CardHeader>
-      <CardContent className={cn(PAD, "flex flex-col gap-[0.3125rem]")}>
-        <Row label={t(`${K}.block.enabled`)} wrap>
-          <OnOff value={d.enabled} onChange={(v) => setD({ ...d, enabled: v })} label={t(`${K}.block.enabled`)} />
-        </Row>
-        <span className="text-on-surface-variant px-1 pt-3 text-[0.6875rem] font-semibold tracking-[0.09em] uppercase">
-          {t(`${K}.block.lists`, { max: MAX_LISTS })}
-        </span>
-        {BLOCK_LISTS.map((l) => {
-          const on = d.lists.includes(l.id);
-          const live = st?.lists?.find((x) => x.id === l.id);
-          return (
-            <label
-              key={l.id}
-              className={cn(
-                "bg-surface-container flex cursor-pointer items-start gap-3 rounded-card px-4 py-3",
-                !on && d.lists.length >= MAX_LISTS && "cursor-not-allowed opacity-60",
-              )}
-            >
-              <Checkbox
-                checked={on}
-                onCheckedChange={(v) => toggle(l.id, v === true)}
-                disabled={!on && d.lists.length >= MAX_LISTS}
-                className="mt-0.5"
-              />
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="flex flex-wrap items-center gap-x-2 text-sm font-semibold">
-                  {t(`${K}.list.${l.id}.name`)}
-                  <span className="text-on-surface-variant text-xs font-medium tabular-nums">
-                    {t(`${K}.block.domains`, { n: nf.format(live?.domains || l.domains) })}
-                  </span>
-                </span>
-                <span className="text-on-surface-variant text-xs text-pretty">{t(`${K}.list.${l.id}.about`)}</span>
-                {saved.enabled && on && live?.error && live.error !== "not_downloaded" ? (
-                  <span className="text-destructive-on-surface text-xs">{t(`${K}.block.list_error`)}</span>
-                ) : saved.enabled && on && live?.error === "not_downloaded" ? (
-                  <span className="text-on-surface-variant text-xs">{t(`${K}.block.list_pending`)}</span>
-                ) : null}
-              </span>
-            </label>
-          );
-        })}
-        <p className="text-on-surface-variant px-1 pt-1 text-xs tabular-nums">
-          {t(`${K}.block.memory`, { mb: ((capped * BYTES_PER_NAME) / 1048576).toFixed(1) })}
-          {total > MAX_DOMAINS ? ` ${t(`${K}.block.capped`, { n: nf.format(MAX_DOMAINS) })}` : ""}
-        </p>
-        <div className="grid grid-cols-1 gap-3 pt-3 @lg/card:grid-cols-2">
-          <label className="flex flex-col gap-1.5">
-            <span className="flex items-center gap-1.5 text-[0.8125rem] font-semibold">
-              {t(`${K}.block.allow`)}
-              <HintIcon label={t(`${K}.block.allow`)}>{t(`${K}.block.allow_hint`)}</HintIcon>
-            </span>
-            <Textarea
-              value={d.allow}
-              onChange={(e) => setD({ ...d, allow: e.target.value })}
-              rows={4}
-              placeholder="example.com"
-              className="bg-surface font-mono text-xs"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[0.8125rem] font-semibold">{t(`${K}.block.deny`)}</span>
-            <Textarea
-              value={d.deny}
-              onChange={(e) => setD({ ...d, deny: e.target.value })}
-              rows={4}
-              placeholder="tracker.example"
-              className="bg-surface font-mono text-xs"
-            />
-          </label>
-        </div>
-      </CardContent>
-      <CardFoot
-        className={PAD}
-        status={
-          dirty ? (
-            <span className="text-on-surface font-medium">{t(`${K}.unsaved`)}</span>
-          ) : saved.enabled && st ? (
-            st.lists_updating || st.lists_loading ? (
-              <Badge variant="info">
-                <Loader2Icon className="size-3 motion-safe:animate-spin" aria-hidden />
-                {t(`${K}.block.state_updating`)}
-              </Badge>
-            ) : st.domains_total > 0 ? (
-              <Badge variant="success">
-                <CheckCircle2Icon className="size-3" aria-hidden />
-                {t(`${K}.block.state_on`, { n: nf.format(st.domains_total) })}
-              </Badge>
-            ) : (
-              <Badge variant="warning">
-                <TriangleAlertIcon className="size-3" aria-hidden />
-                {t(`${K}.block.state_empty`)}
-              </Badge>
-            )
-          ) : null
-        }
-        actions={
-          <>
-            {saved.enabled && state.service.healthy ? (
-              <Button type="button" variant="tonal-neutral" size="action" disabled={api.busy !== null} onClick={() => void onUpdate()}>
-                {t(`${K}.block.update`)}
-              </Button>
-            ) : null}
-            <SaveButton
-              type="button"
-              size="action"
-              label={t(`${K}.save`)}
-              isSaving={api.busy === "save"}
-              saved={false}
-              disabled={!dirty || !valid || api.busy !== null}
-              onClick={() => void onSave()}
-            />
-          </>
-        }
-      />
-    </Card>
-  );
-}
-
-function ActivityCard({ state, api }: { state: DnsPrivacyState; api: Api }) {
+function ActivityCard({ state }: { state: DnsPrivacyState }) {
   const { t, i18n } = useTranslation("common");
   const st = state.status;
   const nf = new Intl.NumberFormat(i18n.language);
   if (!st) return null;
-  const pct = st.stats.queries > 0 ? Math.round((st.stats.blocked * 100) / st.stats.queries) : 0;
-  const onAllow = async (d: string) => {
-    const r = await api.allow(d);
-    if (r.ok) toast.success(t(`${K}.toast.allowed`, { domain: d }));
-    else toast.error(t(errorKey(r.code)));
-  };
-  const top = st.top_blocked ?? [];
   return (
     <Card className={CARD}>
       <CardHeader className={PAD}>
         <CardTitle className="text-lg leading-tight">{t(`${K}.activity.title`)}</CardTitle>
         <CardDescription className="text-on-surface-variant text-sm">{t(`${K}.activity.description`)}</CardDescription>
       </CardHeader>
-      <CardContent className={cn(PAD, "grid grid-cols-1 gap-5 *:min-w-0 @3xl/card:grid-cols-2")}>
-        <div className="flex flex-col gap-[0.3125rem]">
-          <Row label={t(`${K}.activity.queries`)} value={nf.format(st.stats.queries)} />
-          <Row label={t(`${K}.activity.blocked`)} value={`${nf.format(st.stats.blocked)} · ${pct} %`} />
-          <Row label={t(`${K}.activity.encrypted`)} value={nf.format(st.stats.encrypted)} />
-          {st.stats.fallback > 0 ? <Row label={t(`${K}.activity.fallback`)} value={nf.format(st.stats.fallback)} /> : null}
-          <Row label={t(`${K}.activity.latency`)} value={st.upstream.avg_ms ? `${st.upstream.avg_ms} ms` : ""} />
-          <Row label={t(`${K}.activity.memory`)}>
-            <span className="flex items-center gap-1.5">
-              <span className={ROW_VALUE}>{st.mem_kb ? fmtMB(st.mem_kb) : "—"}</span>
-              <HintIcon label={t(`${K}.activity.memory`)}>{t(`${K}.activity.memory_hint`)}</HintIcon>
-            </span>
-          </Row>
-        </div>
-        <div className="flex flex-col gap-[0.3125rem]">
-          <span className="text-on-surface-variant px-1 text-[0.6875rem] font-semibold tracking-[0.09em] uppercase">
-            {t(`${K}.activity.top`)}
+      <CardContent className={cn(PAD, "flex flex-col gap-[0.3125rem]")}>
+        <Row label={t(`${K}.activity.queries`)} value={nf.format(st.stats.queries)} />
+        <Row label={t(`${K}.activity.encrypted`)} value={nf.format(st.stats.encrypted)} />
+        {st.stats.fallback > 0 ? <Row label={t(`${K}.activity.fallback`)} value={nf.format(st.stats.fallback)} /> : null}
+        <Row label={t(`${K}.activity.latency`)} value={st.upstream.avg_ms ? `${st.upstream.avg_ms} ms` : ""} />
+        <Row label={t(`${K}.activity.memory`)}>
+          <span className="flex items-center gap-1.5">
+            <span className={ROW_VALUE}>{st.mem_kb ? fmtMB(st.mem_kb) : "—"}</span>
+            <HintIcon label={t(`${K}.activity.memory`)}>{t(`${K}.activity.memory_hint`)}</HintIcon>
           </span>
-          {top.length === 0 ? (
-            <p className="text-on-surface-variant px-1 text-sm">{t(`${K}.activity.none`)}</p>
-          ) : (
-            top.map((e) => (
-              <div key={e.d} className="bg-surface-container flex items-center justify-between gap-3 rounded-pill py-1.5 pr-1.5 pl-4">
-                <span className="min-w-0 truncate font-mono text-xs">{e.d}</span>
-                <span className="flex shrink-0 items-center gap-2">
-                  <span className="text-on-surface-variant text-xs tabular-nums">{nf.format(e.n)}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={api.busy !== null || state.config.block.allow.includes(e.d)}
-                    onClick={() => void onAllow(e.d)}
-                  >
-                    {state.config.block.allow.includes(e.d) ? t(`${K}.activity.allowed`) : t(`${K}.activity.allow`)}
-                  </Button>
-                </span>
-              </div>
-            ))
-          )}
-        </div>
+        </Row>
       </CardContent>
     </Card>
   );
@@ -550,7 +329,7 @@ export default function DnsPrivacyComponent() {
   }
 
   const svc = state.service;
-  const wanted = state.config.encrypt.enabled || state.config.block.enabled;
+  const wanted = state.config.encrypt.enabled;
   const notice = !svc.installed
     ? { tone: "warning" as const, text: t(`${K}.notice.not_installed`) }
     : !svc.available
@@ -590,9 +369,8 @@ export default function DnsPrivacyComponent() {
       ) : null}
       <div className="grid grid-cols-1 items-start gap-5 *:min-w-0 @3xl/main:grid-cols-2">
         <EncryptCard state={state} api={api} />
-        <BlockCard state={state} api={api} />
+        <ActivityCard state={state} />
       </div>
-      <ActivityCard state={state} api={api} />
     </div>
   );
 }
