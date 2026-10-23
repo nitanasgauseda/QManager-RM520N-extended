@@ -25,7 +25,7 @@ This file is the **router**. One row per reference doc, and each row lists only 
 | [sms-forwarding.md](sms-forwarding.md) | `/cellular/sms/forwarding`, `qmanager_sms_forward`, its seed-on-first-run / loop guard / retry state, the gated service unit, the dirty-row promotion | RM520N |
 | [sms.md](sms.md) | `/cellular/sms`, `sms.sh`, the patched `sms_tool`, CPMS ME+SM storage routing, the boot routing oneshot, `components/cellular/sms/shapes.ts` | RM520N |
 | [speedtest.md](speedtest.md) | Ookla CLI, `at_cmd/speedtest_check.sh` / `speedtest_servers.sh` / `speedtest_start.sh` / `speedtest_status.sh`, `PING_FLOOR_MS`, `lib/speedtest-phases.ts`, the dashboard tile and dialog | RM520N |
-| [tower-map.md](tower-map.md) | `/cellular/tower-map`, `cellular/tower_map.sh`, `lib/tower-geo.ts`, `use-tower-map.ts`, `/etc/qmanager/tower_map.json`, `/etc/qmanager/towers/` | RM520N |
+| [tower-map.md](tower-map.md) | `/cellular/tower-map`, `cellular/tower_map.sh`, `lib/tower-geo.ts`, `use-tower-map.ts`, `/etc/qmanager/tower_map.json`, `/etc/qmanager/towers/`, `/etc/qmanager/opencellid_token` | RM520N |
 | [tower-locking.md](tower-locking.md) | `/cellular/cell-locking/tower-locking`, `AT+QNWLOCK`, `status.sh`'s `lte_read_ok` / `nr_read_ok` / `persist_read_ok`, `/tmp/qmanager_tower_write_inflight`, `qmanager_tower_failover`, `LEG_BADGE` | RM520N |
 | [wan-profile-management.md](wan-profile-management.md) | `cellular/apn.sh`, `apn_apply.sh`, the six PDP contexts, `apn_setting.json`, any `AT+CGCONTRDP` or `AT+CGDCONT` parser, the APN Management page and its MBN card | RM520N |
 

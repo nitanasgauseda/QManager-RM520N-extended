@@ -2637,15 +2637,28 @@
         "no_downloader": "數據機上沒有安裝下載工具。",
         "build_failed": "無法讀取下載的資料。",
         "write_failed": "無法在數據機上儲存基地台資料庫。",
-        "invalid_mcc": "無法讀取 SIM 卡的國家代碼。"
-      }
+        "invalid_mcc": "無法讀取 SIM 卡的國家代碼。",
+        "rate_limited": "OpenCelliD 每天只允許下載兩次，請明天再試。",
+        "invalid_token": "OpenCelliD 未接受您的金鑰，請在 opencellid.org 上檢查。",
+        "invalid_token_format": "請依 OpenCelliD 顯示的原樣貼上金鑰。"
+      },
+      "source": "來源",
+      "source_ocid": "OpenCelliD，每日",
+      "source_mirror": "GitHub 鏡像",
+      "key": "OpenCelliD 金鑰",
+      "key_set": "已儲存",
+      "key_hint": "使用您自己的免費金鑰後，資料庫直接來自 OpenCelliD（每日更新），並在您開啟此頁面時每週自動重新整理。取得金鑰：",
+      "key_save": "儲存金鑰",
+      "key_remove": "移除金鑰"
     },
     "toast": {
       "home_saved": "位置已儲存。",
       "tower_saved": "基地台位置已儲存。",
       "tower_reset": "基地台已恢復使用資料庫位置。",
       "db_updated": "基地台資料庫已更新。",
-      "save_failed": "儲存失敗，請重試。"
+      "save_failed": "儲存失敗，請重試。",
+      "key_saved": "OpenCelliD 金鑰已儲存。",
+      "key_removed": "OpenCelliD 金鑰已移除。"
     },
     "condition": {
       "load_failed_title": "無法載入基地台地圖",

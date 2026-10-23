@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -10,6 +10,9 @@ import { simPlmnFromImsi } from "@/components/cellular/cell-scanner/sim-plmn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardFoot } from "@/components/ui/card-foot";
+import { Input } from "@/components/ui/input";
+import { SaveButton } from "@/components/ui/save-button";
 import { MaterialSymbol } from "@/components/ui/material-symbol";
 import { SegmentedField, SEGMENTED } from "@/components/ui/segmented-field";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,6 +43,8 @@ const MapView = dynamic(() => import("./map-view"), {
 
 const K = "tower_map";
 const NEARBY_M = 25_000;
+/** With an OpenCelliD key the page refreshes a database older than this when it opens. */
+const AUTO_REFRESH_S = 7 * 86_400;
 
 const CARD = "@container/card gap-5 rounded-card border-0 bg-surface py-6 shadow-sm";
 const PAD = "px-7";
@@ -207,6 +212,37 @@ export default function TowerMapComponent() {
     if (r.ok) toast.success(t(`${K}.toast.db_updated`));
     else toast.error(t(`${K}.db.errors.${r.code ?? "download_failed"}`, { defaultValue: t(`${K}.db.errors.download_failed`) }));
   };
+  const [tokenDraft, setTokenDraft] = useState("");
+  const [tokenBusy, setTokenBusy] = useState(false);
+  const tokenValid = /^[A-Za-z0-9._-]{8,64}$/.test(tokenDraft.trim());
+  const saveToken = async () => {
+    setTokenBusy(true);
+    const r = await tm.saveToken(tokenDraft.trim());
+    setTokenBusy(false);
+    if (r.ok) {
+      setTokenDraft("");
+      toast.success(t(`${K}.toast.key_saved`));
+    } else toast.error(t(`${K}.db.errors.${r.code ?? "write_failed"}`, { defaultValue: t(`${K}.toast.save_failed`) }));
+  };
+  const clearToken = async () => {
+    setTokenBusy(true);
+    const r = await tm.clearToken();
+    setTokenBusy(false);
+    if (r.ok) toast.success(t(`${K}.toast.key_removed`));
+    else toast.error(t(`${K}.toast.save_failed`));
+  };
+
+  // Background refresh, at most once per page visit: no toast (it is not a user action).
+  const autoTried = useRef(false);
+  const hasToken = tm.state?.hasToken === true;
+  const dbBuilt = tm.state?.databases.find((d) => d.mcc === mcc)?.built ?? null;
+  const { updateDb: tmUpdateDb, isUpdating } = tm;
+  useEffect(() => {
+    if (autoTried.current || !hasToken || dbBuilt === null || isUpdating) return;
+    if (Date.now() / 1000 - dbBuilt <= AUTO_REFRESH_S) return;
+    autoTried.current = true;
+    void tmUpdateDb();
+  }, [hasToken, dbBuilt, isUpdating, tmUpdateDb]);
 
   // --- Conditions ----------------------------------------------------------------
   const header = (
@@ -403,6 +439,9 @@ export default function TowerMapComponent() {
           <CardContent className={cn(PAD, "flex flex-col gap-[0.3125rem]")}>
             <Row label={t(`${K}.db.towers`)} value={db ? String(db.towers) : t(`${K}.db.none`)} />
             <Row label={t(`${K}.db.updated`)} value={db?.generated ? db.generated.slice(0, 10) : ""} />
+            {db ? (
+              <Row label={t(`${K}.db.source`)} value={db.source === "opencellid" ? t(`${K}.db.source_ocid`) : t(`${K}.db.source_mirror`)} />
+            ) : null}
             <Row label={t(`${K}.db.corrections`)} value={String(Object.keys(tm.state?.overrides ?? {}).length)} />
             <div className="flex flex-wrap items-center gap-2.5 pt-2">
               <Button type="button" size="action" onClick={() => void updateDb()} disabled={tm.isUpdating}>
@@ -412,7 +451,55 @@ export default function TowerMapComponent() {
             </div>
             <p className="text-on-surface-variant pt-1 text-xs text-pretty">{t(`${K}.db.coverage_note`)}</p>
             <p className="text-on-surface-variant text-xs">{tm.state?.attribution}</p>
+            <div className={cn(ROW, "mt-3")}>
+              <span className={ROW_LABEL}>{t(`${K}.db.key`)}</span>
+              {hasToken ? (
+                <span className={ROW_VALUE}>{t(`${K}.db.key_set`)}</span>
+              ) : (
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={tokenDraft}
+                  onChange={(e) => setTokenDraft(e.target.value)}
+                  placeholder="pk.…"
+                  aria-label={t(`${K}.db.key`)}
+                  className="bg-surface h-9 w-40 font-mono text-sm"
+                />
+              )}
+            </div>
+            <p className="text-on-surface-variant px-1 text-xs text-pretty">
+              {t(`${K}.db.key_hint`)}{" "}
+              <a
+                href="https://opencellid.org/register.php"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-on-surface font-medium underline-offset-4 hover:underline"
+              >
+                opencellid.org
+              </a>
+            </p>
           </CardContent>
+          <CardFoot
+            className={PAD}
+            actions={
+              hasToken ? (
+                <Button type="button" variant="ghost" size="action" disabled={tokenBusy} onClick={() => void clearToken()}>
+                  {t(`${K}.db.key_remove`)}
+                </Button>
+              ) : (
+                <SaveButton
+                  type="button"
+                  size="action"
+                  label={t(`${K}.db.key_save`)}
+                  isSaving={tokenBusy}
+                  saved={false}
+                  disabled={!tokenValid || tokenBusy}
+                  onClick={() => void saveToken()}
+                />
+              )
+            }
+          />
         </Card>
       </div>
 

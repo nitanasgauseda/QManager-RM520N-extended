@@ -2637,15 +2637,28 @@
         "no_downloader": "Modem tidak memiliki alat unduh.",
         "build_failed": "Data yang diunduh tidak dapat dibaca.",
         "write_failed": "Basis data menara tidak dapat disimpan di modem.",
-        "invalid_mcc": "Kode negara SIM Anda tidak dapat dibaca."
-      }
+        "invalid_mcc": "Kode negara SIM Anda tidak dapat dibaca.",
+        "rate_limited": "OpenCelliD mengizinkan dua unduhan per hari. Coba lagi besok.",
+        "invalid_token": "OpenCelliD tidak menerima kunci Anda. Periksa di opencellid.org.",
+        "invalid_token_format": "Tempel kunci persis seperti yang ditampilkan OpenCelliD."
+      },
+      "source": "Sumber",
+      "source_ocid": "OpenCelliD, harian",
+      "source_mirror": "Mirror GitHub",
+      "key": "Kunci OpenCelliD",
+      "key_set": "Tersimpan",
+      "key_hint": "Dengan kunci gratis Anda sendiri, database diambil langsung dari OpenCelliD, diperbarui setiap hari, dan memperbarui diri setiap minggu saat Anda membuka halaman ini. Dapatkan di",
+      "key_save": "Simpan kunci",
+      "key_remove": "Hapus kunci"
     },
     "toast": {
       "home_saved": "Lokasi disimpan.",
       "tower_saved": "Posisi menara disimpan.",
       "tower_reset": "Menara kembali memakai posisi basis data.",
       "db_updated": "Basis data menara diperbarui.",
-      "save_failed": "Gagal menyimpan. Coba lagi."
+      "save_failed": "Gagal menyimpan. Coba lagi.",
+      "key_saved": "Kunci OpenCelliD disimpan.",
+      "key_removed": "Kunci OpenCelliD dihapus."
     },
     "condition": {
       "load_failed_title": "Peta menara tidak dapat dimuat",

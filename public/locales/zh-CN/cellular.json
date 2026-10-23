@@ -2637,15 +2637,28 @@
         "no_downloader": "调制解调器上没有安装下载工具。",
         "build_failed": "无法读取下载的数据。",
         "write_failed": "无法在调制解调器上保存基站数据库。",
-        "invalid_mcc": "无法读取 SIM 卡的国家代码。"
-      }
+        "invalid_mcc": "无法读取 SIM 卡的国家代码。",
+        "rate_limited": "OpenCelliD 每天只允许下载两次，请明天再试。",
+        "invalid_token": "OpenCelliD 未接受您的密钥，请在 opencellid.org 上检查。",
+        "invalid_token_format": "请按 OpenCelliD 显示的原样粘贴密钥。"
+      },
+      "source": "来源",
+      "source_ocid": "OpenCelliD，每日",
+      "source_mirror": "GitHub 镜像",
+      "key": "OpenCelliD 密钥",
+      "key_set": "已保存",
+      "key_hint": "使用您自己的免费密钥后，数据库直接来自 OpenCelliD（每日更新），并在您打开此页面时每周自动刷新。获取密钥：",
+      "key_save": "保存密钥",
+      "key_remove": "移除密钥"
     },
     "toast": {
       "home_saved": "位置已保存。",
       "tower_saved": "基站位置已保存。",
       "tower_reset": "基站已恢复使用数据库位置。",
       "db_updated": "基站数据库已更新。",
-      "save_failed": "保存失败，请重试。"
+      "save_failed": "保存失败，请重试。",
+      "key_saved": "OpenCelliD 密钥已保存。",
+      "key_removed": "OpenCelliD 密钥已移除。"
     },
     "condition": {
       "load_failed_title": "无法加载基站地图",

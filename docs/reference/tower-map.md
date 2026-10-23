@@ -12,10 +12,12 @@
 | CGI | `cellular/tower_map.sh` — GET state, GET `?towers=<mcc>`, POST `update_db`, `save_home`, `clear_home`, `set_override`, `clear_override` |
 | Config | `/etc/qmanager/tower_map.json` — `home {lat,lon}`, `overrides {"<mcc>-<mnc>-<enb>": {lat,lon}}` (cap 500) |
 | Index | `/etc/qmanager/towers/<mcc>.json` — `{mcc, generated, built, towers:[{r,m,e,la,lo,c,s,u,g}]}` |
-| Source | OpenCelliD per-MCC mirror, `github.com/NorthveilSystems/treadstone-celldata` releases (`manifest.json` + `<mcc>.csv.gz`, CC BY-SA 4.0) |
+| Source | With the user's key: OpenCelliD's own daily per-MCC export, `…/ocid/downloads?token=<key>&type=mcc&file=<mcc>.csv.gz` on opencellid.org, then download.unwiredlabs.com. Without: the mirror `github.com/NorthveilSystems/treadstone-celldata` releases (`manifest.json` + `<mcc>.csv.gz`). CC BY-SA 4.0 |
+| Key | `/etc/qmanager/opencellid_token` (mode 600, not in backups); POST `save_token` / `clear_token`, GET reports only `has_token` |
 
 - **One row per eNB/gNB.** `build_index` merges sectors (LTE `eNB = ECI / 256`, NR `gNB = NCI / 16384`, matching the poller's `enodeb_id`) into a samples-weighted centroid. Cell positions in OpenCelliD are where phones measured, so the centroid of all sectors sits nearer the mast than any one sector.
-- **Integrity.** The CSV is checked against the manifest's sha256 before the index is replaced; a mismatch keeps the old index.
+- **Integrity.** The mirror's CSV is checked against the manifest's sha256 before the index is replaced; a mismatch keeps the old index. OpenCelliD publishes no checksum, so its download must be a valid gzip (`gzip -t`) and build at least one tower.
+- **OpenCelliD key.** The key reaches curl on stdin (`-K -`), never its command line. Errors come back as a short text body: `rate_limited` (two downloads per file per day), `invalid_token`, else `download_failed`, which tries the second host. The index records `source`. The page refreshes a key-sourced database older than 7 days once per visit, without a toast; no timer does it.
 - **Operator.** The MCC/MNC comes from the SIM IMSI (`simPlmnFromImsi`), not the serving PLMN.
 - **Corrections win.** A user correction replaces the database position everywhere (map, distance, Cell Guard).
 - **Leaflet** loads inside an effect (`next/dynamic`, `ssr:false`); the map redraws only when its inputs change, and refits only when home or the tower first appears. Tiles: OpenStreetMap and Esri World Imagery, loaded by the browser.

@@ -2637,15 +2637,28 @@
         "no_downloader": "Sul modem non è installato alcuno strumento di download.",
         "build_failed": "Impossibile leggere i dati scaricati.",
         "write_failed": "Impossibile salvare il database delle torri sul modem.",
-        "invalid_mcc": "Impossibile leggere il prefisso nazionale della SIM."
-      }
+        "invalid_mcc": "Impossibile leggere il prefisso nazionale della SIM.",
+        "rate_limited": "OpenCelliD consente due download al giorno. Riprova domani.",
+        "invalid_token": "OpenCelliD non ha accettato la chiave. Controllala su opencellid.org.",
+        "invalid_token_format": "Incolla la chiave esattamente come la mostra OpenCelliD."
+      },
+      "source": "Fonte",
+      "source_ocid": "OpenCelliD, giornaliero",
+      "source_mirror": "Mirror GitHub",
+      "key": "Chiave OpenCelliD",
+      "key_set": "Salvata",
+      "key_hint": "Con la tua chiave gratuita il database arriva direttamente da OpenCelliD, aggiornato ogni giorno, e si aggiorna da solo ogni settimana quando apri questa pagina. Ottienila su",
+      "key_save": "Salva chiave",
+      "key_remove": "Rimuovi chiave"
     },
     "toast": {
       "home_saved": "Posizione salvata.",
       "tower_saved": "Posizione della torre salvata.",
       "tower_reset": "La torre usa di nuovo la posizione del database.",
       "db_updated": "Database delle torri aggiornato.",
-      "save_failed": "Salvataggio non riuscito. Riprova."
+      "save_failed": "Salvataggio non riuscito. Riprova.",
+      "key_saved": "Chiave OpenCelliD salvata.",
+      "key_removed": "Chiave OpenCelliD rimossa."
     },
     "condition": {
       "load_failed_title": "Impossibile caricare la mappa",

@@ -2637,15 +2637,28 @@
         "no_downloader": "The modem has no download tool installed.",
         "build_failed": "The downloaded data could not be read.",
         "write_failed": "The tower database could not be saved on the modem.",
-        "invalid_mcc": "Your SIM's country code could not be read."
-      }
+        "invalid_mcc": "Your SIM's country code could not be read.",
+        "rate_limited": "OpenCelliD allows two downloads a day. Try again tomorrow.",
+        "invalid_token": "OpenCelliD did not accept your key. Check it on opencellid.org.",
+        "invalid_token_format": "Paste the key exactly as OpenCelliD shows it."
+      },
+      "source": "Source",
+      "source_ocid": "OpenCelliD, daily",
+      "source_mirror": "GitHub mirror",
+      "key": "OpenCelliD key",
+      "key_set": "Saved",
+      "key_hint": "With your own free key the database comes straight from OpenCelliD, updated daily, and refreshes itself weekly when you open this page. Get one at",
+      "key_save": "Save key",
+      "key_remove": "Remove key"
     },
     "toast": {
       "home_saved": "Location saved.",
       "tower_saved": "Tower position saved.",
       "tower_reset": "Tower uses the database position again.",
       "db_updated": "Tower database updated.",
-      "save_failed": "Could not save. Try again."
+      "save_failed": "Could not save. Try again.",
+      "key_saved": "OpenCelliD key saved.",
+      "key_removed": "OpenCelliD key removed."
     },
     "condition": {
       "load_failed_title": "Tower Map could not load",

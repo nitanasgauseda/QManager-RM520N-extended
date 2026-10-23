@@ -11,6 +11,8 @@ const CGI = "/cgi-bin/quecmanager/cellular/tower_map.sh";
 export interface TowerDbSummary {
   mcc: number;
   generated: string;
+  /** "opencellid" (the user's own key, daily export) or "mirror" */
+  source: string;
   built: number;
   towers: number;
 }
@@ -32,6 +34,8 @@ export interface TowerMapState {
   home: LatLon | null;
   overrides: Record<string, LatLon>;
   databases: TowerDbSummary[];
+  /** An OpenCelliD key is saved; the key itself never leaves the modem. */
+  hasToken: boolean;
   attribution: string;
   /** The last Cell Scanner sweep, kept across reboots. */
   scan: { at: number; cells: ScanCell[] } | null;
@@ -82,6 +86,7 @@ export function useTowerMap(mcc: number | null) {
         home: json.home ?? null,
         overrides: json.overrides ?? {},
         databases: json.databases ?? [],
+        hasToken: json.has_token === true,
         attribution: json.attribution ?? "",
         scan: json.scan && Array.isArray(json.scan.cells) ? json.scan : null,
       });
@@ -154,6 +159,18 @@ export function useTowerMap(mcc: number | null) {
     return r;
   }, []);
 
+  const saveToken = useCallback(async (token: string) => {
+    const r = await post({ action: "save_token", token });
+    if (r.ok && mounted.current) setState((s) => (s ? { ...s, hasToken: true } : s));
+    return r;
+  }, []);
+
+  const clearToken = useCallback(async () => {
+    const r = await post({ action: "clear_token" });
+    if (r.ok && mounted.current) setState((s) => (s ? { ...s, hasToken: false } : s));
+    return r;
+  }, []);
+
   return {
     state,
     index,
@@ -166,6 +183,8 @@ export function useTowerMap(mcc: number | null) {
     saveHome,
     setOverride,
     clearOverride,
+    saveToken,
+    clearToken,
   };
 }
 
