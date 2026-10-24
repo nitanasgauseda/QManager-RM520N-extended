@@ -56,7 +56,9 @@
     "backup": "備份與還原",
     "dns_privacy": "DNS 隱私",
     "security_check": "安全檢查",
-    "activity_log": "活動記錄"
+    "activity_log": "活動記錄",
+    "resources": "資源",
+    "outages": "斷線紀錄"
   },
   "header": {
     "role": "管理員"

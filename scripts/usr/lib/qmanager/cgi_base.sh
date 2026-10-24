@@ -175,6 +175,8 @@ cgi_error() {
 # Auto-enforce auth unless the calling script set _SKIP_AUTH=1
 if [ "$_SKIP_AUTH" != "1" ]; then
     require_auth
+    # Someone has the UI open: the poller runs at full speed while this file is fresh.
+    : > /tmp/qmanager_ui_active 2>/dev/null
 fi
 
 # ---------------------------------------------------------------------------

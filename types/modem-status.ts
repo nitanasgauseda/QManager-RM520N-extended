@@ -870,7 +870,12 @@ export type NetworkEventType =
   | "temperature_normal"  // Modem temperature back below the threshold
   | "suspicious_sms"      // Cell Guard: silent, flash or SIM-directed SMS in storage
   | "dns_privacy"         // DNS Privacy forwarder stopped or recovered
-  | "login";              // Someone signed in to QManager
+  | "login"               // Someone signed in to QManager
+  | "sim_change"          // SIM card changed or removed while running
+  | "roaming"             // Roaming started or ended
+  | "public_ip_changed"   // The public IPv4 address changed
+  | "monthly_report"      // Monthly report sent
+  | "telegram_command";   // A command (reboot) arrived over Telegram
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";

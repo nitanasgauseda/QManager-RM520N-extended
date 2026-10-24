@@ -401,7 +401,12 @@
       "temperature_normal": "Suhu Normal",
       "suspicious_sms": "SMS Mencurigakan",
       "dns_privacy": "Privasi DNS",
-      "login": "Masuk"
+      "login": "Masuk",
+      "sim_change": "Pergantian SIM",
+      "roaming": "Roaming",
+      "public_ip_changed": "IP Publik Berubah",
+      "monthly_report": "Laporan Bulanan",
+      "telegram_command": "Perintah Telegram"
     }
   },
   "connection_quality": {

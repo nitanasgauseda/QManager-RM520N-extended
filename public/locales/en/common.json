@@ -863,6 +863,18 @@
         },
         "login": {
           "name": "Sign-ins to QManager"
+        },
+        "sim_change": {
+          "name": "SIM card changed or removed"
+        },
+        "roaming": {
+          "name": "Roaming"
+        },
+        "ip_change": {
+          "name": "Public IP changed"
+        },
+        "monthly_report": {
+          "name": "Monthly report"
         }
       },
       "reason": {
@@ -973,7 +985,9 @@
         "chat_hint": "Press Start in your bot chat, then ask @userinfobot for your ID. Group IDs start with -100; a public channel can use its @name.",
         "chat_missing": "A chat ID is required.",
         "chat_error": "Enter a numeric chat ID or an @channel name.",
-        "test": "Send a test message"
+        "test": "Send a test message",
+        "commands_label": "Commands",
+        "commands_hint": "Answer /status, /signal, /ip, /data and /reboot sent from this chat."
       },
       "threshold_label": "Wait before alerting",
       "threshold_hint": "Shorter outages are logged, not sent.",
@@ -1805,7 +1819,8 @@
     "toast": {
       "plan_saved": "Data plan saved",
       "temp_saved": "Temperature alert saved",
-      "history_saved": "History settings saved"
+      "history_saved": "History settings saved",
+      "roaming_saved": "Roaming settings saved."
     },
     "plan": {
       "title": "Data plan",
@@ -1837,6 +1852,17 @@
       "open": "Open Signal History",
       "recording": "Recording",
       "off": "Off"
+    },
+    "roaming": {
+      "title": "Roaming",
+      "description": "Warns when the modem registers on a foreign network, where data can cost extra.",
+      "now": "Right now",
+      "state_home": "Home network",
+      "state_roaming": "Roaming",
+      "state_blocked": "Roaming · data blocked",
+      "alert": "Alert when roaming",
+      "block": "Block data while roaming",
+      "hint": "Blocking stops new connections from your devices until the modem is back on the home network; calls and SMS keep working. Alerts are routed on Alerts."
     }
   },
   "backup": {
@@ -2060,6 +2086,25 @@
       "console_on": "A root terminal is available in the browser. Remove it if you do not use it.",
       "https_title": "HTTPS",
       "https_off": "The QManager page is served without encryption on your network."
+    },
+    "pubip": {
+      "title": "Public IP address",
+      "description": "The address the internet sees, and whether the operator shares it between customers.",
+      "public": "Public address",
+      "modem": "Modem address",
+      "cgnat": "Behind the operator's NAT",
+      "cgnat_text": "The internet cannot open connections to the modem over IPv4, so open IPv4 ports are not reachable from outside.",
+      "direct": "Reachable directly",
+      "direct_text": "The modem has its own public IPv4 address: every open port in the list is reachable from the internet.",
+      "failed": "The last lookup did not get an answer.",
+      "checked": "Checked {{time}}",
+      "enabled": "Check every 30 minutes",
+      "hint": "Asks api.ipify.org for the address; a change can be sent as an alert from Alerts.",
+      "check_now": "Check now",
+      "save": "Save",
+      "save_failed": "Could not save. Try again.",
+      "toast_saved": "Public IP check saved.",
+      "toast_checking": "Checking the public IP within a few seconds."
     }
   },
   "activityLog": {
@@ -2117,6 +2162,89 @@
       "title": "Clear the activity log?",
       "description": "All entries are deleted. The clearing itself is recorded.",
       "cancel": "Cancel"
+    }
+  },
+  "resources": {
+    "page": {
+      "title": "Resources",
+      "description": "How busy the modem's processor, memory and flash are, and which programs use them.",
+      "refresh": "Refresh",
+      "retry": "Try again"
+    },
+    "errors": {
+      "load_failed": "Could not read the modem's resources"
+    },
+    "now": {
+      "title": "Right now",
+      "description": "Updated every 5 seconds while this page is open.",
+      "cpu": "Processor",
+      "busy": "Busy · {{pct}} %",
+      "memory": "Memory",
+      "available": "Available",
+      "load": "Load (1 · 5 · 15 min)",
+      "processes": "Processes",
+      "uptime": "Running for"
+    },
+    "uptime_dh": "{{d}} d {{h}} h",
+    "uptime_hm": "{{h}} h {{m}} min",
+    "flash": {
+      "title": "Storage",
+      "description": "Space used on the modem's flash, where settings and history are kept.",
+      "none": "Storage could not be read."
+    },
+    "procs": {
+      "title": "Programs",
+      "description": "The 15 programs using the most processor time, then memory.",
+      "name": "Program",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "first_read": "Processor use appears after the next update."
+    }
+  },
+  "outages": {
+    "page": {
+      "title": "Outages",
+      "description": "How often the internet dropped, for how long, at which hours and on which cells.",
+      "refresh": "Refresh",
+      "retry": "Try again"
+    },
+    "errors": {
+      "load_failed": "Could not load the outage log"
+    },
+    "range": {
+      "label": "Period",
+      "7": "7 days",
+      "30": "30 days",
+      "90": "90 days"
+    },
+    "none": "No outages in this period.",
+    "dur_s": "{{n}} s",
+    "dur_m": "{{n}} min",
+    "dur_hm": "{{h}} h {{m}} min",
+    "summary": {
+      "title": "Availability",
+      "description": "Share of the last {{days}} days the internet was reachable. Counting started with this version.",
+      "available": "Internet up",
+      "ongoing": "Down since {{time}}",
+      "count": "Outages",
+      "downtime": "Down in total",
+      "longest": "Longest outage"
+    },
+    "hours": {
+      "title": "By hour of day",
+      "description": "Downtime by the hour each outage started, in local time.",
+      "bar": "{{h}}:00 · {{n}} outages · {{dur}}",
+      "worst": "Most downtime starts between {{from}}:00 and {{to}}:00."
+    },
+    "cells": {
+      "title": "By cell",
+      "description": "The cells the modem was on when the internet dropped.",
+      "unknown": "Cell unknown",
+      "value": "{{n}} × · {{dur}}"
+    },
+    "recent": {
+      "title": "Latest outages",
+      "description": "The 20 most recent, newest first."
     }
   }
 }

@@ -47,31 +47,15 @@ if [ ! -f "$STATUS_FILE" ]; then
     exit 0
 fi
 
+# One jq per request: the dashboard polls this every 2 s.
 now=$(date +%s)
-ts=$(jq -r '.timestamp // 0' < "$STATUS_FILE" 2>/dev/null || echo 0)
-age=$((now - ts))
-
-if [ "$age" -gt "$STALE_SECONDS" ]; then
-    stale="true"
-else
-    stale="false"
-fi
-
-# Extract .data_used; emit zeroed fallback if the key is absent.
-data_used=$(jq '.data_used // empty' < "$STATUS_FILE" 2>/dev/null)
-
-if [ -z "$data_used" ]; then
-    qlog_warn "data_used block absent in status cache, returning zeroed fallback"
-    jq -n --argjson stale "$stale" '{
+jq --argjson now "$now" --argjson max "$STALE_SECONDS" '
+    (.data_used // {
         "accumulated_rx_bytes": 0,
         "accumulated_tx_bytes": 0,
         "selected_counter": "",
         "last_update_ts": 0,
         "last_reset_ts": 0,
-        "modem_reset_count": 0,
-        "stale": $stale
-    }'
-    exit 0
-fi
-
-printf '%s' "$data_used" | jq --argjson stale "$stale" '. + { stale: $stale }'
+        "modem_reset_count": 0
+    }) + {stale: (($now - ((.timestamp // 0) | tonumber? // 0)) > $max)}' < "$STATUS_FILE" 2>/dev/null \
+    || printf '{"accumulated_rx_bytes":0,"accumulated_tx_bytes":0,"selected_counter":"","last_update_ts":0,"last_reset_ts":0,"modem_reset_count":0,"stale":true}\n'

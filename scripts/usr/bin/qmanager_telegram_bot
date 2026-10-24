@@ -1,0 +1,218 @@
+#!/bin/sh
+# qmanager_telegram_bot — Telegram commands for QManager (/status, /signal, /ip, /data, /reboot, /help).
+# Long-polls getUpdates (one idle HTTPS request per 50 s); answers only the chat saved on
+# Monitoring -> Alerts. Runs as root (reads the token). See docs/reference/telegram-commands.md.
+
+PATH=/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH
+
+: "${TB_STATUS:=/tmp/qmanager_status.json}"
+: "${TB_INSIGHTS:=/tmp/qmanager_insights.json}"
+: "${TB_PUBIP:=/tmp/qmanager_pubip.json}"
+: "${TB_OFFSET:=/tmp/qmanager_tgbot_offset}"
+: "${TB_STATE:=/tmp/qmanager_tgbot.json}"
+: "${TB_POLL:=50}"
+: "${TB_REBOOT_CMD:=reboot}"
+TELEGRAM_LIB="${TB_TELEGRAM_LIB:-/usr/lib/qmanager/telegram_alerts.sh}"
+
+[ -f /usr/lib/qmanager/qlog.sh ] && . /usr/lib/qmanager/qlog.sh 2>/dev/null
+command -v qlog_info >/dev/null 2>&1 || { qlog_init() { :; }; qlog_info() { :; }; qlog_warn() { :; }; }
+qlog_init "telegram_bot"
+[ -f /usr/lib/qmanager/events.sh ] && . /usr/lib/qmanager/events.sh 2>/dev/null
+. "$TELEGRAM_LIB" || exit 1
+
+_tb_reboot_asked=0
+_tb_window_start=0
+_tb_window_n=0
+
+now() { date +%s; }
+
+# tb_api <method> <query> — GET <api>/bot<token>/<method>?<query>; token on stdin, never argv.
+tb_api() {
+    local token
+    token=$(cat "$_TA_TOKEN_FILE" 2>/dev/null)
+    [ -n "$token" ] || return 2
+    printf 'url = "%s/bot%s/%s?%s"\n' "$_TA_API_BASE" "$token" "$1" "$2" \
+        | curl -sS --max-time "$((TB_POLL + 15))" -K - 2>/dev/null
+}
+
+reply() { telegram_send_raw "$_ta_chat_id" "$1" >/dev/null 2>&1; }
+
+j() { jq -r "$1" "$TB_STATUS" 2>/dev/null; }
+
+fmt_bytes() {
+    awk -v b="${1:-0}" 'BEGIN { if (b >= 1073741824) printf "%.2f GB", b / 1073741824; else printf "%.0f MB", b / 1048576 }'
+}
+
+cmd_status() {
+    [ -s "$TB_STATUS" ] || { reply "No status yet: the modem is still starting."; return; }
+    reply "$(jq -r '
+        def v(x): if x == null or x == "" then "-" else (x | tostring) end;
+        def up(s): if s == null then "-" else "\((s / 86400) | floor)d \(((s % 86400) / 3600) | floor)h" end;
+        "QManager status\n" +
+        "Network: \(v(.network.carrier)) \(v(.network.type))\n" +
+        "Cell: eNB \(v(.lte.enodeb_id)), band \(v(.lte.band))" + (if (.nr.band // "") != "" then " + NR \(.nr.band)" else "" end) + "\n" +
+        "Signal: RSRP \(v(.lte.rsrp)) dBm, SINR \(v(.lte.sinr)) dB\n" +
+        "Internet: " + (if .connectivity.internet_available == true then "up, \(v(.connectivity.latency_ms)) ms" elif .connectivity.internet_available == false then "DOWN" else "unknown" end) + "\n" +
+        "Temperature: \(v(.device.temperature)) C\n" +
+        "Uptime: \(up(.device.uptime_seconds)), connected \(up(.device.conn_uptime_seconds))"
+    ' "$TB_STATUS" 2>/dev/null)"
+}
+
+cmd_signal() {
+    [ -s "$TB_STATUS" ] || { reply "No signal reading yet."; return; }
+    reply "$(jq -r '
+        def v(x): if x == null or x == "" then "-" else (x | tostring) end;
+        "LTE band \(v(.lte.band)), PCI \(v(.lte.pci)), eNB \(v(.lte.enodeb_id))\n" +
+        "RSRP \(v(.lte.rsrp)) dBm, RSRQ \(v(.lte.rsrq)) dB, SINR \(v(.lte.sinr)) dB" +
+        (if (.nr.band // "") != "" then "\nNR band \(v(.nr.band)), PCI \(v(.nr.pci))\nRSRP \(v(.nr.rsrp)) dBm, RSRQ \(v(.nr.rsrq)) dB, SINR \(v(.nr.sinr)) dB" else "" end) +
+        (if (.network.ca_count // 0) > 0 then "\nCarrier aggregation: \(.network.ca_count) carriers, \(v(.network.total_bandwidth_mhz)) MHz" else "" end)
+    ' "$TB_STATUS" 2>/dev/null)"
+}
+
+cmd_ip() {
+    local wan pub nat
+    wan=$(j '.network.wan_ipv4 // "-"')
+    pub="-"; nat=""
+    if [ -s "$TB_PUBIP" ]; then
+        pub=$(jq -r '.public_ipv4 // "-"' "$TB_PUBIP" 2>/dev/null)
+        [ "$(jq -r '.cgnat == true' "$TB_PUBIP" 2>/dev/null)" = "true" ] && nat=" (behind the operator's NAT)"
+    fi
+    reply "Modem address: $wan
+Public address: $pub$nat
+IPv6: $(j '.network.wan_ipv6 // "-"')"
+}
+
+cmd_data() {
+    local rx tx plan
+    rx=$(j '.data_used.accumulated_rx_bytes // 0'); tx=$(j '.data_used.accumulated_tx_bytes // 0')
+    plan=""
+    if [ -s "$TB_INSIGHTS" ] && [ "$(jq -r '.data_limit.enabled == true' "$TB_INSIGHTS" 2>/dev/null)" = "true" ]; then
+        plan=$(jq -r '.data_limit | "This period: \(((.used_bytes // 0) / 1073741824 * 100 | floor) / 100) GB of \(((.limit_bytes // 0) / 1073741824 * 10 | floor) / 10) GB (\(.percent // 0) %), resets in \(.days_left // "-") days"' "$TB_INSIGHTS" 2>/dev/null)
+    fi
+    reply "Data used since the last reset: down $(fmt_bytes "$rx"), up $(fmt_bytes "$tx")${plan:+
+$plan}"
+}
+
+cmd_reboot() {
+    _tb_reboot_asked=$(now)
+    reply "Reboot the modem? Send /reboot_confirm within 60 seconds."
+}
+
+cmd_reboot_confirm() {
+    local t
+    t=$(now)
+    if [ "$_tb_reboot_asked" -eq 0 ] || [ $((t - _tb_reboot_asked)) -gt 60 ]; then
+        reply "Send /reboot first, then /reboot_confirm within 60 seconds."
+        return
+    fi
+    _tb_reboot_asked=0
+    reply "Rebooting now. QManager will be back in about two minutes."
+    command -v append_event >/dev/null 2>&1 && append_event "telegram_command" "Reboot requested over Telegram" "warning"
+    qlog_warn "reboot requested over Telegram"
+    sync
+    sleep 3
+    $TB_REBOOT_CMD
+}
+
+cmd_help() {
+    reply "QManager commands:
+/status - network, signal, internet, temperature
+/signal - signal details for every carrier
+/ip - modem and public IP address
+/data - data used and your data plan
+/reboot - restart the modem (asks to confirm)
+/help - this list"
+}
+
+# Ten commands a minute is plenty; more is a loop or someone else's script.
+rate_ok() {
+    local t
+    t=$(now)
+    if [ $((t - _tb_window_start)) -ge 60 ]; then _tb_window_start=$t; _tb_window_n=0; fi
+    _tb_window_n=$((_tb_window_n + 1))
+    [ "$_tb_window_n" -le 10 ]
+}
+
+handle() {
+    local text="$1" cmd
+    cmd=$(printf '%s' "$text" | awk '{ print tolower($1) }' | sed 's/@.*//')
+    rate_ok || return 0
+    case "$cmd" in
+        /status) cmd_status ;;
+        /signal) cmd_signal ;;
+        /ip) cmd_ip ;;
+        /data) cmd_data ;;
+        /reboot) cmd_reboot ;;
+        /reboot_confirm) cmd_reboot_confirm ;;
+        /help|/start) cmd_help ;;
+        /*) reply "Unknown command. Send /help for the list." ;;
+        *) ;;
+    esac
+}
+
+commands_on() {
+    _ta_read_config || return 1
+    [ "$_ta_enabled" = "true" ] || return 1
+    case "$_ta_chat_id" in -*|[0-9]*) ;; *) return 1 ;; esac
+    [ "$(jq -r '.commands == true' "$_TA_CONFIG" 2>/dev/null)" = "true" ]
+}
+
+write_state() {
+    printf '{"running":true,"updated":%s,"last_command":%s,"error":"%s"}\n' "$(now)" "${1:-0}" "${2:-}" \
+        > "$TB_STATE.tmp" 2>/dev/null && mv "$TB_STATE.tmp" "$TB_STATE"
+}
+
+# Skip whatever was sent while the bot was off, so an old /reboot_confirm can never fire.
+skip_backlog() {
+    local resp last
+    resp=$(TB_POLL=0 tb_api getUpdates "offset=-1&timeout=0") || return 1
+    [ "$(printf '%s' "$resp" | jq -r '.ok == true' 2>/dev/null)" = "true" ] || return 1
+    last=$(printf '%s' "$resp" | jq -r '[.result[].update_id] | max // empty' 2>/dev/null)
+    [ -n "$last" ] && printf '%s\n' $((last + 1)) > "$TB_OFFSET"
+    return 0
+}
+
+main() {
+    local backoff=5 offset resp lines last_cmd=0 started=0
+    command -v curl >/dev/null 2>&1 || { qlog_warn "curl missing"; sleep 3600; exit 1; }
+    while :; do
+        if ! commands_on; then
+            # The unit is gated on this; a stale start just waits for the next save.
+            write_state "$last_cmd" "off"
+            sleep 60
+            continue
+        fi
+        if [ "$started" = "0" ]; then
+            if skip_backlog; then started=1; else write_state "$last_cmd" "offline"; sleep "$backoff"; continue; fi
+        fi
+        offset=$(cat "$TB_OFFSET" 2>/dev/null)
+        case "$offset" in ''|*[!0-9]*) offset=0 ;; esac
+        resp=$(tb_api getUpdates "offset=$offset&timeout=$TB_POLL&allowed_updates=%5B%22message%22%5D")
+        if [ "$(printf '%s' "$resp" | jq -r '.ok == true' 2>/dev/null)" != "true" ]; then
+            write_state "$last_cmd" "offline"
+            sleep "$backoff"
+            [ "$backoff" -lt 300 ] && backoff=$((backoff * 2))
+            continue
+        fi
+        backoff=5
+        # One line per update: id, chat id, message time, text (tabs and newlines flattened).
+        lines=$(printf '%s' "$resp" | jq -r '.result[] | [.update_id, (.message.chat.id // ""), (.message.date // 0),
+            ((.message.text // "") | gsub("[\t\n]"; " "))] | @tsv' 2>/dev/null)
+        # A here-document keeps the loop in this shell, so the /reboot confirmation survives it.
+        while IFS="$(printf '\t')" read -r uid chat when text; do
+            [ -n "$uid" ] || continue
+            printf '%s\n' $((uid + 1)) > "$TB_OFFSET"
+            [ "$chat" = "$_ta_chat_id" ] || continue
+            # Commands older than two minutes (sent while offline) are not run.
+            [ $(( $(now) - when )) -le 120 ] || continue
+            handle "$text"
+        done <<EOF
+$lines
+EOF
+        [ -n "$lines" ] && last_cmd=$(now)
+        write_state "$last_cmd" ""
+    done
+}
+
+[ "${TB_NO_MAIN:-0}" = "1" ] || main

@@ -650,6 +650,12 @@ function TelegramFields({ form }: { form: AlertsForm }) {
         placeholder="123456789"
         mono
       />
+      <ChannelPanelHead
+        title={t("alerts.channels.telegram.commands_label")}
+        description={t("alerts.channels.telegram.commands_hint")}
+        checked={form.telegramCommands}
+        onCheckedChange={form.setTelegramCommands}
+      />
     </>
   );
 }

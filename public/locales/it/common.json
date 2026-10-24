@@ -931,7 +931,9 @@
         "chat_hint": "Premi Avvia nella chat del bot, poi chiedi il tuo ID a @userinfobot. Gli ID dei gruppi iniziano con -100; un canale pubblico può usare il suo @nome.",
         "chat_missing": "Serve un ID chat.",
         "chat_error": "Inserisci un ID chat numerico o un nome @canale.",
-        "test": "Invia un messaggio di prova"
+        "test": "Invia un messaggio di prova",
+        "commands_label": "Comandi",
+        "commands_hint": "Risponde a /status, /signal, /ip, /data e /reboot inviati da questa chat."
       },
       "email": {
         "address_error": "Inserisci un indirizzo email valido.",
@@ -1073,6 +1075,18 @@
         },
         "login": {
           "name": "Accessi a QManager"
+        },
+        "sim_change": {
+          "name": "SIM cambiata o rimossa"
+        },
+        "roaming": {
+          "name": "Roaming"
+        },
+        "ip_change": {
+          "name": "IP pubblico cambiato"
+        },
+        "monthly_report": {
+          "name": "Rapporto mensile"
         }
       },
       "loading": "Caricamento della copertura…",
@@ -1805,7 +1819,8 @@
     "toast": {
       "plan_saved": "Piano dati salvato",
       "temp_saved": "Avviso temperatura salvato",
-      "history_saved": "Impostazioni cronologia salvate"
+      "history_saved": "Impostazioni cronologia salvate",
+      "roaming_saved": "Impostazioni roaming salvate."
     },
     "plan": {
       "title": "Piano dati",
@@ -1837,6 +1852,17 @@
       "open": "Apri cronologia segnale",
       "recording": "In registrazione",
       "off": "Disattivata"
+    },
+    "roaming": {
+      "title": "Roaming",
+      "description": "Avvisa quando il modem si registra su una rete estera, dove i dati possono costare di più.",
+      "now": "Ora",
+      "state_home": "Rete di casa",
+      "state_roaming": "In roaming",
+      "state_blocked": "Roaming · dati bloccati",
+      "alert": "Avvisa in roaming",
+      "block": "Blocca i dati in roaming",
+      "hint": "Il blocco ferma le nuove connessioni dei tuoi dispositivi finché il modem non torna sulla rete di casa; chiamate e SMS continuano a funzionare. Gli avvisi si impostano in Avvisi."
     }
   },
   "backup": {
@@ -2060,6 +2086,25 @@
       "console_on": "Nel browser è disponibile un terminale root. Rimuovilo se non lo usi.",
       "https_title": "HTTPS",
       "https_off": "La pagina di QManager è servita senza cifratura nella rete locale."
+    },
+    "pubip": {
+      "title": "Indirizzo IP pubblico",
+      "description": "L'indirizzo che vede Internet e se l'operatore lo condivide tra più clienti.",
+      "public": "Indirizzo pubblico",
+      "modem": "Indirizzo del modem",
+      "cgnat": "Dietro il NAT dell'operatore",
+      "cgnat_text": "Da Internet non si possono aprire connessioni verso il modem via IPv4, quindi le porte IPv4 aperte non sono raggiungibili dall'esterno.",
+      "direct": "Raggiungibile direttamente",
+      "direct_text": "Il modem ha un proprio IPv4 pubblico: ogni porta aperta nell'elenco è raggiungibile da Internet.",
+      "failed": "L'ultima verifica non ha ricevuto risposta.",
+      "checked": "Verificato {{time}}",
+      "enabled": "Verifica ogni 30 minuti",
+      "hint": "Chiede l'indirizzo ad api.ipify.org; un cambio può essere inviato come avviso da Avvisi.",
+      "check_now": "Verifica ora",
+      "save": "Salva",
+      "save_failed": "Impossibile salvare. Riprova.",
+      "toast_saved": "Verifica IP pubblico salvata.",
+      "toast_checking": "Verifica dell'IP pubblico entro pochi secondi."
     }
   },
   "activityLog": {
@@ -2117,6 +2162,89 @@
       "title": "Svuotare il registro attività?",
       "description": "Tutte le voci vengono eliminate. Lo svuotamento stesso viene registrato.",
       "cancel": "Annulla"
+    }
+  },
+  "resources": {
+    "page": {
+      "title": "Risorse",
+      "description": "Quanto sono occupati processore, memoria e flash del modem e quali programmi li usano.",
+      "refresh": "Aggiorna",
+      "retry": "Riprova"
+    },
+    "errors": {
+      "load_failed": "Impossibile leggere le risorse del modem"
+    },
+    "now": {
+      "title": "In questo momento",
+      "description": "Aggiornato ogni 5 secondi mentre la pagina è aperta.",
+      "cpu": "Processore",
+      "busy": "Occupato · {{pct}} %",
+      "memory": "Memoria",
+      "available": "Disponibile",
+      "load": "Carico (1 · 5 · 15 min)",
+      "processes": "Processi",
+      "uptime": "Acceso da"
+    },
+    "uptime_dh": "{{d}} g {{h}} h",
+    "uptime_hm": "{{h}} h {{m}} min",
+    "flash": {
+      "title": "Archiviazione",
+      "description": "Spazio usato sulla flash del modem, dove sono salvati impostazioni e cronologia.",
+      "none": "Impossibile leggere l'archiviazione."
+    },
+    "procs": {
+      "title": "Programmi",
+      "description": "I 15 programmi che usano più tempo di processore, poi memoria.",
+      "name": "Programma",
+      "cpu": "CPU",
+      "memory": "Memoria",
+      "first_read": "L'uso del processore compare dopo il prossimo aggiornamento."
+    }
+  },
+  "outages": {
+    "page": {
+      "title": "Interruzioni",
+      "description": "Quante volte è caduto Internet, per quanto, a che ore e su quali celle.",
+      "refresh": "Aggiorna",
+      "retry": "Riprova"
+    },
+    "errors": {
+      "load_failed": "Impossibile caricare il registro delle interruzioni"
+    },
+    "range": {
+      "label": "Periodo",
+      "7": "7 giorni",
+      "30": "30 giorni",
+      "90": "90 giorni"
+    },
+    "none": "Nessuna interruzione in questo periodo.",
+    "dur_s": "{{n}} s",
+    "dur_m": "{{n}} min",
+    "dur_hm": "{{h}} h {{m}} min",
+    "summary": {
+      "title": "Disponibilità",
+      "description": "Quota degli ultimi {{days}} giorni in cui Internet era raggiungibile. Il conteggio è iniziato con questa versione.",
+      "available": "Internet attivo",
+      "ongoing": "Interrotto dalle {{time}}",
+      "count": "Interruzioni",
+      "downtime": "Inattivo in totale",
+      "longest": "Interruzione più lunga"
+    },
+    "hours": {
+      "title": "Per ora del giorno",
+      "description": "Tempo di inattività per ora di inizio di ogni interruzione, ora locale.",
+      "bar": "{{h}}:00 · {{n}} interruzioni · {{dur}}",
+      "worst": "La maggior parte delle interruzioni inizia tra le {{from}}:00 e le {{to}}:00."
+    },
+    "cells": {
+      "title": "Per cella",
+      "description": "Le celle a cui era collegato il modem quando è caduto Internet.",
+      "unknown": "Cella sconosciuta",
+      "value": "{{n}} × · {{dur}}"
+    },
+    "recent": {
+      "title": "Ultime interruzioni",
+      "description": "Le 20 più recenti, dalla più nuova."
     }
   }
 }

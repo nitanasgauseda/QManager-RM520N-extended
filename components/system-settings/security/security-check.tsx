@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
+  CheckIcon,
   CopyIcon,
+  GlobeIcon,
   InfoIcon,
   Loader2Icon,
   LockIcon,
@@ -23,6 +26,10 @@ import { HintIcon } from "@/components/ui/hint-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tag } from "@/components/ui/tag";
 import { useSecurityCheck, type SecurityPort, type SecurityReport } from "@/hooks/use-security-check";
+import { useWatch } from "@/hooks/use-watch";
+import { CardFoot } from "@/components/ui/card-foot";
+import { SaveButton } from "@/components/ui/save-button";
+import { SegmentedField, SEGMENTED } from "@/components/ui/segmented-field";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 
@@ -288,6 +295,115 @@ function DeviceCard({ r }: { r: SecurityReport }) {
   );
 }
 
+const ROW = "flex items-center justify-between gap-4 rounded-pill bg-surface-container px-4 py-[0.6875rem]";
+const ROW_LABEL = "shrink-0 text-[0.8125rem] font-semibold leading-5 text-on-surface-variant";
+
+function PublicIpCard() {
+  const { t, i18n } = useTranslation("common");
+  const w = useWatch();
+  const savedOn = w.state?.config.public_ip.enabled ?? true;
+  const [on, setOn] = useState(savedOn);
+  const [prev, setPrev] = useState(savedOn);
+  if (savedOn !== prev) {
+    setPrev(savedOn);
+    setOn(savedOn);
+  }
+  if (!w.state) return null;
+  const ip = w.state.public_ip;
+  const dirty = on !== savedOn;
+
+  const onSave = async () => {
+    const r = await w.save({ ...w.state!.config, public_ip: { enabled: on } });
+    if (r.ok) toast.success(t(`${K}.pubip.toast_saved`));
+    else toast.error(t(`${K}.pubip.save_failed`));
+  };
+  const onCheck = async () => {
+    const r = await w.checkIp();
+    if (r.ok) toast.success(t(`${K}.pubip.toast_checking`));
+    else toast.error(t(`${K}.pubip.save_failed`));
+  };
+
+  return (
+    <Card className={CARD}>
+      <CardHeader className={PAD}>
+        <CardTitle className="text-lg leading-tight">{t(`${K}.pubip.title`)}</CardTitle>
+        <CardDescription className="text-on-surface-variant text-sm">{t(`${K}.pubip.description`)}</CardDescription>
+      </CardHeader>
+      <CardContent className={cn(PAD, "flex flex-col gap-[0.3125rem]")}>
+        <div className={ROW}>
+          <span className={ROW_LABEL}>{t(`${K}.pubip.public`)}</span>
+          <span className="min-w-0 truncate font-mono text-[0.8125rem] font-semibold">{ip?.public_ipv4 ?? "—"}</span>
+        </div>
+        <div className={ROW}>
+          <span className={ROW_LABEL}>{t(`${K}.pubip.modem`)}</span>
+          <span className="min-w-0 truncate font-mono text-[0.8125rem] font-semibold">{ip?.wan_ipv4 || "—"}</span>
+        </div>
+        {ip?.cgnat === true ? (
+          <div className="flex flex-wrap items-center gap-2 px-1 pt-2">
+            <Badge variant="info">
+              <GlobeIcon className="size-3" aria-hidden />
+              {t(`${K}.pubip.cgnat`)}
+            </Badge>
+            <span className="text-on-surface-variant text-sm text-pretty">{t(`${K}.pubip.cgnat_text`)}</span>
+          </div>
+        ) : ip?.cgnat === false ? (
+          <div className="flex flex-wrap items-center gap-2 px-1 pt-2">
+            <Badge variant="warning">
+              <TriangleAlertIcon className="size-3" aria-hidden />
+              {t(`${K}.pubip.direct`)}
+            </Badge>
+            <span className="text-on-surface-variant text-sm text-pretty">{t(`${K}.pubip.direct_text`)}</span>
+          </div>
+        ) : ip?.error ? (
+          <p className="text-on-surface-variant px-1 pt-2 text-sm">{t(`${K}.pubip.failed`)}</p>
+        ) : null}
+        {ip?.checked_at ? (
+          <p className="text-on-surface-variant px-1 text-xs tabular-nums">
+            {t(`${K}.pubip.checked`, {
+              time: new Date(ip.checked_at * 1000).toLocaleString(i18n.language, { dateStyle: "short", timeStyle: "short" }),
+            })}
+          </p>
+        ) : null}
+        <div className={cn(ROW, "mt-2")}>
+          <span className={ROW_LABEL}>{t(`${K}.pubip.enabled`)}</span>
+          <SegmentedField
+            value={on ? "on" : "off"}
+            onValueChange={(v) => setOn(v === "on")}
+            options={[
+              { value: "on", label: t("state.on") },
+              { value: "off", label: t("state.off") },
+            ]}
+            ariaLabel={t(`${K}.pubip.enabled`)}
+            breakpoint="never"
+            glyph={(c: string) => <CheckIcon size={SEGMENTED.GLYPH} className={c} aria-hidden="true" />}
+          />
+        </div>
+        <p className="text-on-surface-variant px-1 pt-1 text-xs text-pretty">{t(`${K}.pubip.hint`)}</p>
+      </CardContent>
+      <CardFoot
+        className={PAD}
+        actions={
+          <>
+            <Button type="button" variant="ghost" size="action" disabled={!savedOn || w.busy !== null} onClick={() => void onCheck()}>
+              <RefreshCwIcon className="size-4" aria-hidden />
+              {t(`${K}.pubip.check_now`)}
+            </Button>
+            <SaveButton
+              type="button"
+              size="action"
+              label={t(`${K}.pubip.save`)}
+              isSaving={w.busy === "save"}
+              saved={false}
+              disabled={!dirty || w.busy !== null}
+              onClick={() => void onSave()}
+            />
+          </>
+        }
+      />
+    </Card>
+  );
+}
+
 export default function SecurityCheckComponent() {
   const { t, i18n } = useTranslation("common");
   const api = useSecurityCheck();
@@ -360,7 +476,10 @@ export default function SecurityCheckComponent() {
           </div>
           <div className="grid grid-cols-1 items-start gap-5 *:min-w-0 @3xl/main:grid-cols-2">
             <PortsCard r={r} api={api} />
-            <DeviceCard r={r} />
+            <div className="flex flex-col gap-5">
+              <DeviceCard r={r} />
+              <PublicIpCard />
+            </div>
           </div>
         </>
       )}

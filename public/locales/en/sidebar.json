@@ -56,7 +56,9 @@
     "backup": "Backup & Restore",
     "dns_privacy": "DNS Privacy",
     "security_check": "Security Check",
-    "activity_log": "Activity Log"
+    "activity_log": "Activity Log",
+    "resources": "Resources",
+    "outages": "Outages"
   },
   "header": {
     "role": "Admin"

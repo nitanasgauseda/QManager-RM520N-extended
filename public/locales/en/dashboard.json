@@ -401,7 +401,12 @@
       "temperature_normal": "Temperature Normal",
       "suspicious_sms": "Suspicious SMS",
       "dns_privacy": "DNS Privacy",
-      "login": "Sign-in"
+      "login": "Sign-in",
+      "sim_change": "SIM Change",
+      "roaming": "Roaming",
+      "public_ip_changed": "Public IP Changed",
+      "monthly_report": "Monthly Report",
+      "telegram_command": "Telegram Command"
     }
   },
   "connection_quality": {

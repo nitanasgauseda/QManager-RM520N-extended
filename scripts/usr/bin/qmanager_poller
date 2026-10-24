@@ -48,6 +48,10 @@ LONG_FLAG="/tmp/qmanager_long_running"
 # Tier 2 cadence to land.
 TIER2_REFRESH_FLAG="/tmp/qmanager_tier2_refresh"
 POLL_INTERVAL=2        # seconds between Tier 1 cycles
+POLL_INTERVAL_IDLE=8   # seconds between cycles while no one has the UI open
+UI_IDLE_AFTER=120      # seconds without a UI request before the poller slows down
+UI_FLAG="/tmp/qmanager_ui_active"      # touched by every authenticated CGI request
+UI_REF="/tmp/qmanager_poller_ui_ref"
 TIER1_5_EVERY=5        # Tier 1.5 (per-antenna signal) runs every N cycles (10s)
 TIER2_EVERY=15         # Tier 2 runs every N cycles
 CYCLE_TIME_BUDGET=10   # seconds; warn if poll_cycle exceeds this
@@ -129,6 +133,10 @@ PING_HISTORY_MAX=8640  # ~38h at the measured ~16s row cadence (not 10s)
 # --- Persistent Data Used counter (Tier 1) -----------------------------------
 DATA_USED_FILE="/usrdata/qmanager/data_used.json"
 DATA_USED_TMP="/usrdata/qmanager/data_used.json.tmp"
+# Every tick goes to RAM; flash gets a copy every DATA_USED_PERSIST_S and on stop.
+DATA_USED_RAM="/tmp/qmanager_data_used.json"
+DATA_USED_PERSIST_S=300
+du_persisted_at=0
 DATA_USED_RESET_FLAG="/tmp/qmanager_data_used_reset"
 # data_used is sourced from the kernel rmnet interface byte counters
 # (/proc/net/dev). The kernel labels rx/tx, but on some Quectel IPA driver
@@ -481,6 +489,13 @@ else
     qlog_warn "insights.sh not found, history and limits disabled"
     insights_check() { :; }
     insights_flush() { :; }
+fi
+
+# SIM change, roaming, public IP, outage log, monthly report (optional).
+if [ -f /usr/lib/qmanager/watch.sh ]; then
+    . /usr/lib/qmanager/watch.sh
+else
+    watch_check() { :; }
 fi
 
 # DNS Privacy watchdog: gives LAN clients the carrier DNS back if the forwarder dies (optional).
@@ -906,35 +921,32 @@ update_conn_uptime() {
 # to DATA_USED_FILE each tick.
 
 write_data_used_state() {
+    # printf, not jq: this runs every cycle. Values are integers and interface names.
+    printf '{"schema":%s,"accumulated_rx_bytes":%s,"accumulated_tx_bytes":%s,"selected_counter":"%s","orientation":"%s","prev_ipa_rx":%s,"prev_ipa_tx":%s,"last_update_ts":%s,"last_reset_ts":%s,"modem_reset_count":%s}\n' \
+        "$DATA_USED_SCHEMA" "${du_accumulated_rx:-0}" "${du_accumulated_tx:-0}" "$du_selected_counter" "$orientation" \
+        "${du_prev_ipa_rx:-0}" "${du_prev_ipa_tx:-0}" "${du_last_update_ts:-0}" "${du_last_reset_ts:-0}" "${du_modem_reset_count:-0}" \
+        > "$DATA_USED_RAM.tmp" && mv "$DATA_USED_RAM.tmp" "$DATA_USED_RAM"
+    # last_update_ts was just set from the clock, so no extra date fork here.
+    if [ "$1" = "force" ] || [ $((${du_last_update_ts:-0} - du_persisted_at)) -ge "$DATA_USED_PERSIST_S" ]; then
+        data_used_persist
+    fi
+}
+
+# data_used_persist — copy the RAM state to flash (every 5 minutes, on reset, on stop).
+data_used_persist() {
+    [ -s "$DATA_USED_RAM" ] || return 0
     mkdir -p /usrdata/qmanager 2>/dev/null
-    jq -n \
-        --argjson schema    "$DATA_USED_SCHEMA" \
-        --argjson acc_rx    "$du_accumulated_rx" \
-        --argjson acc_tx    "$du_accumulated_tx" \
-        --arg     sel       "$du_selected_counter" \
-        --arg     orient    "$orientation" \
-        --argjson prev_i_rx "$du_prev_ipa_rx" \
-        --argjson prev_i_tx "$du_prev_ipa_tx" \
-        --argjson last_upd  "$du_last_update_ts" \
-        --argjson last_rst  "$du_last_reset_ts" \
-        --argjson modem_rst "$du_modem_reset_count" \
-        '{
-            schema:               $schema,
-            accumulated_rx_bytes: $acc_rx,
-            accumulated_tx_bytes: $acc_tx,
-            selected_counter:     $sel,
-            orientation:          $orient,
-            prev_ipa_rx:          $prev_i_rx,
-            prev_ipa_tx:          $prev_i_tx,
-            last_update_ts:       $last_upd,
-            last_reset_ts:        $last_rst,
-            modem_reset_count:    $modem_rst
-        }' > "$DATA_USED_TMP" && mv "$DATA_USED_TMP" "$DATA_USED_FILE"
+    cp "$DATA_USED_RAM" "$DATA_USED_TMP" 2>/dev/null && mv "$DATA_USED_TMP" "$DATA_USED_FILE" \
+        && du_persisted_at=$(date +%s)
 }
 
 update_data_used() {
     # Step 0: lazy-load persisted state on the first call.
     if [ "$du_loaded" = "false" ]; then
+        # A poller restart within this boot: RAM holds up to 5 minutes more than flash.
+        if [ -s "$DATA_USED_RAM" ] && [ "$DATA_USED_RAM" -nt "$DATA_USED_FILE" ]; then
+            cp "$DATA_USED_RAM" "$DATA_USED_FILE" 2>/dev/null
+        fi
         if [ -f "$DATA_USED_FILE" ]; then
             # Schema policy (v5):
             #   < v3  -> discard (pre-Schema-3 state is incompatible)
@@ -956,7 +968,7 @@ update_data_used() {
                 du_last_update_ts=0
                 du_last_reset_ts=$(date +%s)
                 du_modem_reset_count=0
-                write_data_used_state
+                write_data_used_state force
             else
                 local _jv
                 _jv=$(jq -r '
@@ -996,7 +1008,7 @@ update_data_used() {
         qlog_info "data_used: user reset triggered (counters zeroed)"
         # Persist the zeroed state now so an early return (e.g. interface
         # absent) or a crash before Step 6 cannot resurrect the old counters.
-        write_data_used_state
+        write_data_used_state force
     fi
 
     # Step 2: read the kernel cellular-interface byte counters.
@@ -1032,7 +1044,7 @@ update_data_used() {
         du_prev_ipa_tx="$ipa_tx"
         du_selected_counter="$NETWORK_IFACE"
         du_last_update_ts=$(date +%s)
-        write_data_used_state
+        write_data_used_state force
         return 0
     fi
 
@@ -2480,9 +2492,27 @@ poll_cycle() {
     cell_guard_check
     insights_check
     dns_privacy_watch
+    watch_check
     write_cache
 
     cycle_count=$((cycle_count + 1))
+}
+
+# ui_pause — sets poll_pause: short while the UI is open, long otherwise.
+# Builtins only (read, test -nt, : >), so the check costs no fork.
+ui_seen=-1000
+poll_pause=$POLL_INTERVAL
+ui_pause() {
+    local _up _r
+    poll_pause=$POLL_INTERVAL
+    read -r _up _r < /proc/uptime 2>/dev/null
+    _up=${_up%%.*}
+    case "$_up" in ''|*[!0-9]*) return ;; esac
+    if [ -e "$UI_FLAG" ] && { [ ! -e "$UI_REF" ] || [ "$UI_FLAG" -nt "$UI_REF" ]; }; then
+        ui_seen=$_up
+        : > "$UI_REF" 2>/dev/null
+    fi
+    [ $((_up - ui_seen)) -gt "$UI_IDLE_AFTER" ] && poll_pause=$POLL_INTERVAL_IDLE
 }
 
 # =============================================================================
@@ -2521,7 +2551,7 @@ main() {
     qlog_info "Boot data collected, entering poll loop"
 
     # Keep up to 15 minutes of buffered history across a clean stop.
-    trap 'insights_flush force; exit 0' TERM INT
+    trap 'insights_flush force; data_used_persist; exit 0' TERM INT
 
     while true; do
         cycle_start=$(date +%s)
@@ -2531,7 +2561,8 @@ main() {
         if [ "$cycle_duration" -gt "$CYCLE_TIME_BUDGET" ]; then
             qlog_warn "poll_cycle exceeded budget: ${cycle_duration}s > ${CYCLE_TIME_BUDGET}s"
         fi
-        sleep "$POLL_INTERVAL"
+        ui_pause
+        sleep "$poll_pause"
     done
 }
 

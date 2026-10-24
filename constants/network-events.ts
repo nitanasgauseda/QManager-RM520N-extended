@@ -32,6 +32,11 @@ export const EVENT_LABELS: Record<NetworkEventType, string> = {
   suspicious_sms: "Suspicious SMS",
   dns_privacy: "DNS Privacy",
   login: "Sign-in",
+  sim_change: "SIM Change",
+  roaming: "Roaming",
+  public_ip_changed: "Public IP Changed",
+  monthly_report: "Monthly Report",
+  telegram_command: "Telegram Command",
 };
 
 /** Tab categories used by the monitoring Network Events card */
@@ -70,6 +75,11 @@ export const EVENT_TAB_CATEGORIES: Record<NetworkEventType, EventTabCategory> =
     suspicious_sms: "networkMode",
     dns_privacy: "dataConnection",
     login: "dataConnection",
+    sim_change: "dataConnection",
+    roaming: "networkMode",
+    public_ip_changed: "dataConnection",
+    monthly_report: "dataConnection",
+    telegram_command: "dataConnection",
   };
 
 /** The filter rail on `/monitoring`, in render order. `all` is not a category. */

@@ -76,6 +76,7 @@ function settingsSignature(state: AlertsState): string {
     telegram.chat_id,
     telegram.token_set,
     telegram.curl_installed,
+    telegram.commands === true,
     routing,
   ].join("|");
 }
@@ -135,6 +136,8 @@ export interface AlertsForm {
   setTelegramToken: (v: string) => void;
   /** True when the device already has a stored Telegram bot token (never revealed). */
   telegramTokenSet: boolean;
+  telegramCommands: boolean;
+  setTelegramCommands: (v: boolean) => void;
 
   // Routing matrix
   getRoute: (event: AlertEventKey, channel: AlertChannel) => boolean;
@@ -192,6 +195,7 @@ export function useAlertsForm({
   const [telegramEnabled, setTelegramEnabled] = useState(telegram.enabled);
   const [telegramChat, setTelegramChat] = useState(telegram.chat_id);
   const [telegramToken, setTelegramToken] = useState(""); // never pre-filled
+  const [telegramCommands, setTelegramCommands] = useState(telegram.commands === true);
 
   const seedRouting = useCallback((): RoutingDraft => {
     const draft = {} as RoutingDraft;
@@ -317,6 +321,7 @@ export function useAlertsForm({
     telegramEnabled !== telegram.enabled ||
     telegramChat !== telegram.chat_id ||
     telegramToken.trim() !== "" ||
+    telegramCommands !== (telegram.commands === true) ||
     routingDirty;
 
   // ── Payload / discard ──────────────────────────────────────────────────────
@@ -347,6 +352,7 @@ export function useAlertsForm({
       telegram: {
         enabled: telegramEnabled,
         chat_id: telegramChat.trim(),
+        commands: telegramCommands,
       },
       routing: { events },
     };
@@ -374,6 +380,7 @@ export function useAlertsForm({
     telegramEnabled,
     telegramChat,
     telegramToken,
+    telegramCommands,
   ]);
 
   const discard = useCallback(() => {
@@ -390,6 +397,7 @@ export function useAlertsForm({
     setTelegramEnabled(telegram.enabled);
     setTelegramChat(telegram.chat_id);
     setTelegramToken("");
+    setTelegramCommands(telegram.commands === true);
     setRouting(seedRouting());
   }, [sms, email, discord, telegram, currentWait, seedRouting]);
 
@@ -433,6 +441,8 @@ export function useAlertsForm({
     telegramToken,
     setTelegramToken,
     telegramTokenSet: telegram.token_set,
+    telegramCommands,
+    setTelegramCommands,
     getRoute,
     setRoute,
     errors,

@@ -4,6 +4,10 @@
 import {
   GaugeIcon,
   LogInIcon,
+  CardSimIcon,
+  PlaneIcon,
+  GlobeIcon,
+  CalendarDaysIcon,
   MailIcon,
   MessageCircleIcon,
   MessageSquareIcon,
@@ -32,6 +36,10 @@ export const EVENT_GLYPH: Record<AlertEventKey, LucideIcon> = {
   data_limit: GaugeIcon,
   temperature: ThermometerIcon,
   login: LogInIcon,
+  sim_change: CardSimIcon,
+  roaming: PlaneIcon,
+  ip_change: GlobeIcon,
+  monthly_report: CalendarDaysIcon,
 };
 
 export const channelNameKey = (channel: AlertChannel) =>

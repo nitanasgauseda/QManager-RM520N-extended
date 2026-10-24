@@ -123,7 +123,7 @@ SSH_BOOTSTRAP_STATUS="not_run"
 LOG_FILE="/tmp/qmanager_install.log"
 
 # Services gated on config: only re-enable if they were already enabled.
-UCI_GATED_SERVICES="qmanager-watchcat qmanager-tower-failover qmanager-discord qmanager-sms-forward qmanager-rayhunter qmanager-dnsguard"
+UCI_GATED_SERVICES="qmanager-watchcat qmanager-tower-failover qmanager-discord qmanager-sms-forward qmanager-rayhunter qmanager-dnsguard qmanager-telegram-bot"
 
 # Conflict packages that must be removed before installing
 CONFLICT_PACKAGES="socat socat-at-bridge"
@@ -610,6 +610,30 @@ remove_conflicts() {
 # pre-existing intermittent behavior, it must not abort an install. Must be
 # idempotent — safe on every install and every OTA, including when the file
 # is already non-executable or absent.
+# install_speed_conf — gzip + caching for the web UI, only if the modules exist and lighttpd -tt accepts
+# the result; a config lighttpd cannot load would take the whole UI down.
+install_speed_conf() {
+    _speed_src="$SRC_SCRIPTS/usrdata/qmanager/lighttpd-speed.conf"
+    _speed_dst="/usrdata/qmanager/lighttpd-speed.conf"
+    rm -rf /usrdata/qmanager/deflate-cache
+    rm -f "$_speed_dst"
+    [ -f "$_speed_src" ] || return 0
+    # mod_setenv is built into lighttpd since 1.4.59, so only mod_deflate is a file; -tt settles the rest.
+    if [ ! -f /opt/lib/lighttpd/mod_deflate.so ]; then
+        info "Web UI compression skipped (mod_deflate not installed)"
+        return 0
+    fi
+    mkdir -p /usrdata/qmanager/deflate-cache && chown www-data /usrdata/qmanager/deflate-cache 2>/dev/null
+    cp "$_speed_src" "$_speed_dst" && chmod 644 "$_speed_dst"
+    if /opt/sbin/lighttpd -tt -f "$LIGHTTPD_CONF" >/dev/null 2>&1; then
+        info "Web UI compression and caching enabled"
+    else
+        rm -f "$_speed_dst"
+        rm -rf /usrdata/qmanager/deflate-cache
+        warn "lighttpd rejected the compression settings; web UI stays uncompressed"
+    fi
+}
+
 neutralize_entware_lighttpd() {
     local _s80="/opt/etc/init.d/S80lighttpd"
 
@@ -1333,6 +1357,12 @@ SVCEOF
             "$OPKG" install "$mod" >/dev/null 2>&1 \
                 && info "$mod installed" \
                 || warn "$mod not available"
+        done
+        # Optional: gzip and caching for the web UI (see install_speed_conf).
+        for mod in lighttpd-mod-deflate lighttpd-mod-setenv; do
+            "$OPKG" install "$mod" >/dev/null 2>&1 \
+                && info "$mod installed" \
+                || info "$mod not available (web UI stays uncompressed)"
         done
 
         # sudo (privilege escalation for CGI)
@@ -3627,6 +3657,8 @@ enable_services() {
     rm -f "$WANTS_DIR/qmanager.target"
     rm -rf /etc/systemd/system/qmanager.target.wants
 
+    install_speed_conf
+
     # Ensure lighttpd is enabled for boot
     if [ -f "$SYSTEMD_DIR/lighttpd.service" ]; then
         ln -sf "$SYSTEMD_DIR/lighttpd.service" "$WANTS_DIR/lighttpd.service"
@@ -3801,6 +3833,7 @@ enable_services() {
         _apply_gated_symlink /etc/qmanager/sms_forwarding.json '.enabled' qmanager-sms-forward "SMS forwarding service"
     fi
 
+    _apply_gated_symlink /etc/qmanager/telegram_alerts.json '(.enabled == true) and (.commands == true)' qmanager-telegram-bot "Telegram commands"
     if [ -x /usrdata/qmanager/bin/qmanager_dnsguard ]; then
         _apply_gated_symlink /etc/qmanager/dnsguard.json '.encrypt.enabled == true' qmanager-dnsguard "DNS Privacy service"
     fi

@@ -93,7 +93,7 @@ MSMTP_INSTALL_PID="/tmp/qmanager_msmtp_install.pid"
 # exactly, since that's the backend truth the engine enforces regardless of
 # what's written here. Enforcing it again here just keeps the persisted
 # routing file honest for the GET response / future engine changes.
-ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true},"suspicious_cell":{"sms":true,"email":true,"discord":true,"telegram":true},"data_limit":{"sms":true,"email":true,"discord":true,"telegram":true},"temperature":{"sms":true,"email":true,"discord":true,"telegram":true},"login":{"sms":false,"email":false,"discord":false,"telegram":false}}'
+ROUTING_DEFAULT='{"connection_lost":{"sms":true,"email":false,"discord":false,"telegram":false},"connection_restored":{"sms":true,"email":true,"discord":true,"telegram":true},"reboot":{"sms":true,"email":true,"discord":true,"telegram":true},"suspicious_cell":{"sms":true,"email":true,"discord":true,"telegram":true},"data_limit":{"sms":true,"email":true,"discord":true,"telegram":true},"temperature":{"sms":true,"email":true,"discord":true,"telegram":true},"login":{"sms":false,"email":false,"discord":false,"telegram":false},"sim_change":{"sms":true,"email":true,"discord":true,"telegram":true},"roaming":{"sms":true,"email":true,"discord":true,"telegram":true},"ip_change":{"sms":false,"email":false,"discord":false,"telegram":false},"monthly_report":{"sms":false,"email":true,"discord":true,"telegram":true}}'
 
 TELEGRAM_CONFIG="/etc/qmanager/telegram_alerts.json"
 TELEGRAM_RELOAD="/tmp/qmanager_telegram_reload"
@@ -199,7 +199,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     telegram_j=$(cfg_json "$TELEGRAM_CONFIG" '{
         enabled: ((.enabled | tostring) == "true"),
         chat: (.chat_id // "" | tostring),
-        token_set: (.token_set == true)
+        token_set: (.token_set == true),
+        commands: (.commands == true)
     }')
 
     msmtp_installed="false"
@@ -290,6 +291,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                     enabled: ($telegram.enabled // false),
                     chat_id: $telegram_chat,
                     token_set: $telegram_token_set,
+                    commands: ($telegram.commands // false),
                     threshold_minutes: $wait,
                     curl_installed: $curl_installed,
                     configured: ($telegram_chat != "" and $telegram_token_set)
@@ -308,7 +310,11 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 suspicious_cell: { sms: true, email: true, discord: true, telegram: true },
                 data_limit: { sms: true, email: true, discord: true, telegram: true },
                 temperature: { sms: true, email: true, discord: true, telegram: true },
-                login: { sms: true, email: true, discord: true, telegram: true }
+                login: { sms: true, email: true, discord: true, telegram: true },
+                sim_change: { sms: true, email: true, discord: true, telegram: true },
+                roaming: { sms: true, email: true, discord: true, telegram: true },
+                ip_change: { sms: true, email: true, discord: true, telegram: true },
+                monthly_report: { sms: true, email: true, discord: true, telegram: true }
             },
             reboots: $reboots
         }'
@@ -355,8 +361,9 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         discord_token_in=$(printf '%s' "$POST_DATA" | jq -r '.discord.bot_token // empty' 2>/dev/null)
 
         # Telegram: a client that predates the channel omits the block; keep what is saved.
-        _tg_prev_enabled="false"; _tg_prev_chat=""; _existing_telegram_token_set="false"
+        _tg_prev_enabled="false"; _tg_prev_chat=""; _existing_telegram_token_set="false"; _tg_prev_commands="false"
         if [ -f "$TELEGRAM_CONFIG" ]; then
+            _tg_prev_commands=$(jq -r '(.commands == true) | tostring' "$TELEGRAM_CONFIG" 2>/dev/null)
             _tg_prev_enabled=$(jq -r '(.enabled == true) | tostring' "$TELEGRAM_CONFIG" 2>/dev/null)
             _tg_prev_chat=$(jq -r '.chat_id // "" | tostring' "$TELEGRAM_CONFIG" 2>/dev/null)
             [ "$(jq -r '.token_set == true' "$TELEGRAM_CONFIG" 2>/dev/null)" = "true" ] && _existing_telegram_token_set="true"
@@ -365,7 +372,9 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             telegram_enabled_in=$(printf '%s' "$POST_DATA" | jq -r '.telegram.enabled // false' 2>/dev/null)
             telegram_chat_in=$(printf '%s' "$POST_DATA" | jq -r '.telegram.chat_id // "" | tostring' 2>/dev/null)
             telegram_token_in=$(printf '%s' "$POST_DATA" | jq -r '.telegram.bot_token // empty' 2>/dev/null)
+            telegram_commands_in=$(printf '%s' "$POST_DATA" | jq -r --arg p "$_tg_prev_commands" 'if (.telegram | has("commands")) then (.telegram.commands | tostring) else $p end' 2>/dev/null)
         else
+            telegram_commands_in="$_tg_prev_commands"
             telegram_enabled_in="$_tg_prev_enabled"
             telegram_chat_in="$_tg_prev_chat"
             telegram_token_in=""
@@ -381,6 +390,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         case "$email_enabled_in" in true|false) ;; *) cgi_error "invalid_enabled" "email.enabled must be a boolean"; exit 0 ;; esac
         case "$discord_enabled_in" in true|false) ;; *) cgi_error "invalid_enabled" "discord.enabled must be a boolean"; exit 0 ;; esac
         case "$telegram_enabled_in" in true|false) ;; *) cgi_error "invalid_enabled" "telegram.enabled must be a boolean"; exit 0 ;; esac
+        case "$telegram_commands_in" in true|false) ;; *) cgi_error "invalid_enabled" "telegram.commands must be a boolean"; exit 0 ;; esac
 
         # --- Validate thresholds (1-1440) -------------------------------------
         for _pair in "sms:$sms_threshold_in" "email:$email_threshold_in" "discord:$discord_threshold_in"; do
@@ -678,7 +688,8 @@ EOF
             --arg chat_id "$telegram_chat_in" \
             --argjson threshold_minutes "$new_wait" \
             --argjson token_set "$_existing_telegram_token_set" \
-            '{enabled:$enabled, chat_id:$chat_id, threshold_minutes:$threshold_minutes, token_set:$token_set}' \
+            --argjson commands "$telegram_commands_in" \
+            '{enabled:$enabled, chat_id:$chat_id, threshold_minutes:$threshold_minutes, token_set:$token_set, commands:$commands}' \
             > "${TELEGRAM_CONFIG}.tmp"; then
             rm -f "${TELEGRAM_CONFIG}.tmp"
             cgi_error "write_failed" "Failed to write Telegram config"
@@ -693,6 +704,15 @@ EOF
             fi
         fi
         telegram_token_in=""
+
+        # --- Telegram commands: the bot rereads the config and token on every long poll ---
+        if [ "$telegram_enabled_in" = "true" ] && [ "$telegram_commands_in" = "true" ]; then
+            svc_enable qmanager_telegram_bot >/dev/null 2>&1 || qlog_warn "svc_enable qmanager_telegram_bot failed"
+            svc_is_running qmanager_telegram_bot || { svc_reset_failed qmanager_telegram_bot; svc_restart qmanager_telegram_bot; }
+        else
+            svc_stop qmanager_telegram_bot
+            svc_disable qmanager_telegram_bot >/dev/null 2>&1
+        fi
 
         # --- Write routing config (atomic, wrapped under version+events) -------
         if ! jq -n --argjson events "$routing_final" '{version:1, events:$events}' \

@@ -56,7 +56,9 @@
     "backup": "Cadangan & Pemulihan",
     "dns_privacy": "Privasi DNS",
     "security_check": "Pemeriksaan Keamanan",
-    "activity_log": "Log Aktivitas"
+    "activity_log": "Log Aktivitas",
+    "resources": "Sumber daya",
+    "outages": "Gangguan"
   },
   "header": {
     "role": "Admin"

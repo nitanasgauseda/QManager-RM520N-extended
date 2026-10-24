@@ -1,0 +1,17 @@
+# /lib/systemd/system/qmanager-telegram-bot.service
+# Telegram commands (/status, /reboot, ...); enabled from Monitoring -> Alerts -> Telegram.
+# Gated by /etc/qmanager/telegram_alerts.json (.enabled and .commands).
+[Unit]
+Description=QManager Telegram commands
+After=network.target qmanager-setup.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/qmanager_telegram_bot
+Restart=always
+RestartSec=30
+Nice=10
+MemoryLimit=16M
+
+[Install]
+WantedBy=multi-user.target

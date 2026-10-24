@@ -401,7 +401,12 @@
       "temperature_normal": "温度恢复正常",
       "suspicious_sms": "可疑短信",
       "dns_privacy": "DNS 隐私",
-      "login": "登录"
+      "login": "登录",
+      "sim_change": "SIM 卡变更",
+      "roaming": "漫游",
+      "public_ip_changed": "公网 IP 变更",
+      "monthly_report": "月度报告",
+      "telegram_command": "Telegram 命令"
     }
   },
   "connection_quality": {

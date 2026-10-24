@@ -931,7 +931,9 @@
         "chat_hint": "在機器人聊天中點選「開始」，然後向 @userinfobot 查詢你的 ID。群組 ID 以 -100 開頭；公開頻道可使用其 @名稱。",
         "chat_missing": "需要填寫聊天 ID。",
         "chat_error": "請輸入數字聊天 ID 或 @頻道名稱。",
-        "test": "傳送測試訊息"
+        "test": "傳送測試訊息",
+        "commands_label": "指令",
+        "commands_hint": "回覆從此聊天傳送的 /status、/signal、/ip、/data 和 /reboot。"
       },
       "email": {
         "address_error": "請輸入有效的電子郵件地址。",
@@ -1073,6 +1075,18 @@
         },
         "login": {
           "name": "登入 QManager"
+        },
+        "sim_change": {
+          "name": "SIM 卡更換或取出"
+        },
+        "roaming": {
+          "name": "漫遊"
+        },
+        "ip_change": {
+          "name": "公網 IP 變更"
+        },
+        "monthly_report": {
+          "name": "每月報告"
         }
       },
       "loading": "正在載入涵蓋範圍",
@@ -1805,7 +1819,8 @@
     "toast": {
       "plan_saved": "數據方案已儲存",
       "temp_saved": "溫度提醒已儲存",
-      "history_saved": "歷史設定已儲存"
+      "history_saved": "歷史設定已儲存",
+      "roaming_saved": "漫遊設定已儲存。"
     },
     "plan": {
       "title": "數據方案",
@@ -1837,6 +1852,17 @@
       "open": "開啟訊號歷史",
       "recording": "正在記錄",
       "off": "關閉"
+    },
+    "roaming": {
+      "title": "漫遊",
+      "description": "當數據機註冊到境外網路（數據可能額外收費）時發出警告。",
+      "now": "目前",
+      "state_home": "本地網路",
+      "state_roaming": "漫遊中",
+      "state_blocked": "漫遊中 · 數據已封鎖",
+      "alert": "漫遊時提醒",
+      "block": "漫遊時封鎖數據",
+      "hint": "封鎖會停止裝置的新連線，直到數據機回到本地網路；通話和簡訊不受影響。提醒在「警示」中設定。"
     }
   },
   "backup": {
@@ -2060,6 +2086,25 @@
       "console_on": "瀏覽器中可使用 root 終端機。如不使用請移除。",
       "https_title": "HTTPS",
       "https_off": "QManager 頁面在區域網路中未加密傳輸。"
+    },
+    "pubip": {
+      "title": "公網 IP 位址",
+      "description": "網際網路看到的位址，以及電信商是否在多個用戶之間共用它。",
+      "public": "公網位址",
+      "modem": "數據機位址",
+      "cgnat": "位於電信商 NAT 之後",
+      "cgnat_text": "網際網路無法透過 IPv4 主動連線數據機，因此外部無法存取開放的 IPv4 連接埠。",
+      "direct": "可被直接存取",
+      "direct_text": "數據機擁有自己的公網 IPv4 位址：清單中每個開放的連接埠都可從網際網路存取。",
+      "failed": "上次查詢沒有得到回應。",
+      "checked": "檢查於 {{time}}",
+      "enabled": "每 30 分鐘檢查",
+      "hint": "向 api.ipify.org 查詢位址；位址變更可在「警示」中設定為提醒。",
+      "check_now": "立即檢查",
+      "save": "儲存",
+      "save_failed": "無法儲存，請重試。",
+      "toast_saved": "公網 IP 檢查設定已儲存。",
+      "toast_checking": "將在幾秒內檢查公網 IP。"
     }
   },
   "activityLog": {
@@ -2117,6 +2162,89 @@
       "title": "清除活動記錄？",
       "description": "所有記錄都將被刪除，清除動作本身會被記錄。",
       "cancel": "取消"
+    }
+  },
+  "resources": {
+    "page": {
+      "title": "資源",
+      "description": "數據機的處理器、記憶體和快閃記憶體有多忙，以及哪些程式在使用它們。",
+      "refresh": "重新整理",
+      "retry": "重試"
+    },
+    "errors": {
+      "load_failed": "無法讀取數據機的資源"
+    },
+    "now": {
+      "title": "目前",
+      "description": "此頁面開啟時每 5 秒更新一次。",
+      "cpu": "處理器",
+      "busy": "忙碌 · {{pct}} %",
+      "memory": "記憶體",
+      "available": "可用",
+      "load": "負載（1 · 5 · 15 分鐘）",
+      "processes": "程序",
+      "uptime": "已執行"
+    },
+    "uptime_dh": "{{d}} 天 {{h}} 小時",
+    "uptime_hm": "{{h}} 小時 {{m}} 分鐘",
+    "flash": {
+      "title": "儲存空間",
+      "description": "數據機快閃記憶體的已用空間，設定和歷史記錄儲存在這裡。",
+      "none": "無法讀取儲存空間。"
+    },
+    "procs": {
+      "title": "程式",
+      "description": "佔用處理器時間最多、其次記憶體最多的 15 個程式。",
+      "name": "程式",
+      "cpu": "CPU",
+      "memory": "記憶體",
+      "first_read": "處理器使用率將在下次更新後顯示。"
+    }
+  },
+  "outages": {
+    "page": {
+      "title": "斷線紀錄",
+      "description": "網際網路中斷的頻率、時長、時段以及發生在哪些基地台。",
+      "refresh": "重新整理",
+      "retry": "重試"
+    },
+    "errors": {
+      "load_failed": "無法載入斷線紀錄"
+    },
+    "range": {
+      "label": "時間範圍",
+      "7": "7 天",
+      "30": "30 天",
+      "90": "90 天"
+    },
+    "none": "此時間範圍內沒有斷線。",
+    "dur_s": "{{n}} 秒",
+    "dur_m": "{{n}} 分鐘",
+    "dur_hm": "{{h}} 小時 {{m}} 分鐘",
+    "summary": {
+      "title": "可用率",
+      "description": "過去 {{days}} 天中網際網路可用的比例。從此版本開始統計。",
+      "available": "網路正常",
+      "ongoing": "自 {{time}} 起中斷",
+      "count": "斷線次數",
+      "downtime": "累計中斷",
+      "longest": "最長一次"
+    },
+    "hours": {
+      "title": "依時段",
+      "description": "依每次斷線開始的本地時段統計的中斷時長。",
+      "bar": "{{h}}:00 · {{n}} 次 · {{dur}}",
+      "worst": "大部分中斷開始於 {{from}}:00 至 {{to}}:00 之間。"
+    },
+    "cells": {
+      "title": "依基地台",
+      "description": "斷線時數據機所連接的基地台。",
+      "unknown": "未知基地台",
+      "value": "{{n}} 次 · {{dur}}"
+    },
+    "recent": {
+      "title": "最近斷線",
+      "description": "最近 20 次，最新的在前。"
     }
   }
 }

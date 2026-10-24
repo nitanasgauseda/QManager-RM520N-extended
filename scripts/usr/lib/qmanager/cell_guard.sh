@@ -197,7 +197,10 @@ _cg_check_cell() {
     ptac=$(printf '%s' "$prev" | cut -d'|' -f3)
     ppci=$(printf '%s' "$prev" | cut -d'|' -f4)
     parfcn=$(printf '%s' "$prev" | cut -d'|' -f5)
-    _cg_known_put "$key" "$key|$tac|$pci|$arfcn|$(printf '%s' "$prev" | cut -d'|' -f6)"
+    local line
+    line="$key|$tac|$pci|$arfcn|$(printf '%s' "$prev" | cut -d'|' -f6)"
+    # Hopping between two known cells must not rewrite the file on flash each time.
+    [ "$line" = "$prev" ] || _cg_known_put "$key" "$line"
     if [ -n "$ptac" ] && [ -n "$tac" ] && [ "$ptac" != "$tac" ]; then
         _cg_finding "$label $id now reports TAC $tac (it was $ptac)"
     elif [ -n "$ppci" ] && [ -n "$pci" ] && [ "$ppci" != "$pci" ]; then

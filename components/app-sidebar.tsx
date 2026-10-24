@@ -172,9 +172,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           { t_key: "latency_monitor", url: "/monitoring/latency" },
           { t_key: "network_events", url: "/monitoring/events" },
           { t_key: "signal_history", url: "/monitoring/signal-history" },
+          { t_key: "outages", url: "/monitoring/outages" },
         ],
       },
       { t_key: "usage", url: "/monitoring/usage", icon: "thermostat" },
+      { t_key: "resources", url: "/monitoring/resources", icon: "memory" },
       { t_key: "alerts", url: "/monitoring/alerts", icon: "notifications" },
       {
         t_key: "watchdog",

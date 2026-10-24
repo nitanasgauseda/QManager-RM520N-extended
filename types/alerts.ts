@@ -22,7 +22,11 @@ export type AlertEventKey =
   | "suspicious_cell"
   | "data_limit"
   | "temperature"
-  | "login";
+  | "login"
+  | "sim_change"
+  | "roaming"
+  | "ip_change"
+  | "monthly_report";
 
 // ─── Channel transport state (identity + master enable) ──────────────────────
 
@@ -63,6 +67,8 @@ export interface TelegramChannelState {
   chat_id: string;
   /** Whether a bot token is stored. The token itself is never returned. */
   token_set: boolean;
+  /** The bot answers /status, /reboot and the other commands from this chat. */
+  commands?: boolean;
   threshold_minutes: number;
   /** Whether curl, the Telegram transport, is present on the device. */
   curl_installed: boolean;
@@ -154,6 +160,7 @@ export interface AlertsSavePayload {
   telegram: {
     enabled: boolean;
     chat_id: string;
+    commands: boolean;
     /** Only sent when the user typed a new bot token. */
     bot_token?: string;
   };
@@ -197,6 +204,10 @@ export const ALERT_EVENT_ORDER: AlertEventKey[] = [
   "data_limit",
   "temperature",
   "login",
+  "sim_change",
+  "roaming",
+  "ip_change",
+  "monthly_report",
 ];
 
 export const ALERT_CHANNEL_ORDER: AlertChannel[] = ["sms", "email", "telegram", "discord"];

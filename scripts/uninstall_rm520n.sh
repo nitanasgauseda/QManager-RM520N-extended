@@ -231,6 +231,11 @@ for _t in iptables ip6tables; do
     $_t -t nat -F QMANAGER_DNS 2>/dev/null; $_t -t nat -X QMANAGER_DNS 2>/dev/null
     $_t -F QMANAGER_DNS 2>/dev/null; $_t -X QMANAGER_DNS 2>/dev/null
 done
+# Roaming data block (watch.sh).
+while iptables -C FORWARD -j QMANAGER_ROAM 2>/dev/null; do
+    iptables -D FORWARD -j QMANAGER_ROAM 2>/dev/null || break
+done
+iptables -F QMANAGER_ROAM 2>/dev/null; iptables -X QMANAGER_ROAM 2>/dev/null
 # A block from the first DNS Privacy version (dnsmasq.conf) is stripped too. No reload: dnsmasq cannot
 # be restarted safely here, and the file only matters at its next start.
 if grep -qxF "# QMANAGER-DNSGUARD-BEGIN v1" /etc/data/dnsmasq.conf 2>/dev/null; then
@@ -722,6 +727,10 @@ fi
 # for the atomic dnsmasq.conf rename; not user config, safe to remove on every
 # uninstall (independent of --purge).
 rm -rf /etc/data/qmanager
+
+# Web UI compression settings and their cache (recreated by every install).
+rm -f "$QMANAGER_ROOT/lighttpd-speed.conf"
+rm -rf "$QMANAGER_ROOT/deflate-cache"
 
 # Remove qmanager root only when empty (console + certs already gone;
 # Tailscale teardown under --purge removes nothing here)

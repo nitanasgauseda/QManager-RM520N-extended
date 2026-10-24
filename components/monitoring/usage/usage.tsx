@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
+  PlaneIcon,
   CheckIcon,
   MinusCircleIcon,
   ThermometerIcon,
@@ -23,6 +24,7 @@ import { SaveButton } from "@/components/ui/save-button";
 import { SegmentedField, SEGMENTED } from "@/components/ui/segmented-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInsights, type InsightsConfig, type InsightsSave, type InsightsState } from "@/hooks/use-insights";
+import { useWatch } from "@/hooks/use-watch";
 import { cn } from "@/lib/utils";
 
 const K = "usage";
@@ -428,6 +430,64 @@ function HistoryCard({ state, save, isSaving }: { state: InsightsState; save: Sa
   );
 }
 
+function RoamingCard() {
+  const { t } = useTranslation("common");
+  const w = useWatch();
+  const saved = w.state?.config.roaming ?? { alert: true, block: false };
+  const [d, setD, dirty] = useDraft(saved);
+  if (!w.state) return null;
+  const r = w.state.roaming;
+
+  const onSave = async () => {
+    const res = await w.save({ ...w.state!.config, roaming: d });
+    if (res.ok) toast.success(t(`${K}.toast.roaming_saved`));
+    else toast.error(t(`${K}.errors.save_failed`));
+  };
+
+  return (
+    <Card className={CARD}>
+      <CardHeader className={PAD}>
+        <CardTitle className="text-lg leading-tight">{t(`${K}.roaming.title`)}</CardTitle>
+        <CardDescription className="text-on-surface-variant text-sm">{t(`${K}.roaming.description`)}</CardDescription>
+      </CardHeader>
+      <CardContent className={cn(PAD, "flex flex-col gap-[0.3125rem]")}>
+        <Row label={t(`${K}.roaming.now`)}>
+          {r?.state === "roaming" ? (
+            <Badge variant="warning">
+              <PlaneIcon className="size-3" aria-hidden />
+              {r.blocked ? t(`${K}.roaming.state_blocked`) : t(`${K}.roaming.state_roaming`)}
+            </Badge>
+          ) : (
+            <span className={ROW_VALUE}>{r?.state === "home" ? t(`${K}.roaming.state_home`) : "—"}</span>
+          )}
+        </Row>
+        <Row label={t(`${K}.roaming.alert`)} wrap>
+          <OnOff value={d.alert} onChange={(v) => setD({ ...d, alert: v })} label={t(`${K}.roaming.alert`)} />
+        </Row>
+        <Row label={t(`${K}.roaming.block`)} wrap>
+          <OnOff value={d.block} onChange={(v) => setD({ ...d, block: v })} label={t(`${K}.roaming.block`)} />
+        </Row>
+        <p className="text-on-surface-variant pt-2 text-sm text-pretty">{t(`${K}.roaming.hint`)}</p>
+      </CardContent>
+      <CardFoot
+        className={PAD}
+        status={dirty ? <span className="text-on-surface font-medium">{t(`${K}.unsaved`)}</span> : null}
+        actions={
+          <SaveButton
+            type="button"
+            size="action"
+            label={t(`${K}.save`)}
+            isSaving={w.busy === "save"}
+            saved={false}
+            disabled={!dirty || w.busy !== null}
+            onClick={() => void onSave()}
+          />
+        }
+      />
+    </Card>
+  );
+}
+
 export default function UsageComponent() {
   const { t } = useTranslation("common");
   const ins = useInsights();
@@ -473,7 +533,10 @@ export default function UsageComponent() {
     <div className="@container/main flex flex-col gap-5 p-2">
       {header}
       <div className="grid grid-cols-1 items-start gap-5 *:min-w-0 @3xl/main:grid-cols-2">
-        <DataPlanCard state={ins.state} save={ins.save} isSaving={ins.isSaving} />
+        <div className="flex flex-col gap-5">
+          <DataPlanCard state={ins.state} save={ins.save} isSaving={ins.isSaving} />
+          <RoamingCard />
+        </div>
         <div className="flex flex-col gap-5">
           <TemperatureCard state={ins.state} save={ins.save} isSaving={ins.isSaving} />
           <HistoryCard state={ins.state} save={ins.save} isSaving={ins.isSaving} />

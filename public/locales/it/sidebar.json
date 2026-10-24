@@ -56,7 +56,9 @@
     "backup": "Backup e ripristino",
     "dns_privacy": "Privacy DNS",
     "security_check": "Controllo sicurezza",
-    "activity_log": "Registro attività"
+    "activity_log": "Registro attività",
+    "resources": "Risorse",
+    "outages": "Interruzioni"
   },
   "header": {
     "role": "Admin"

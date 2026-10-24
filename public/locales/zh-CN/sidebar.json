@@ -56,7 +56,9 @@
     "backup": "备份与恢复",
     "dns_privacy": "DNS 隐私",
     "security_check": "安全检查",
-    "activity_log": "活动日志"
+    "activity_log": "活动日志",
+    "resources": "资源",
+    "outages": "断网记录"
   },
   "header": {
     "role": "管理员"

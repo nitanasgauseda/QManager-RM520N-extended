@@ -748,7 +748,9 @@ t_cfg_poller_cache_fresh() {
     else echo "fail|age ${age}s (poller may be stalled)"; fi
 }
 t_cfg_data_used_fresh() {
-    local f=/usrdata/qmanager/data_used.json
+    # The poller writes every tick to RAM and copies it to flash every 5 minutes.
+    local f=/tmp/qmanager_data_used.json
+    [ -f "$f" ] || f=/usrdata/qmanager/data_used.json
     if [ ! -f "$f" ]; then
         echo "missing $f" >> "$OUTPUT_FILE"
         echo "fail|missing (poller has never run successfully)"

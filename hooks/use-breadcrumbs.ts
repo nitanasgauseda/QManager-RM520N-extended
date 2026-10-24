@@ -49,6 +49,8 @@ const routeKeyMap: Record<string, string> = {
   watchdog: 'items.watchdog',
   'cell-guard': 'items.cell_guard',
   'signal-history': 'items.signal_history',
+  resources: 'items.resources',
+  outages: 'items.outages',
   usage: 'items.usage',
   backup: 'items.backup',
   'dns-privacy': 'items.dns_privacy',

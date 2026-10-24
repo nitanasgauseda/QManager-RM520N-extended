@@ -931,7 +931,9 @@
         "chat_hint": "Tekan Start di chat bot Anda, lalu tanyakan ID Anda ke @userinfobot. ID grup diawali -100; kanal publik dapat memakai @nama-nya.",
         "chat_missing": "ID chat diperlukan.",
         "chat_error": "Masukkan ID chat berupa angka atau nama @kanal.",
-        "test": "Kirim pesan uji"
+        "test": "Kirim pesan uji",
+        "commands_label": "Perintah",
+        "commands_hint": "Menjawab /status, /signal, /ip, /data, dan /reboot yang dikirim dari obrolan ini."
       },
       "email": {
         "address_error": "Masukkan alamat email yang valid.",
@@ -1073,6 +1075,18 @@
         },
         "login": {
           "name": "Masuk ke QManager"
+        },
+        "sim_change": {
+          "name": "Kartu SIM diganti atau dilepas"
+        },
+        "roaming": {
+          "name": "Roaming"
+        },
+        "ip_change": {
+          "name": "IP publik berubah"
+        },
+        "monthly_report": {
+          "name": "Laporan bulanan"
         }
       },
       "loading": "Memuat cakupan",
@@ -1805,7 +1819,8 @@
     "toast": {
       "plan_saved": "Paket data disimpan",
       "temp_saved": "Peringatan suhu disimpan",
-      "history_saved": "Pengaturan riwayat disimpan"
+      "history_saved": "Pengaturan riwayat disimpan",
+      "roaming_saved": "Pengaturan roaming disimpan."
     },
     "plan": {
       "title": "Paket data",
@@ -1837,6 +1852,17 @@
       "open": "Buka Riwayat Sinyal",
       "recording": "Merekam",
       "off": "Mati"
+    },
+    "roaming": {
+      "title": "Roaming",
+      "description": "Memperingatkan saat modem terdaftar di jaringan asing, tempat data bisa lebih mahal.",
+      "now": "Saat ini",
+      "state_home": "Jaringan asal",
+      "state_roaming": "Roaming",
+      "state_blocked": "Roaming · data diblokir",
+      "alert": "Peringatan saat roaming",
+      "block": "Blokir data saat roaming",
+      "hint": "Pemblokiran menghentikan koneksi baru dari perangkat Anda sampai modem kembali ke jaringan asal; panggilan dan SMS tetap berfungsi. Peringatan diatur di Peringatan."
     }
   },
   "backup": {
@@ -2060,6 +2086,25 @@
       "console_on": "Terminal root tersedia di peramban. Hapus jika tidak dipakai.",
       "https_title": "HTTPS",
       "https_off": "Halaman QManager disajikan tanpa enkripsi di jaringan Anda."
+    },
+    "pubip": {
+      "title": "Alamat IP publik",
+      "description": "Alamat yang dilihat internet, dan apakah operator membaginya antar pelanggan.",
+      "public": "Alamat publik",
+      "modem": "Alamat modem",
+      "cgnat": "Di balik NAT operator",
+      "cgnat_text": "Internet tidak dapat membuka koneksi ke modem melalui IPv4, jadi port IPv4 yang terbuka tidak dapat dijangkau dari luar.",
+      "direct": "Dapat dijangkau langsung",
+      "direct_text": "Modem punya alamat IPv4 publik sendiri: setiap port terbuka di daftar dapat dijangkau dari internet.",
+      "failed": "Pemeriksaan terakhir tidak mendapat jawaban.",
+      "checked": "Diperiksa {{time}}",
+      "enabled": "Periksa setiap 30 menit",
+      "hint": "Menanyakan alamat ke api.ipify.org; perubahan dapat dikirim sebagai peringatan dari Peringatan.",
+      "check_now": "Periksa sekarang",
+      "save": "Simpan",
+      "save_failed": "Tidak dapat menyimpan. Coba lagi.",
+      "toast_saved": "Pemeriksaan IP publik disimpan.",
+      "toast_checking": "Memeriksa IP publik dalam beberapa detik."
     }
   },
   "activityLog": {
@@ -2117,6 +2162,89 @@
       "title": "Kosongkan log aktivitas?",
       "description": "Semua entri dihapus. Pengosongan itu sendiri dicatat.",
       "cancel": "Batal"
+    }
+  },
+  "resources": {
+    "page": {
+      "title": "Sumber daya",
+      "description": "Seberapa sibuk prosesor, memori, dan flash modem, serta program mana yang memakainya.",
+      "refresh": "Muat ulang",
+      "retry": "Coba lagi"
+    },
+    "errors": {
+      "load_failed": "Tidak dapat membaca sumber daya modem"
+    },
+    "now": {
+      "title": "Saat ini",
+      "description": "Diperbarui setiap 5 detik selama halaman ini terbuka.",
+      "cpu": "Prosesor",
+      "busy": "Sibuk · {{pct}} %",
+      "memory": "Memori",
+      "available": "Tersedia",
+      "load": "Beban (1 · 5 · 15 mnt)",
+      "processes": "Proses",
+      "uptime": "Berjalan selama"
+    },
+    "uptime_dh": "{{d}} h {{h}} j",
+    "uptime_hm": "{{h}} j {{m}} mnt",
+    "flash": {
+      "title": "Penyimpanan",
+      "description": "Ruang terpakai di flash modem, tempat pengaturan dan riwayat disimpan.",
+      "none": "Penyimpanan tidak dapat dibaca."
+    },
+    "procs": {
+      "title": "Program",
+      "description": "15 program yang paling banyak memakai waktu prosesor, lalu memori.",
+      "name": "Program",
+      "cpu": "CPU",
+      "memory": "Memori",
+      "first_read": "Penggunaan prosesor muncul setelah pembaruan berikutnya."
+    }
+  },
+  "outages": {
+    "page": {
+      "title": "Gangguan",
+      "description": "Seberapa sering internet terputus, berapa lama, pada jam berapa, dan di sel mana.",
+      "refresh": "Muat ulang",
+      "retry": "Coba lagi"
+    },
+    "errors": {
+      "load_failed": "Tidak dapat memuat log gangguan"
+    },
+    "range": {
+      "label": "Periode",
+      "7": "7 hari",
+      "30": "30 hari",
+      "90": "90 hari"
+    },
+    "none": "Tidak ada gangguan pada periode ini.",
+    "dur_s": "{{n}} dtk",
+    "dur_m": "{{n}} mnt",
+    "dur_hm": "{{h}} j {{m}} mnt",
+    "summary": {
+      "title": "Ketersediaan",
+      "description": "Bagian dari {{days}} hari terakhir saat internet dapat dijangkau. Penghitungan dimulai sejak versi ini.",
+      "available": "Internet aktif",
+      "ongoing": "Terputus sejak {{time}}",
+      "count": "Gangguan",
+      "downtime": "Total terputus",
+      "longest": "Gangguan terlama"
+    },
+    "hours": {
+      "title": "Menurut jam",
+      "description": "Waktu terputus menurut jam mulai setiap gangguan, waktu lokal.",
+      "bar": "{{h}}:00 · {{n}} gangguan · {{dur}}",
+      "worst": "Sebagian besar waktu terputus dimulai antara pukul {{from}}:00 dan {{to}}:00."
+    },
+    "cells": {
+      "title": "Menurut sel",
+      "description": "Sel tempat modem terhubung saat internet terputus.",
+      "unknown": "Sel tidak diketahui",
+      "value": "{{n}} × · {{dur}}"
+    },
+    "recent": {
+      "title": "Gangguan terbaru",
+      "description": "20 terbaru, yang terbaru di atas."
     }
   }
 }
