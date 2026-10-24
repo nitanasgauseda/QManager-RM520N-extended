@@ -78,7 +78,9 @@ DPI_HOSTLIST_DEFAULT="/etc/qmanager/video_domains_default.txt"
 # `comment'"), so the engine rule cannot carry -m comment. The rule is
 # identified by its unique target instead: nothing else on the modem
 # redirects to port 989. Match on the -S (unwrapped, single-line) form.
-DPI_RULE_SIG="--to-ports $DPI_PORT"
+# DNAT to the bind address (`--to-destination <ip>:989`), not REDIRECT: REDIRECT rewrites to the
+# interface's first address, the carrier IP in IP Passthrough mode, where tpws does not listen.
+DPI_RULE_SIG=":$DPI_PORT"
 # The rule spec, written ONCE. The -D drain must match the insert byte-for-byte
 # including match-module order, so all four call sites share these constants
 # rather than restating the flags.
@@ -131,9 +133,14 @@ dpi_binary_installed() {
 # transparent proxy reachable from the carrier side. Prints empty when the LAN
 # interface has no address yet — callers must treat that as "cannot start".
 # =============================================================================
+# In IP Passthrough mode bridge0's FIRST address is the carrier IP the router also uses;
+# tpws bound there answers the router from its own address and nothing gets back. Prefer
+# the private LAN address (192.168.225.1), as the web UI and dnsmasq do.
 dpi_bind_addr() {
-    ip -4 addr show "$DPI_LAN_IF" 2>/dev/null \
-        | sed -n 's/.*inet \([0-9.]*\)\/.*/\1/p' | head -n1
+    ip -4 addr show "$DPI_LAN_IF" 2>/dev/null | awk '
+        $1 == "inet" { split($2, a, "/"); ip = a[1]; if (first == "") first = ip; split(ip, o, ".")
+            if (o[1] == 10 || (o[1] == 192 && o[2] == 168) || (o[1] == 172 && o[2] >= 16 && o[2] <= 31)) { print ip; found = 1; exit } }
+        END { if (!found && first != "") print first }'
 }
 
 # Dotted quad -> the little-endian hex /proc/net/tcp renders (192.168.225.1 -> 01E1A8C0).
@@ -201,7 +208,7 @@ dpi_domains_loaded() {
 # =============================================================================
 dpi_rule_present() {
     run_iptables -w 5 -t nat -S PREROUTING 2>/dev/null \
-        | grep -q -- "$DPI_RULE_SIG"
+        | grep -- "-j DNAT --to-destination" | grep -q -- "$DPI_RULE_SIG\$"
 }
 
 # =============================================================================
@@ -214,7 +221,7 @@ dpi_packets_processed() {
     # "--to-ports 989" — see DPI_RULE_SIG for detection).
     local pkts
     pkts=$(run_iptables -w 5 -t nat -L PREROUTING -n -v -x 2>/dev/null \
-        | grep -- "redir ports $DPI_PORT" | head -n1 | awk '{print $1}')
+        | grep -E -- "(to:[0-9.]+:$DPI_PORT|redir ports $DPI_PORT)\$" | head -n1 | awk '{print $1}')
     case "$pkts" in
         ''|*[!0-9]*) echo 0 ;;
         *) echo "$pkts" ;;
@@ -231,31 +238,38 @@ dpi_packets_processed() {
 # Returns 0 on success (the -I exit status).
 # =============================================================================
 dpi_apply_rule() {
-    # The legacy drain runs BEFORE the idempotence check, not after: DPI_RULE_SIG
-    # matches the old spec too, so an un-migrated rule would read as "present"
-    # and the addrtype exclusion would never land.
+    local bind
+    bind=$(dpi_bind_addr)
+    [ -n "$bind" ] || return 1
+    # REDIRECT rules from earlier versions go first: they send LAN traffic to a port nothing listens on.
     _dpi_purge_legacy_rule
     # Idempotent: if the rule is already installed, leave it alone.
     # Re-creating it every ensure pass would reset its packet counter,
     # making "Packets processed" visibly collapse to 0 once a minute.
-    if dpi_rule_present; then
+    if run_iptables -w 5 -t nat -C PREROUTING $_DPI_RULE_MATCH -j DNAT --to-destination "$bind:$DPI_PORT" 2>/dev/null; then
         return 0
     fi
-    local i=0
-    while [ "$i" -lt 16 ]; do
-        run_iptables -w 5 -t nat -D PREROUTING $_DPI_RULE_MATCH \
-            -j REDIRECT --to-ports "$DPI_PORT" 2>/dev/null || break
-        i=$((i + 1))
-    done
+    # A rule for an old LAN address (bind changed) is drained before the new one goes in.
+    _dpi_drain_dnat
     run_iptables -w 5 -t nat -I PREROUTING $_DPI_RULE_MATCH \
-        -j REDIRECT --to-ports "$DPI_PORT"
+        -j DNAT --to-destination "$bind:$DPI_PORT"
 }
 
-# Drain the pre-addrtype rule. Unconditional and called from inside
-# dpi_remove_rule/dpi_apply_rule rather than from their callers, so the CGI
-# disable path and _dpi_uninstall_run are covered without touching either —
-# a drain that missed them would leave the old REDIRECT live with the engine
-# reported off, which is a LAN outage, not a leak.
+# Drain every engine DNAT rule whatever address it names: read from -S, replay as -D.
+_dpi_drain_dnat() {
+    local line i=0
+    run_iptables -w 5 -t nat -S PREROUTING 2>/dev/null \
+        | grep -- "-j DNAT --to-destination" | grep -- "$DPI_RULE_SIG\$" | sed 's/^-A /-D /' \
+        | while read -r line; do
+            i=$((i + 1)); [ "$i" -le 16 ] || break
+            # $line is split on purpose: it is an iptables argument list.
+            run_iptables -w 5 -t nat $line 2>/dev/null
+        done
+}
+
+# Drain the REDIRECT rules of earlier versions (with and without the addrtype match).
+# Unconditional and called from inside dpi_remove_rule/dpi_apply_rule, so the CGI
+# disable path and _dpi_uninstall_run are covered without touching either.
 _dpi_purge_legacy_rule() {
     local i=0
     while [ "$i" -lt 16 ]; do
@@ -263,18 +277,19 @@ _dpi_purge_legacy_rule() {
             -j REDIRECT --to-ports "$DPI_PORT" 2>/dev/null || break
         i=$((i + 1))
     done
-}
-
-# =============================================================================
-# dpi_remove_rule — drain the engine rule, both specs (no insert)
-# =============================================================================
-dpi_remove_rule() {
-    local i=0
+    i=0
     while [ "$i" -lt 16 ]; do
         run_iptables -w 5 -t nat -D PREROUTING $_DPI_RULE_MATCH \
             -j REDIRECT --to-ports "$DPI_PORT" 2>/dev/null || break
         i=$((i + 1))
     done
+}
+
+# =============================================================================
+# dpi_remove_rule — drain the engine rule, every spec (no insert)
+# =============================================================================
+dpi_remove_rule() {
+    _dpi_drain_dnat
     _dpi_purge_legacy_rule
 }
 
