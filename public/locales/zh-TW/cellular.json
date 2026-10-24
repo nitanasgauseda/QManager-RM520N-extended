@@ -2679,5 +2679,86 @@
       "aim": "對準",
       "aiming": "已對準"
     }
+  },
+  "esim": {
+    "page": {
+      "title": "eSIM",
+      "description": "管理數據機 SIM 卡槽中 eSIM 的設定檔。",
+      "note": "切換設定檔時，數據機讀取新 SIM 期間連線會短暫中斷。支援內建 eSIM 晶片或插在 SIM 卡槽中的可移除 eSIM 卡（如 9eSIM、eSTK.me）；一般 SIM 卡沒有可管理的設定檔。"
+    },
+    "card": {
+      "title": "設定檔",
+      "description": "eSIM 上儲存的電信業者設定檔，同一時間只有一個啟用。"
+    },
+    "eid": "EID",
+    "free": "可用空間",
+    "free_value": "{{kb}} KB",
+    "empty": "尚無設定檔，請在下方新增。",
+    "checked": "讀取於 {{time}}",
+    "profile": {
+      "active": "已啟用",
+      "inactive": "未啟用"
+    },
+    "actions": {
+      "enable": "切換到此",
+      "disable": "關閉",
+      "rename": "重新命名",
+      "delete": "刪除",
+      "refresh": "重新整理",
+      "download": "下載設定檔"
+    },
+    "states": {
+      "not_installed": {
+        "title": "未安裝 eSIM 工具",
+        "description": "重新安裝 QManager 以加入 eSIM 支援。"
+      },
+      "error": {
+        "title": "無法讀取 eSIM",
+        "description": "數據機沒有回應，請稍後再試。"
+      },
+      "no_euicc": {
+        "title": "未找到 eSIM",
+        "description": "SIM 卡槽中是一般 SIM 卡。插入可移除 eSIM 卡即可在此管理設定檔。"
+      },
+      "busy": {
+        "title": "數據機忙碌中",
+        "description": "暫時無法讀取 eSIM，請重新整理再試。"
+      }
+    },
+    "rename": {
+      "title": "重新命名設定檔",
+      "description": "名稱儲存在 eSIM 上，在任何裝置中都會顯示。"
+    },
+    "delete": {
+      "title": "刪除 {{name}}？",
+      "description": "設定檔將從 eSIM 中刪除。多數電信業者無法以同一代碼重新安裝，可能需要向其申請新代碼。"
+    },
+    "add": {
+      "title": "新增設定檔",
+      "description": "使用電信業者提供的啟用碼下載設定檔。",
+      "code": "啟用碼",
+      "code_hint": "電信業者 QR 碼中的文字，以 LPA:1$ 開頭。下載會使用目前的網路連線。",
+      "confirm": "確認碼（如有）",
+      "running": "正在下載設定檔…"
+    },
+    "toast": {
+      "enabled": "已切換到 {{name}}。",
+      "disabled": "已關閉 {{name}}。",
+      "renamed": "設定檔已重新命名。",
+      "deleted": "已刪除 {{name}}。",
+      "download_started": "已開始下載。",
+      "downloaded": "設定檔已下載，切換到它即可使用。"
+    },
+    "errors": {
+      "no_euicc": "SIM 卡槽中未找到 eSIM。",
+      "modem_busy": "數據機忙碌中，請再試一次。",
+      "esim_busy": "另一個 eSIM 操作仍在進行。",
+      "server_failed": "無法連線電信業者伺服器，或代碼遭拒。",
+      "timeout": "eSIM 未能及時完成。",
+      "invalid_code": "啟用碼必須以 LPA:1$ 開頭。",
+      "invalid_name": "請使用 1 到 64 個字元。",
+      "not_installed": "未安裝 eSIM 工具。",
+      "failed": "eSIM 拒絕了此請求。"
+    }
   }
 }

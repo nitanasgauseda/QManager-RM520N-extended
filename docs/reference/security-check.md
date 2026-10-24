@@ -16,6 +16,19 @@
 - `qmanager_firewall` now also guards 80/443 with `ip6tables` (same trusted interfaces): before, a `[::]` web server was reachable over the carrier's public IPv6.
 - ADB state is field 9 of `AT+QCFG="usbcfg"`; the page shows the same command with that field set to 0 but never sends it.
 
+
+## Cellular-side privacy (stealth, LAN IPv6 off)
+
+| Item | Value |
+|------|-------|
+| Flags | `/etc/qmanager/wan_stealth`, `/etc/qmanager/lan_ipv6_off` (presence = on) |
+| CGI | `system/security.sh` POST `set_privacy {stealth, lan_ipv6}`; GET `privacy {stealth, lan_ipv6, stealth_active, lan_ipv6_off_active}` |
+| Rules | `qmanager_firewall` `stealth_start` / `lan6_start`; `ensure` re-adds them after a QCMAP flush (`watch.sh` `_wt_check_fw`, every 120 s, only while a flag exists) |
+
+- Stealth (IPv4 and IPv6, `rmnet+` only): INPUT `QMANAGER_STEALTH` drops echo-request; OUTPUT `QMANAGER_STEALTH_OUT` drops port/protocol-unreachable and TCP RST. NDP, RA and packet-too-big are never touched; FORWARD is never touched, so IPPT traffic and the router's own firewall decide for the router.
+- LAN IPv6 off: ip6tables FORWARD `QMANAGER_LAN6` rejects `-i bridge0` (icmp6-adm-prohibited, DROP fallback) and drops `-o bridge0`; OUTPUT `QMANAGER_LAN6_OUT` drops RA and DHCPv6 replies (sport 547) on `bridge0`. The modem keeps its own IPv6.
+- `lan_ipv6` in the API means "IPv6 on for the LAN"; the flag file records it off.
+
 ## Activity Log — `/system-settings/activity-log`
 
 | Item | Value |

@@ -404,6 +404,107 @@ function PublicIpCard() {
   );
 }
 
+function OnOffRow({ label, hint, value, onChange }: { label: string; hint: string; value: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useTranslation("common");
+  return (
+    <div className="flex flex-col gap-1">
+      <div className={ROW}>
+        <span className={ROW_LABEL}>{label}</span>
+        <SegmentedField
+          value={value ? "on" : "off"}
+          onValueChange={(v) => onChange(v === "on")}
+          options={[
+            { value: "on", label: t("state.on") },
+            { value: "off", label: t("state.off") },
+          ]}
+          ariaLabel={label}
+          breakpoint="never"
+          glyph={(c: string) => <CheckIcon size={SEGMENTED.GLYPH} className={c} aria-hidden="true" />}
+        />
+      </div>
+      <p className="text-on-surface-variant px-1 pb-2 text-xs text-pretty">{hint}</p>
+    </div>
+  );
+}
+
+function PrivacyCard({ r, api }: { r: SecurityReport; api: ReturnType<typeof useSecurityCheck> }) {
+  const { t } = useTranslation("common");
+  const saved = r.privacy ?? { stealth: false, lan_ipv6: true, stealth_active: false, lan_ipv6_off_active: false };
+  const key = `${saved.stealth}/${saved.lan_ipv6}`;
+  const [draft, setDraft] = useState({ stealth: saved.stealth, lan_ipv6: saved.lan_ipv6 });
+  const [prev, setPrev] = useState(key);
+  if (key !== prev) {
+    setPrev(key);
+    setDraft({ stealth: saved.stealth, lan_ipv6: saved.lan_ipv6 });
+  }
+  const dirty = draft.stealth !== saved.stealth || draft.lan_ipv6 !== saved.lan_ipv6;
+  const notApplied = (saved.stealth && !saved.stealth_active) || (!saved.lan_ipv6 && !saved.lan_ipv6_off_active);
+
+  const onSave = async () => {
+    const res = await api.setPrivacy(draft);
+    if (res.ok) toast.success(t(`${K}.privacy.toast_saved`));
+    else toast.error(t(`${K}.errors.save_failed`));
+  };
+
+  return (
+    <Card className={CARD}>
+      <CardHeader className={PAD}>
+        <CardTitle className="text-lg leading-tight">{t(`${K}.privacy.title`)}</CardTitle>
+        <CardDescription className="text-on-surface-variant text-sm">{t(`${K}.privacy.description`)}</CardDescription>
+      </CardHeader>
+      <CardContent className={cn(PAD, "flex flex-col gap-[0.3125rem]")}>
+        <OnOffRow
+          label={t(`${K}.privacy.stealth`)}
+          hint={t(`${K}.privacy.stealth_hint`)}
+          value={draft.stealth}
+          onChange={(v) => setDraft((d) => ({ ...d, stealth: v }))}
+        />
+        <OnOffRow
+          label={t(`${K}.privacy.lan_ipv6`)}
+          hint={t(`${K}.privacy.lan_ipv6_hint`)}
+          value={draft.lan_ipv6}
+          onChange={(v) => setDraft((d) => ({ ...d, lan_ipv6: v }))}
+        />
+      </CardContent>
+      <CardFoot
+        className={PAD}
+        status={
+          notApplied && !dirty ? (
+            <Badge variant="warning">
+              <TriangleAlertIcon className="size-3" aria-hidden />
+              {t(`${K}.privacy.not_applied`)}
+            </Badge>
+          ) : undefined
+        }
+        actions={
+          <>
+            {dirty ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="action"
+                disabled={api.busy !== null}
+                onClick={() => setDraft({ stealth: saved.stealth, lan_ipv6: saved.lan_ipv6 })}
+              >
+                {t(`${K}.privacy.discard`)}
+              </Button>
+            ) : null}
+            <SaveButton
+              type="button"
+              size="action"
+              label={t(`${K}.privacy.save`)}
+              isSaving={api.busy === "privacy"}
+              saved={false}
+              disabled={!dirty || api.busy !== null}
+              onClick={() => void onSave()}
+            />
+          </>
+        }
+      />
+    </Card>
+  );
+}
+
 export default function SecurityCheckComponent() {
   const { t, i18n } = useTranslation("common");
   const api = useSecurityCheck();
@@ -475,7 +576,10 @@ export default function SecurityCheckComponent() {
             </span>
           </div>
           <div className="grid grid-cols-1 items-start gap-5 *:min-w-0 @3xl/main:grid-cols-2">
-            <PortsCard r={r} api={api} />
+            <div className="flex flex-col gap-5">
+              <PortsCard r={r} api={api} />
+              <PrivacyCard r={r} api={api} />
+            </div>
             <div className="flex flex-col gap-5">
               <DeviceCard r={r} />
               <PublicIpCard />

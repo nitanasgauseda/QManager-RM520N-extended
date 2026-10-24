@@ -32,3 +32,17 @@ qmanager_dnsguard (built from dnsguard/)
 Embeds the Mozilla CA certificate bundle as packaged by certifi
 <https://github.com/certifi/python-certifi> (dnsguard/cacert.pem), licensed under
 the Mozilla Public License 2.0 <https://www.mozilla.org/MPL/2.0/>.
+
+--------------------------------------------------------------------------------
+qmanager_lpac
+--------------------------------------------------------------------------------
+Derived from: estkme-group/lpac v2.3.0  <https://github.com/estkme-group/lpac>
+License:      GNU Affero General Public License v3.0 only (lpac, drivers);
+              libeuicc is LGPL-2.1-only. Full AGPL text: dependencies/lpac-AGPL-3.0.txt
+
+The bundled `dependencies/qmanager_lpac` is a MODIFIED, statically linked ARMv7
+(musl) build of tag v2.3.0. The only change is `dependencies/lpac-stdio.patch`:
+the stdio APDU driver's inverted success checks on `json_request()` are fixed so
+the driver works. Built with LPAC_DYNAMIC_LIBEUICC=OFF, PCSC, AT and curl
+backends off. The complete corresponding source is the v2.3.0 tag plus that
+patch. lpac runs as a separate program; QManager talks to it over stdin/stdout.

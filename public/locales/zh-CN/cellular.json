@@ -2679,5 +2679,86 @@
       "aim": "对准",
       "aiming": "已对准"
     }
+  },
+  "esim": {
+    "page": {
+      "title": "eSIM",
+      "description": "管理调制解调器 SIM 卡槽中 eSIM 的配置文件。",
+      "note": "切换配置文件时，调制解调器读取新 SIM 期间连接会短暂中断。支持内置 eSIM 芯片或插在 SIM 卡槽中的可移除 eSIM 卡（如 9eSIM、eSTK.me）；普通 SIM 卡没有可管理的配置文件。"
+    },
+    "card": {
+      "title": "配置文件",
+      "description": "eSIM 上存储的运营商配置文件，同一时间只有一个处于启用状态。"
+    },
+    "eid": "EID",
+    "free": "可用空间",
+    "free_value": "{{kb}} KB",
+    "empty": "暂无配置文件，请在下方添加。",
+    "checked": "读取于 {{time}}",
+    "profile": {
+      "active": "已启用",
+      "inactive": "未启用"
+    },
+    "actions": {
+      "enable": "切换到此",
+      "disable": "关闭",
+      "rename": "重命名",
+      "delete": "删除",
+      "refresh": "刷新",
+      "download": "下载配置文件"
+    },
+    "states": {
+      "not_installed": {
+        "title": "未安装 eSIM 工具",
+        "description": "重新安装 QManager 以添加 eSIM 支持。"
+      },
+      "error": {
+        "title": "无法读取 eSIM",
+        "description": "调制解调器没有响应，请稍后重试。"
+      },
+      "no_euicc": {
+        "title": "未找到 eSIM",
+        "description": "SIM 卡槽中是普通 SIM 卡。插入可移除 eSIM 卡即可在此管理配置文件。"
+      },
+      "busy": {
+        "title": "调制解调器繁忙",
+        "description": "暂时无法读取 eSIM，请刷新重试。"
+      }
+    },
+    "rename": {
+      "title": "重命名配置文件",
+      "description": "名称保存在 eSIM 上，在任何设备中都会显示。"
+    },
+    "delete": {
+      "title": "删除 {{name}}？",
+      "description": "配置文件将从 eSIM 中删除。大多数运营商无法用同一代码重新安装，可能需要向其申请新代码。"
+    },
+    "add": {
+      "title": "添加配置文件",
+      "description": "使用运营商提供的激活码下载配置文件。",
+      "code": "激活码",
+      "code_hint": "运营商二维码中的文本，以 LPA:1$ 开头。下载使用当前的网络连接。",
+      "confirm": "确认码（如有）",
+      "running": "正在下载配置文件…"
+    },
+    "toast": {
+      "enabled": "已切换到 {{name}}。",
+      "disabled": "已关闭 {{name}}。",
+      "renamed": "配置文件已重命名。",
+      "deleted": "已删除 {{name}}。",
+      "download_started": "已开始下载。",
+      "downloaded": "配置文件已下载，切换到它即可使用。"
+    },
+    "errors": {
+      "no_euicc": "SIM 卡槽中未找到 eSIM。",
+      "modem_busy": "调制解调器繁忙，请重试。",
+      "esim_busy": "另一个 eSIM 操作仍在进行。",
+      "server_failed": "无法连接运营商服务器，或代码被拒绝。",
+      "timeout": "eSIM 未能及时完成。",
+      "invalid_code": "激活码必须以 LPA:1$ 开头。",
+      "invalid_name": "请使用 1 到 64 个字符。",
+      "not_installed": "未安装 eSIM 工具。",
+      "failed": "eSIM 拒绝了该请求。"
+    }
   }
 }

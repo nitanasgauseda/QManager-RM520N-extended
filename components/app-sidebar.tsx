@@ -93,6 +93,7 @@ const navCellular: NavItem[] = [
       { t_key: "network_priority", url: "/cellular/settings/network-priority" },
       { t_key: "imei_settings", url: "/cellular/settings/imei-settings" },
       { t_key: "fplmn_settings", url: "/cellular/settings/fplmn-settings" },
+      { t_key: "esim", url: "/cellular/settings/esim" },
     ],
   },
 ];

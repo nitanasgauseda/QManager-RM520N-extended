@@ -2679,5 +2679,86 @@
       "aim": "Punta",
       "aiming": "Puntata"
     }
+  },
+  "esim": {
+    "page": {
+      "title": "eSIM",
+      "description": "Gestisci i profili di una eSIM nello slot SIM del modem.",
+      "note": "Il cambio di profilo interrompe brevemente la connessione mentre il modem legge la nuova SIM. Funziona con un chip eSIM integrato o una eSIM rimovibile (come 9eSIM o eSTK.me) nello slot; una SIM normale non ha profili da gestire."
+    },
+    "card": {
+      "title": "Profili",
+      "description": "I profili operatore salvati sulla eSIM. Uno alla volta è attivo."
+    },
+    "eid": "EID",
+    "free": "Spazio libero",
+    "free_value": "{{kb}} KB",
+    "empty": "Ancora nessun profilo. Aggiungine uno qui sotto.",
+    "checked": "Letto alle {{time}}",
+    "profile": {
+      "active": "Attivo",
+      "inactive": "Inattivo"
+    },
+    "actions": {
+      "enable": "Attiva",
+      "disable": "Disattiva",
+      "rename": "Rinomina",
+      "delete": "Elimina",
+      "refresh": "Aggiorna",
+      "download": "Scarica profilo"
+    },
+    "states": {
+      "not_installed": {
+        "title": "Strumenti eSIM non installati",
+        "description": "Reinstalla QManager per aggiungere il supporto eSIM."
+      },
+      "error": {
+        "title": "Impossibile leggere la eSIM",
+        "description": "Il modem non ha risposto. Riprova tra poco."
+      },
+      "no_euicc": {
+        "title": "Nessuna eSIM trovata",
+        "description": "La scheda nello slot è una SIM normale. Inserisci una eSIM rimovibile per gestire i profili qui."
+      },
+      "busy": {
+        "title": "Il modem era occupato",
+        "description": "Non è stato possibile leggere la eSIM. Aggiorna per riprovare."
+      }
+    },
+    "rename": {
+      "title": "Rinomina profilo",
+      "description": "Il nome viene salvato sulla eSIM ed è visibile su qualsiasi dispositivo."
+    },
+    "delete": {
+      "title": "Eliminare {{name}}?",
+      "description": "Il profilo viene cancellato dalla eSIM. Molti operatori non permettono di reinstallarlo con lo stesso codice."
+    },
+    "add": {
+      "title": "Aggiungi un profilo",
+      "description": "Scarica un profilo con il codice di attivazione del tuo operatore.",
+      "code": "Codice di attivazione",
+      "code_hint": "Il testo del QR code dell'operatore, che inizia con LPA:1$. Il download usa la connessione internet attuale.",
+      "confirm": "Codice di conferma (se fornito)",
+      "running": "Download del profilo…"
+    },
+    "toast": {
+      "enabled": "Attivato {{name}}.",
+      "disabled": "{{name}} disattivato.",
+      "renamed": "Profilo rinominato.",
+      "deleted": "{{name}} eliminato.",
+      "download_started": "Download avviato.",
+      "downloaded": "Profilo scaricato. Attivalo per usarlo."
+    },
+    "errors": {
+      "no_euicc": "Nessuna eSIM nello slot SIM.",
+      "modem_busy": "Il modem era occupato. Riprova.",
+      "esim_busy": "Un'altra operazione eSIM è in corso.",
+      "server_failed": "Il server dell'operatore non è raggiungibile o ha rifiutato il codice.",
+      "timeout": "La eSIM non ha terminato in tempo.",
+      "invalid_code": "Il codice di attivazione deve iniziare con LPA:1$.",
+      "invalid_name": "Usa da 1 a 64 caratteri.",
+      "not_installed": "Strumenti eSIM non installati.",
+      "failed": "La eSIM ha rifiutato la richiesta."
+    }
   }
 }

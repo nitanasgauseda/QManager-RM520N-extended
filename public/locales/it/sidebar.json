@@ -58,7 +58,8 @@
     "security_check": "Controllo sicurezza",
     "activity_log": "Registro attività",
     "resources": "Risorse",
-    "outages": "Interruzioni"
+    "outages": "Interruzioni",
+    "esim": "eSIM"
   },
   "header": {
     "role": "Admin"

@@ -58,7 +58,8 @@
     "security_check": "Pemeriksaan Keamanan",
     "activity_log": "Log Aktivitas",
     "resources": "Sumber daya",
-    "outages": "Gangguan"
+    "outages": "Gangguan",
+    "esim": "eSIM"
   },
   "header": {
     "role": "Admin"

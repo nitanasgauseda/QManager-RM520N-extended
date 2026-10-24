@@ -236,6 +236,14 @@ while iptables -C FORWARD -j QMANAGER_ROAM 2>/dev/null; do
     iptables -D FORWARD -j QMANAGER_ROAM 2>/dev/null || break
 done
 iptables -F QMANAGER_ROAM 2>/dev/null; iptables -X QMANAGER_ROAM 2>/dev/null
+# Stealth mode and LAN IPv6 off (qmanager_firewall).
+for _t in iptables ip6tables; do
+    for _hc in INPUT:QMANAGER_STEALTH OUTPUT:QMANAGER_STEALTH_OUT FORWARD:QMANAGER_LAN6 OUTPUT:QMANAGER_LAN6_OUT; do
+        _b=${_hc%%:*}; _c=${_hc#*:}
+        while $_t -C "$_b" -j "$_c" 2>/dev/null; do $_t -D "$_b" -j "$_c" 2>/dev/null || break; done
+        $_t -F "$_c" 2>/dev/null; $_t -X "$_c" 2>/dev/null
+    done
+done
 # A block from the first DNS Privacy version (dnsmasq.conf) is stripped too. No reload: dnsmasq cannot
 # be restarted safely here, and the file only matters at its next start.
 if grep -qxF "# QMANAGER-DNSGUARD-BEGIN v1" /etc/data/dnsmasq.conf 2>/dev/null; then
@@ -246,7 +254,8 @@ if grep -qxF "# QMANAGER-DNSGUARD-BEGIN v1" /etc/data/dnsmasq.conf 2>/dev/null; 
         && chown radio:radio /etc/data/dnsmasq.conf 2>/dev/null
 fi
 info "DNS Privacy removed (LAN DNS goes to dnsmasq again)"
-rm -f /usrdata/qmanager/bin/qmanager_dnsguard
+rm -f /usrdata/qmanager/bin/qmanager_dnsguard /usrdata/qmanager/bin/qmanager_esim /usrdata/qmanager/bin/qmanager_lpac
+rm -f /tmp/qmanager_esim_*.json /tmp/qmanager_esim_channels
 rm -rf /usrdata/qmanager/dnsguard
 
 # Scenario schedule timer teardown — this .timer is armed live at runtime

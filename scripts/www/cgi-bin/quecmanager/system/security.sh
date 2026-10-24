@@ -4,6 +4,7 @@
 #   GET                                 run the checks (on demand only; nothing runs in the background)
 #   POST block_port {proto, port}       close a port to the cellular side (IPv4 + IPv6, rmnet+ only)
 #   POST unblock_port {proto, port}
+#   POST set_privacy {stealth, lan_ipv6}   hide the modem from scans; turn IPv6 off for the LAN
 # See docs/reference/security-check.md.
 
 qlog_init "cgi_security"
@@ -17,6 +18,8 @@ IP6T="${QM_IP6TABLES:-/usr/sbin/ip6tables}"
 NETSTAT_CMD="${QM_NETSTAT:-netstat -ltun}"
 IP_ADDR_CMD="${QM_IP_ADDR:-ip addr show}"
 MAX_BLOCKED=32
+STEALTH_FLAG="${QM_STEALTH_FLAG:-/etc/qmanager/wan_stealth}"
+LAN6_FLAG="${QM_LAN6_OFF_FLAG:-/etc/qmanager/lan_ipv6_off}"
 
 service_name() {
     case "$1/$2" in
@@ -32,6 +35,20 @@ is_blocked_by_us() { grep -qx "$1 $2" "$WAN_CONF" 2>/dev/null; }
 if [ "$REQUEST_METHOD" = "POST" ]; then
     cgi_read_post
     action=$(printf '%s' "$POST_DATA" | jq -r '.action // empty' 2>/dev/null)
+    if [ "$action" = "set_privacy" ]; then
+        st=$(printf '%s' "$POST_DATA" | jq -r '.stealth | if type == "boolean" then tostring else "" end' 2>/dev/null)
+        l6=$(printf '%s' "$POST_DATA" | jq -r '.lan_ipv6 | if type == "boolean" then tostring else "" end' 2>/dev/null)
+        [ -n "$st" ] && [ -n "$l6" ] || { cgi_error "invalid_request" "stealth and lan_ipv6 must be true or false"; exit 0; }
+        if [ "$st" = "true" ]; then : > "$STEALTH_FLAG"; else rm -f "$STEALTH_FLAG"; fi
+        # lan_ipv6 is "IPv6 on for the LAN"; the flag records it being off.
+        if [ "$l6" = "false" ]; then : > "$LAN6_FLAG"; else rm -f "$LAN6_FLAG"; fi
+        { [ "$st" = "false" ] || [ -f "$STEALTH_FLAG" ]; } && { [ "$l6" = "true" ] || [ -f "$LAN6_FLAG" ]; } \
+            || { cgi_error "write_failed" "Could not save"; exit 0; }
+        svc_restart qmanager_firewall || { cgi_error "apply_failed" "Saved, but the firewall could not be reloaded"; exit 0; }
+        qlog_info "privacy: stealth=$st lan_ipv6=$l6"
+        cgi_success
+        exit 0
+    fi
     proto=$(printf '%s' "$POST_DATA" | jq -r '.proto // empty' 2>/dev/null)
     port=$(printf '%s' "$POST_DATA" | jq -r '.port // empty | tostring' 2>/dev/null)
     case "$proto" in tcp|udp) ;; *) cgi_error "invalid_port" "proto must be tcp or udp"; exit 0 ;; esac
@@ -140,13 +157,19 @@ console=false; svc_is_running qmanager_console && console=true
 https=false; $NETSTAT_CMD 2>/dev/null | grep -qE '^tcp6? .*:443 ' && https=true
 cg=true; [ "$(jq -r '.enabled' /etc/qmanager/cell_guard.json 2>/dev/null)" = "false" ] && cg=false
 dp=false; [ "$(jq -r '.encrypt.enabled == true' /etc/qmanager/dnsguard.json 2>/dev/null)" = "true" ] && dp=true
+st=false; [ -f "$STEALTH_FLAG" ] && st=true
+l6=true; [ -f "$LAN6_FLAG" ] && l6=false
+st_act=false; grep -qx -- '-A INPUT -j QMANAGER_STEALTH' "$work/ipt4" && st_act=true
+l6_off_act=false; grep -qx -- '-A FORWARD -j QMANAGER_LAN6' "$work/ipt6" && l6_off_act=true
 
 jq -n --slurpfile ports "$work/ports.ndjson" --arg wan4 "$wan4" --arg wan6 "$wan6" \
     --argjson v4p "$v4_public" --argjson v6p "$v6_public" --argjson fw "$fw_ok" --arg adb "$adb" --arg adbfix "$adb_fix" \
-    --argjson console "$console" --argjson https "$https" --argjson cg "$cg" --argjson dp "$dp" --argjson ts "$(date +%s)" '{
+    --argjson console "$console" --argjson https "$https" --argjson cg "$cg" --argjson dp "$dp" \
+    --argjson st "$st" --argjson l6 "$l6" --argjson sta "$st_act" --argjson l6a "$l6_off_act" --argjson ts "$(date +%s)" '{
     success: true,
     checked_at: $ts,
     wan: {ipv4: $wan4, ipv6: $wan6, ipv4_public: $v4p, ipv6_public: $v6p, firewall_readable: $fw},
     ports: ($ports | sort_by(.port, .family)),
-    device: {adb: $adb, adb_fix: $adbfix, web_console: $console, https: $https, cell_guard: $cg, encrypted_dns: $dp}
+    device: {adb: $adb, adb_fix: $adbfix, web_console: $console, https: $https, cell_guard: $cg, encrypted_dns: $dp},
+    privacy: {stealth: $st, lan_ipv6: $l6, stealth_active: $sta, lan_ipv6_off_active: $l6a}
 }'

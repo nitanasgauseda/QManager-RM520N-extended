@@ -2105,6 +2105,18 @@
       "save_failed": "Tidak dapat menyimpan. Coba lagi.",
       "toast_saved": "Pemeriksaan IP publik disimpan.",
       "toast_checking": "Memeriksa IP publik dalam beberapa detik."
+    },
+    "privacy": {
+      "title": "Privasi sisi seluler",
+      "description": "Buat modem lebih sulit ditemukan dan pilih apakah jaringan Anda mendapat IPv6.",
+      "stealth": "Sembunyikan dari pemindaian internet",
+      "stealth_hint": "Modem berhenti membalas ping dan port tertutup dari sisi seluler. Router, lalu lintasnya, dan VPN seperti NetBird tidak terpengaruh.",
+      "lan_ipv6": "IPv6 untuk jaringan Anda",
+      "lan_ipv6_hint": "Mati: router dan perangkat di belakang modem tidak mendapat IPv6 dan hanya memakai IPv4. Modem tetap memakai IPv6.",
+      "not_applied": "Saat ini tidak diterapkan",
+      "discard": "Buang",
+      "save": "Simpan",
+      "toast_saved": "Pengaturan privasi disimpan."
     }
   },
   "activityLog": {

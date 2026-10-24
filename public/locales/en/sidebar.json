@@ -58,7 +58,8 @@
     "security_check": "Security Check",
     "activity_log": "Activity Log",
     "resources": "Resources",
-    "outages": "Outages"
+    "outages": "Outages",
+    "esim": "eSIM"
   },
   "header": {
     "role": "Admin"

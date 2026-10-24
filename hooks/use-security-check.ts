@@ -30,6 +30,7 @@ export interface SecurityReport {
     cell_guard: boolean;
     encrypted_dns: boolean;
   };
+  privacy?: { stealth: boolean; lan_ipv6: boolean; stealth_active: boolean; lan_ipv6_off_active: boolean };
 }
 
 export type SecurityResult = { ok: true } | { ok: false; code: string };
@@ -85,7 +86,28 @@ export function useSecurityCheck() {
     [run],
   );
 
-  return { report, isLoading, error, busy, run, setBlocked };
+  const setPrivacy = useCallback(
+    async (v: { stealth: boolean; lan_ipv6: boolean }): Promise<SecurityResult> => {
+      setBusy("privacy");
+      try {
+        const res = await authFetch(CGI, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "set_privacy", ...v }),
+        });
+        const json = await res.json();
+        await run();
+        return json?.success ? { ok: true } : { ok: false, code: json?.error ?? "failed" };
+      } catch {
+        return { ok: false, code: "failed" };
+      } finally {
+        if (mounted.current) setBusy(null);
+      }
+    },
+    [run],
+  );
+
+  return { report, isLoading, error, busy, run, setBlocked, setPrivacy };
 }
 
 // --- Activity log -----------------------------------------------------------------

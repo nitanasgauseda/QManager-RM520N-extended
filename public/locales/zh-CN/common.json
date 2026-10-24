@@ -2105,6 +2105,18 @@
       "save_failed": "无法保存，请重试。",
       "toast_saved": "公网 IP 检查设置已保存。",
       "toast_checking": "将在几秒内检查公网 IP。"
+    },
+    "privacy": {
+      "title": "蜂窝侧隐私",
+      "description": "让调制解调器更难被发现，并选择您的网络是否使用 IPv6。",
+      "stealth": "隐藏于互联网扫描",
+      "stealth_hint": "调制解调器不再响应来自蜂窝侧的 ping 和已关闭端口。路由器、其流量以及 NetBird 等 VPN 不受影响。",
+      "lan_ipv6": "为您的网络提供 IPv6",
+      "lan_ipv6_hint": "关闭：路由器及调制解调器后的设备不获得 IPv6，仅使用 IPv4。调制解调器本身保留 IPv6。",
+      "not_applied": "当前未生效",
+      "discard": "放弃",
+      "save": "保存",
+      "toast_saved": "隐私设置已保存。"
     }
   },
   "activityLog": {

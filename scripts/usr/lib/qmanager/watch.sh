@@ -28,7 +28,7 @@ _wt_roam_alert=true; _wt_roam_block=false; _wt_ip_on=true
 _wt_roam_next=0; _wt_roam_state=unknown; _wt_roam_pending=""; _wt_roam_since=0
 _wt_ip_next=0; _wt_ip_wan=""; _wt_ip_public=""; _wt_ip_seen=0
 _wt_iccid=""; _wt_sim_in=""; _wt_sim_boot_done=0
-_wt_net=""; _wt_month_next=0
+_wt_net=""; _wt_month_next=0; _wt_fw_next=0
 
 _wt_up() { local u r; read -r u r < /proc/uptime 2>/dev/null; printf '%s' "${u%%.*}"; }
 _wt_clock_ok() { [ "$(date +%s)" -ge 1700000000 ]; }
@@ -294,6 +294,14 @@ _wt_write_status() {
         > "$WT_STATUS.tmp" 2>/dev/null && mv "$WT_STATUS.tmp" "$WT_STATUS"
 }
 
+# Stealth / LAN IPv6 rules: a QCMAP re-dial flushes iptables, so put them back every 2 minutes.
+_wt_check_fw() {
+    [ "$1" -ge "$_wt_fw_next" ] || return 0
+    _wt_fw_next=$(($1 + 120))
+    [ -f "${QM_STEALTH_FLAG:-/etc/qmanager/wan_stealth}" ] || [ -f "${QM_LAN6_OFF_FLAG:-/etc/qmanager/lan_ipv6_off}" ] || return 0
+    [ -x "${WT_FIREWALL:-/usr/bin/qmanager_firewall}" ] && "${WT_FIREWALL:-/usr/bin/qmanager_firewall}" ensure >/dev/null 2>&1
+}
+
 watch_check() {
     local up before
     if [ "$_wt_loaded" != "1" ] || [ -f "$WT_RELOAD_FLAG" ]; then
@@ -310,6 +318,7 @@ watch_check() {
     [ "${modem_reachable:-true}" = "true" ] && _wt_check_roaming "$up"
     _wt_check_ip "$up"
     _wt_check_month "$up"
+    _wt_check_fw "$up"
     if [ "$before" != "$_wt_roam_state" ] || [ ! -f "$WT_STATUS" ] || [ $((${cycle_count:-0} % 60)) -eq 0 ]; then
         _wt_write_status
     fi

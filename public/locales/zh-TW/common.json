@@ -2105,6 +2105,18 @@
       "save_failed": "無法儲存，請重試。",
       "toast_saved": "公網 IP 檢查設定已儲存。",
       "toast_checking": "將在幾秒內檢查公網 IP。"
+    },
+    "privacy": {
+      "title": "行動網路端隱私",
+      "description": "讓數據機更難被發現，並選擇您的網路是否使用 IPv6。",
+      "stealth": "對網際網路掃描隱藏",
+      "stealth_hint": "數據機不再回應來自行動網路端的 ping 與已關閉的連接埠。路由器、其流量以及 NetBird 等 VPN 不受影響。",
+      "lan_ipv6": "為您的網路提供 IPv6",
+      "lan_ipv6_hint": "關閉：路由器及數據機後方的裝置不取得 IPv6，僅使用 IPv4。數據機本身保留 IPv6。",
+      "not_applied": "目前未生效",
+      "discard": "捨棄",
+      "save": "儲存",
+      "toast_saved": "隱私設定已儲存。"
     }
   },
   "activityLog": {

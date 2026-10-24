@@ -6,7 +6,7 @@
 # atomic and cannot leak rules across upgrades. Replaces SimpleAdmin's
 # simplefirewall as a QManager-managed service.
 #
-# Usage: qmanager_firewall {start|stop|restart}
+# Usage: qmanager_firewall {start|stop|restart|ensure}
 #
 # Protected ports: 80 (HTTP), 443 (HTTPS)
 # Trusted interfaces: lo, bridge0, eth0, tailscale0 (if installed)
@@ -27,6 +27,16 @@ CHAIN="QMANAGER_FW"
 # One "tcp 22" / "udp 5353" line per port; applies to IPv4 and IPv6 on rmnet+ only.
 WAN_CHAIN="QMANAGER_WAN"
 WAN_CONF="${QM_WAN_BLOCK_CONF:-/etc/qmanager/wan_block.conf}"
+
+# Stealth (flag file): no ping replies and no "nothing here" replies to the cellular side.
+# Only the modem's own INPUT/OUTPUT: forwarded traffic (the router in IP Passthrough) is untouched.
+STEALTH_FLAG="${QM_STEALTH_FLAG:-/etc/qmanager/wan_stealth}"
+ST_IN="QMANAGER_STEALTH"
+ST_OUT="QMANAGER_STEALTH_OUT"
+# LAN IPv6 off (flag file): no IPv6 forwarding for bridge0 and no RA / DHCPv6 sent to it.
+LAN6_FLAG="${QM_LAN6_OFF_FLAG:-/etc/qmanager/lan_ipv6_off}"
+LAN6_FWD="QMANAGER_LAN6"
+LAN6_OUT="QMANAGER_LAN6_OUT"
 
 ensure_chain() {
     iptables -t filter -N "$CHAIN" 2>/dev/null || true
@@ -82,6 +92,8 @@ do_start() {
     iptables -I INPUT 1 -j "$CHAIN"
     web6_start
     wan_start
+    stealth_start
+    lan6_start
 }
 
 # The same web UI protection for IPv6: a [::] socket is reachable over the carrier's public IPv6 otherwise.
@@ -139,20 +151,95 @@ wan_start() {
     done
 }
 
+# _hook <tool> <builtin chain> <our chain> on|off — one jump at position 1, never duplicated.
+_hook() {
+    while $1 -C "$2" -j "$3" 2>/dev/null; do $1 -D "$2" -j "$3" 2>/dev/null || break; done
+    if [ "$4" = "off" ]; then
+        $1 -F "$3" 2>/dev/null; $1 -X "$3" 2>/dev/null
+    else
+        $1 -I "$2" 1 -j "$3"
+    fi
+}
+
+stealth_stop() {
+    for t in $(wan_tables); do
+        _hook "$t" INPUT "$ST_IN" off
+        _hook "$t" OUTPUT "$ST_OUT" off
+    done
+}
+
+stealth_start() {
+    stealth_stop
+    [ -f "$STEALTH_FLAG" ] || return 0
+    iptables -N "$ST_IN" 2>/dev/null
+    iptables -A "$ST_IN" -i rmnet+ -p icmp --icmp-type echo-request -j DROP
+    iptables -N "$ST_OUT" 2>/dev/null
+    iptables -A "$ST_OUT" -o rmnet+ -p icmp --icmp-type port-unreachable -j DROP
+    iptables -A "$ST_OUT" -o rmnet+ -p icmp --icmp-type protocol-unreachable -j DROP
+    iptables -A "$ST_OUT" -o rmnet+ -p tcp --tcp-flags RST RST -j DROP
+    _hook iptables INPUT "$ST_IN" on
+    _hook iptables OUTPUT "$ST_OUT" on
+    command -v ip6tables >/dev/null 2>&1 || return 0
+    # Neighbour discovery, router advertisements and packet-too-big are left alone: IPv6 needs them.
+    ip6tables -N "$ST_IN" 2>/dev/null
+    ip6tables -A "$ST_IN" -i rmnet+ -p ipv6-icmp --icmpv6-type echo-request -j DROP
+    ip6tables -N "$ST_OUT" 2>/dev/null
+    ip6tables -A "$ST_OUT" -o rmnet+ -p ipv6-icmp --icmpv6-type port-unreachable -j DROP
+    ip6tables -A "$ST_OUT" -o rmnet+ -p tcp --tcp-flags RST RST -j DROP
+    _hook ip6tables INPUT "$ST_IN" on
+    _hook ip6tables OUTPUT "$ST_OUT" on
+}
+
+lan6_stop() {
+    command -v ip6tables >/dev/null 2>&1 || return 0
+    _hook ip6tables FORWARD "$LAN6_FWD" off
+    _hook ip6tables OUTPUT "$LAN6_OUT" off
+}
+
+lan6_start() {
+    lan6_stop
+    [ -f "$LAN6_FLAG" ] || return 0
+    command -v ip6tables >/dev/null 2>&1 || return 0
+    ip6tables -N "$LAN6_FWD" 2>/dev/null
+    # REJECT makes devices that still hold an IPv6 address fall back to IPv4 at once.
+    ip6tables -A "$LAN6_FWD" -i bridge0 -j REJECT --reject-with icmp6-adm-prohibited 2>/dev/null \
+        || ip6tables -A "$LAN6_FWD" -i bridge0 -j DROP
+    ip6tables -A "$LAN6_FWD" -o bridge0 -j DROP
+    ip6tables -N "$LAN6_OUT" 2>/dev/null
+    ip6tables -A "$LAN6_OUT" -o bridge0 -p ipv6-icmp --icmpv6-type router-advertisement -j DROP
+    ip6tables -A "$LAN6_OUT" -o bridge0 -p udp --sport 547 -j DROP
+    _hook ip6tables FORWARD "$LAN6_FWD" on
+    _hook ip6tables OUTPUT "$LAN6_OUT" on
+}
+
+# ensure — put back what a QCMAP firewall reload flushed (the poller calls this every 2 minutes).
+do_ensure() {
+    if [ -f "$STEALTH_FLAG" ] && ! iptables -C INPUT -j "$ST_IN" 2>/dev/null; then stealth_start; fi
+    if [ ! -f "$STEALTH_FLAG" ] && iptables -C INPUT -j "$ST_IN" 2>/dev/null; then stealth_stop; fi
+    if command -v ip6tables >/dev/null 2>&1; then
+        if [ -f "$LAN6_FLAG" ] && ! ip6tables -C FORWARD -j "$LAN6_FWD" 2>/dev/null; then lan6_start; fi
+        if [ ! -f "$LAN6_FLAG" ] && ip6tables -C FORWARD -j "$LAN6_FWD" 2>/dev/null; then lan6_stop; fi
+    fi
+    return 0
+}
+
 do_stop() {
     unhook_chain
     drop_chain
     cleanup_legacy_input_rules
     web6_stop
     wan_stop
+    stealth_stop
+    lan6_stop
 }
 
 case "${1:-}" in
     start)   do_start ;;
     stop)    do_stop ;;
     restart) do_stop; do_start ;;
+    ensure)  do_ensure ;;
     *)
-        echo "Usage: qmanager_firewall {start|stop|restart}" >&2
+        echo "Usage: qmanager_firewall {start|stop|restart|ensure}" >&2
         exit 1
         ;;
 esac

@@ -216,6 +216,15 @@ cp "$ROOT_DIR/qmanager-build/bin/qmanager_dnsguard" "$STAGING_DIR/dependencies/q
 chmod 755 "$STAGING_DIR/dependencies/qmanager_dnsguard"
 step "Staged DNS Privacy forwarder"
 
+step "Building eSIM bridge (using $GO_EXE)..."
+( cd "$ROOT_DIR" && GO_EXE="${DNSGUARD_GO_EXE:-$GO_EXE}" ./build-esim.sh ) || fail "build-esim.sh failed"
+cp "$ROOT_DIR/qmanager-build/bin/qmanager_esim" "$STAGING_DIR/dependencies/qmanager_esim"
+[ -f "$DEPS_DIR/qmanager_lpac" ] || fail "Missing required binary: dependencies/qmanager_lpac"
+cp "$DEPS_DIR/qmanager_lpac" "$STAGING_DIR/dependencies/qmanager_lpac"
+cp "$DEPS_DIR/NOTICE" "$DEPS_DIR/lpac-stdio.patch" "$DEPS_DIR/lpac-AGPL-3.0.txt" "$STAGING_DIR/dependencies/" 2>/dev/null
+chmod 755 "$STAGING_DIR/dependencies/qmanager_esim" "$STAGING_DIR/dependencies/qmanager_lpac"
+step "Staged eSIM bridge and lpac"
+
 step "Creating qmanager.tar.gz..."
 tar czf "$ARCHIVE" -C "$BUILD_DIR" qmanager_install
 

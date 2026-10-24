@@ -35,6 +35,7 @@ const routeKeyMap: Record<string, string> = {
   'network-priority': 'items.network_priority',
   'imei-settings': 'items.imei_settings',
   'fplmn-settings': 'items.fplmn_settings',
+  esim: 'items.esim',
   'local-network': 'groups.local_network',
   'ip-passthrough': 'items.ip_passthrough',
   ethernet: 'items.ethernet_status',

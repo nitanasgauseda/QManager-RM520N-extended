@@ -18,7 +18,7 @@ ALLOW_FILES="qmanager.conf ping_profile.json quality_thresholds.json alert_routi
 sms_alerts.json discord_bot.json telegram_alerts.json sms_forwarding.json tower_lock.json band_failover_enabled
 ttl_state ethernet_speed sites.json apn_setting.json apn_names.json ippt_config.json active_scenario
 active_profile video_domains.txt tailscale_ssh cell_guard.json tower_map.json insights.json
-dnsguard.json wan_block.conf watch.json"
+dnsguard.json wan_block.conf watch.json wan_stealth lan_ipv6_off"
 ALLOW_DIRS="profiles scenarios"
 
 json_out() { printf 'Content-Type: application/json\r\nCache-Control: no-cache, no-store\r\n\r\n'; }

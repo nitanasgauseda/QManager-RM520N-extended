@@ -924,6 +924,15 @@ install_bundled_binaries() {
             fi
         fi
     fi
+    # --- eSIM: qmanager_esim (bridge) + qmanager_lpac (lpac v2.3.0, AGPL, see dependencies/NOTICE)
+    for _eb in qmanager_esim qmanager_lpac; do
+        [ -f "$SRC_DEPS/$_eb" ] || continue
+        install -d -o root -g root -m 0755 /usrdata/qmanager/bin
+        cmp -s "$SRC_DEPS/$_eb" "/usrdata/qmanager/bin/$_eb" 2>/dev/null && continue
+        install_file "$SRC_DEPS/$_eb" "/usrdata/qmanager/bin/$_eb" 755 \
+            && info "$_eb installed to /usrdata/qmanager/bin" \
+            || warn "Failed to install $_eb"
+    done
 }
 
 # --- Install Speedtest CLI ----------------------------------------------------

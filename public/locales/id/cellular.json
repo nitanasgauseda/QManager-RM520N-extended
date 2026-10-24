@@ -2679,5 +2679,86 @@
       "aim": "Arahkan",
       "aiming": "Diarahkan"
     }
+  },
+  "esim": {
+    "page": {
+      "title": "eSIM",
+      "description": "Kelola profil pada eSIM di slot SIM modem.",
+      "note": "Mengganti profil memutus koneksi sebentar saat modem membaca SIM baru. Chip eSIM bawaan atau kartu eSIM lepasan (seperti 9eSIM atau eSTK.me) di slot SIM dapat digunakan; SIM biasa tidak memiliki profil untuk dikelola."
+    },
+    "card": {
+      "title": "Profil",
+      "description": "Profil operator yang tersimpan di eSIM. Hanya satu yang aktif."
+    },
+    "eid": "EID",
+    "free": "Ruang kosong",
+    "free_value": "{{kb}} KB",
+    "empty": "Belum ada profil. Tambahkan di bawah.",
+    "checked": "Dibaca pukul {{time}}",
+    "profile": {
+      "active": "Aktif",
+      "inactive": "Nonaktif"
+    },
+    "actions": {
+      "enable": "Aktifkan",
+      "disable": "Matikan",
+      "rename": "Ganti nama",
+      "delete": "Hapus",
+      "refresh": "Muat ulang",
+      "download": "Unduh profil"
+    },
+    "states": {
+      "not_installed": {
+        "title": "Alat eSIM belum terpasang",
+        "description": "Pasang ulang QManager untuk menambahkan dukungan eSIM."
+      },
+      "error": {
+        "title": "Tidak dapat membaca eSIM",
+        "description": "Modem tidak merespons. Coba lagi sebentar lagi."
+      },
+      "no_euicc": {
+        "title": "eSIM tidak ditemukan",
+        "description": "Kartu di slot SIM adalah SIM biasa. Masukkan kartu eSIM lepasan untuk mengelola profil di sini."
+      },
+      "busy": {
+        "title": "Modem sedang sibuk",
+        "description": "eSIM tidak dapat dibaca saat ini. Muat ulang untuk mencoba lagi."
+      }
+    },
+    "rename": {
+      "title": "Ganti nama profil",
+      "description": "Nama disimpan di eSIM dan terlihat di perangkat mana pun."
+    },
+    "delete": {
+      "title": "Hapus {{name}}?",
+      "description": "Profil dihapus dari eSIM. Sebagian besar operator tidak bisa memasangnya lagi dengan kode yang sama."
+    },
+    "add": {
+      "title": "Tambah profil",
+      "description": "Unduh profil dengan kode aktivasi dari operator Anda.",
+      "code": "Kode aktivasi",
+      "code_hint": "Teks di dalam kode QR operator, diawali LPA:1$. Unduhan memakai koneksi internet saat ini.",
+      "confirm": "Kode konfirmasi (jika ada)",
+      "running": "Mengunduh profil…"
+    },
+    "toast": {
+      "enabled": "Beralih ke {{name}}.",
+      "disabled": "{{name}} dimatikan.",
+      "renamed": "Nama profil diganti.",
+      "deleted": "{{name}} dihapus.",
+      "download_started": "Unduhan dimulai.",
+      "downloaded": "Profil terunduh. Aktifkan untuk menggunakannya."
+    },
+    "errors": {
+      "no_euicc": "eSIM tidak ditemukan di slot SIM.",
+      "modem_busy": "Modem sibuk. Coba lagi.",
+      "esim_busy": "Operasi eSIM lain masih berjalan.",
+      "server_failed": "Server operator tidak terjangkau atau menolak kode.",
+      "timeout": "eSIM tidak selesai tepat waktu.",
+      "invalid_code": "Kode aktivasi harus diawali LPA:1$.",
+      "invalid_name": "Gunakan 1 sampai 64 karakter.",
+      "not_installed": "Alat eSIM belum terpasang.",
+      "failed": "eSIM menolak permintaan."
+    }
   }
 }

@@ -2105,6 +2105,18 @@
       "save_failed": "Could not save. Try again.",
       "toast_saved": "Public IP check saved.",
       "toast_checking": "Checking the public IP within a few seconds."
+    },
+    "privacy": {
+      "title": "Cellular-side privacy",
+      "description": "Make the modem harder to find and choose whether your network gets IPv6.",
+      "stealth": "Hide from internet scans",
+      "stealth_hint": "The modem stops answering ping and closed ports from the cellular side. Your router, its traffic and VPNs such as NetBird are not affected.",
+      "lan_ipv6": "IPv6 for your network",
+      "lan_ipv6_hint": "Off: the router and devices behind the modem get no IPv6 and use IPv4 only. The modem itself keeps IPv6.",
+      "not_applied": "Not applied right now",
+      "discard": "Discard",
+      "save": "Save",
+      "toast_saved": "Privacy settings saved."
     }
   },
   "activityLog": {

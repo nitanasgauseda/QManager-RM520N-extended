@@ -2105,6 +2105,18 @@
       "save_failed": "Impossibile salvare. Riprova.",
       "toast_saved": "Verifica IP pubblico salvata.",
       "toast_checking": "Verifica dell'IP pubblico entro pochi secondi."
+    },
+    "privacy": {
+      "title": "Privacy lato cellulare",
+      "description": "Rendi il modem più difficile da trovare e scegli se la tua rete riceve IPv6.",
+      "stealth": "Nascondi dalle scansioni internet",
+      "stealth_hint": "Il modem non risponde più al ping e alle porte chiuse dal lato cellulare. Il router, il suo traffico e le VPN come NetBird non sono interessati.",
+      "lan_ipv6": "IPv6 per la tua rete",
+      "lan_ipv6_hint": "Off: il router e i dispositivi dietro il modem non ricevono IPv6 e usano solo IPv4. Il modem mantiene IPv6.",
+      "not_applied": "Non applicato al momento",
+      "discard": "Annulla",
+      "save": "Salva",
+      "toast_saved": "Impostazioni privacy salvate."
     }
   },
   "activityLog": {

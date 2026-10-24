@@ -58,7 +58,8 @@
     "security_check": "安全检查",
     "activity_log": "活动日志",
     "resources": "资源",
-    "outages": "断网记录"
+    "outages": "断网记录",
+    "esim": "eSIM"
   },
   "header": {
     "role": "管理员"
