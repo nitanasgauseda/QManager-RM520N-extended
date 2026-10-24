@@ -235,6 +235,16 @@ case "$ACTION" in
         build_index "$mcc" "$work/cells.csv.gz" "$work/index.json" "$gen" "$src"
         count=$(jq -r '.towers | length' "$work/index.json" 2>/dev/null)
         case "$count" in ''|*[!0-9]*|0) cgi_error "build_failed" "The tower database could not be read"; exit 0 ;; esac
+        # OpenCelliD's export holds only cells seen in the last 18 months: keep older towers from the previous index.
+        if [ "$src" = opencellid ] && [ -s "$DB_DIR/$mcc.json" ]; then
+            if jq -c --slurpfile o "$DB_DIR/$mcc.json" '
+                (reduce .towers[] as $t ({}; .["\($t.r)|\($t.m)|\($t.e)"] = 1)) as $have
+                | .towers += [$o[0].towers[] | select($have["\(.r)|\(.m)|\(.e)"] == null)]' \
+                "$work/index.json" > "$work/merged.json" 2>/dev/null && [ -s "$work/merged.json" ]; then
+                mv "$work/merged.json" "$work/index.json"
+                count=$(jq -r '.towers | length' "$work/index.json" 2>/dev/null)
+            fi
+        fi
 
         mkdir -p "$DB_DIR" 2>/dev/null
         cp "$work/index.json" "$DB_DIR/.$mcc.json.tmp" && mv "$DB_DIR/.$mcc.json.tmp" "$DB_DIR/$mcc.json" \
