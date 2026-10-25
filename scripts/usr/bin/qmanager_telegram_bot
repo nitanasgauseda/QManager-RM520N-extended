@@ -196,14 +196,20 @@ main() {
             continue
         fi
         backoff=5
-        # One line per update: id, chat id, message time, text (tabs and newlines flattened).
-        lines=$(printf '%s' "$resp" | jq -r '.result[] | [.update_id, (.message.chat.id // ""), (.message.date // 0),
+        # One line per update: id, chat id, sender id, chat type, message time, text (tabs and newlines flattened).
+        lines=$(printf '%s' "$resp" | jq -r '.result[] | [.update_id, (.message.chat.id // ""), (.message.from.id // ""),
+            (.message.chat.type // ""), (.message.date // 0),
             ((.message.text // "") | gsub("[\t\n]"; " "))] | @tsv' 2>/dev/null)
         # A here-document keeps the loop in this shell, so the /reboot confirmation survives it.
-        while IFS="$(printf '\t')" read -r uid chat when text; do
+        while IFS="$(printf '\t')" read -r uid chat from ctype when text; do
             [ -n "$uid" ] || continue
+            case "$uid" in *[!0-9]*) continue ;; esac
             printf '%s\n' $((uid + 1)) > "$TB_OFFSET"
             [ "$chat" = "$_ta_chat_id" ] || continue
+            # Commands only in the private chat with the saved user: in a group, any member could
+            # otherwise send /reboot. Alerts still go to a group or channel chat ID as before.
+            [ "$ctype" = "private" ] && [ "$from" = "$chat" ] || continue
+            case "$when" in ''|*[!0-9]*) continue ;; esac
             # Commands older than two minutes (sent while offline) are not run.
             [ $(( $(now) - when )) -le 120 ] || continue
             handle "$text"

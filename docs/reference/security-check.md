@@ -23,9 +23,9 @@
 |------|-------|
 | Flags | `/etc/qmanager/wan_stealth`, `/etc/qmanager/lan_ipv6_off` (presence = on) |
 | CGI | `system/security.sh` POST `set_privacy {stealth, lan_ipv6}`; GET `privacy {stealth, lan_ipv6, stealth_active, lan_ipv6_off_active}` |
-| Rules | `qmanager_firewall` `stealth_start` / `lan6_start`; `ensure` re-adds them after a QCMAP flush (`watch.sh` `_wt_check_fw`, every 120 s, only while a flag exists) |
+| Rules | `qmanager_firewall` `stealth_start` / `lan6_start`; `ensure` checks every hook this script owns (web UI `QMANAGER_FW` on IPv4 and IPv6, `QMANAGER_WAN` while `wan_block.conf` has lines, stealth, LAN IPv6, both on and off) and rebuilds the whole set with `do_start` on any mismatch (`watch.sh` `_wt_check_fw`, every 120 s, always) |
 
-- Stealth (IPv4 and IPv6, `rmnet+` only): INPUT `QMANAGER_STEALTH` drops echo-request; OUTPUT `QMANAGER_STEALTH_OUT` drops port/protocol-unreachable and TCP RST. NDP, RA and packet-too-big are never touched; FORWARD is never touched, so IPPT traffic and the router's own firewall decide for the router.
+- Stealth (IPv4 and IPv6, `rmnet+` only): INPUT `QMANAGER_STEALTH` drops echo-request; OUTPUT `QMANAGER_STEALTH_OUT` drops port/protocol-unreachable and TCP RST in the conntrack REPLY direction only (`-m conntrack --ctdir REPLY`, i.e. answers to connection attempts from outside); resets on connections the modem opened itself (Traffic Engine `tpws`, Tailscale, curl) still go out. A kernel without `--ctdir` gets the old drop-every-RST rule. NDP, RA and packet-too-big are never touched; FORWARD is never touched, so IPPT traffic and the router's own firewall decide for the router.
 - LAN IPv6 off: ip6tables FORWARD `QMANAGER_LAN6` rejects `-i bridge0` (icmp6-adm-prohibited, DROP fallback) and drops `-o bridge0`; OUTPUT `QMANAGER_LAN6_OUT` drops RA and DHCPv6 replies (sport 547) on `bridge0`. The modem keeps its own IPv6.
 - `lan_ipv6` in the API means "IPv6 on for the LAN"; the flag file records it off.
 
@@ -39,4 +39,4 @@
 | CGI | `system/audit.sh` — GET newest first, POST `clear` |
 
 - `detail` is only `.action` or `.command` (AT terminal), filtered to safe characters, ≤60 chars; request bodies, passwords and tokens are never logged. Read-like actions (`get*`, `list*`, `status`, …) are skipped.
-- Sign-in alerts: `login.sh` appends `login<TAB>message` to `/tmp/qmanager_alert_queue` on success and on lockout; the poller's `_in_drain_queue` (insights.sh) sends it through alert event `login` (routing default off on every channel).
+- Sign-in alerts: `login.sh` appends `login<TAB>ok|locked<TAB>REMOTE_ADDR` to `/tmp/qmanager_alert_queue` on success and on lockout; the poller's `_in_drain_queue` (insights.sh) writes the sentence itself (fixed text, address limited to `[0-9A-Fa-f.:]`, ≤ 45 chars), so a line planted in the world-writable queue cannot add words of its own, and sends it through alert event `login` (routing default off on every channel).

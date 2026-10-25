@@ -40,6 +40,14 @@ Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.
 
 ## 🐛 Fixes
 
+- **Firewall protection comes back after the modem re-dials.** The web page's IPv4 and IPv6 protection and the ports closed in **System Settings → Security Check** are now checked every 2 minutes and put back if the operator connection reset wiped them; before, only stealth and LAN IPv6 rules were. (`qmanager_firewall ensure` checks every QManager hook and rebuilds on any mismatch.)
+- **Stealth mode no longer leaves the modem's own connections hanging.** Hiding from scans now drops only resets that answer outside connection attempts; connections the modem opens itself (Traffic Engine, Tailscale, updates) close normally. (OUTPUT RST drop limited to `--ctdir REPLY`.)
+- **Telegram commands work only in your private chat with the bot.** In a group, any member could send `/reboot`; commands sent in a group are now ignored, while alerts to a group still arrive.
+- **Sign-in alerts can no longer be faked with your own text.** The alert text is written by QManager itself from the sign-in result and address. (The `/tmp` queue now carries only `ok|locked` and the address.)
+- **Safer temporary files.** Telegram log trimming, Cell Guard, Data Plan, Outages and roaming/public-IP state are written through random temporary names, so a planted link can never redirect a root write. (`mktemp` + `mv` instead of fixed `.tmp` names, `0644` kept for the web page.)
+- **Cell Guard reads SMS in one step.** The SMS mode switch and the list are sent as one AT command, so another program cannot change the mode in between.
+- **The OpenCelliD key never appears in the process list.** Downloading with your key now needs curl; without curl, remove the key to use the mirror.
+- **dnsguard builds from a clean checkout.** `build-dnsguard.sh` now fetches Mozilla's CA bundle (sha256-checked), or uses `DNSGUARD_CA_BUNDLE` or the build host's bundle, so the embedded trust roots are current on every build.
 - **Traffic Engine no longer cuts the internet in IP Passthrough mode.** With **Local Network → Traffic Engine** on, devices behind a router in IP Passthrough lost every web page while the modem itself stayed online; the engine now listens on, and redirects to, the modem's LAN address. (tpws bound to, and REDIRECT rewrote to, the carrier IP that the router also uses.)
 - **The QManager page is no longer reachable over the carrier's IPv6.** The firewall that limits the web page to your own network now covers IPv6 as well as IPv4; before, a modem with a public IPv6 address served the sign-in page to the internet.
 - **Cell Guard no longer asks you to turn Rayhunter on when it cannot run.** On a modem without the Qualcomm diagnostic interface, the misleading "Turn Rayhunter on to see its warnings" line is gone.

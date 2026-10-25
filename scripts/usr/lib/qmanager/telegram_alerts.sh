@@ -52,19 +52,25 @@ _ta_read_config() {
     return 0
 }
 
+# Root writes this /tmp log (the bot, the test helper): never through a symlink, never via a
+# predictable temp name. Same rules as the Discord log trim in alert_engine.sh.
 _ta_log_event() {
     local trigger="$1" status="$2" recipient="$3" ts count tmp
     ts=$(date "+%Y-%m-%d %H:%M:%S")
-    [ -L "$_TA_LOG_FILE" ] && rm -f "$_TA_LOG_FILE"
+    if [ -L "$_TA_LOG_FILE" ] || { [ -e "$_TA_LOG_FILE" ] && [ ! -f "$_TA_LOG_FILE" ]; }; then
+        return 0
+    fi
     jq -n -c --arg ts "$ts" --arg trigger "$trigger" --arg status "$status" --arg recipient "$recipient" \
         '{timestamp: $ts, trigger: $trigger, status: $status, recipient: $recipient}' \
         >> "$_TA_LOG_FILE" 2>/dev/null
 
+    [ -f "$_TA_LOG_FILE" ] && [ ! -L "$_TA_LOG_FILE" ] || return 0
     count=$(wc -l < "$_TA_LOG_FILE" 2>/dev/null || echo 0)
     case "$count" in ''|*[!0-9]*) count=0 ;; esac
     if [ "$count" -gt "$_TA_MAX_LOG" ]; then
-        tmp="${_TA_LOG_FILE}.tmp.$$"
-        tail -n "$_TA_MAX_LOG" "$_TA_LOG_FILE" > "$tmp" 2>/dev/null && cat "$tmp" > "$_TA_LOG_FILE" 2>/dev/null
+        tmp=$(mktemp "${_TA_LOG_FILE}.XXXXXX" 2>/dev/null) || return 0
+        # mktemp makes it 0600; the Alerts page (www-data) reads this log.
+        tail -n "$_TA_MAX_LOG" "$_TA_LOG_FILE" > "$tmp" 2>/dev/null && chmod 644 "$tmp" && mv -f "$tmp" "$_TA_LOG_FILE" 2>/dev/null
         rm -f "$tmp"
     fi
 }

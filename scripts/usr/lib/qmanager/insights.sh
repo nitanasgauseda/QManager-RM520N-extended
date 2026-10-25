@@ -16,6 +16,17 @@ IN_SANE_EPOCH=1700000000
 IN_FLUSH_LINES=15
 IN_MIN_FREE_KB=20480
 
+# qm_replace <dest> — stdin replaces <dest> atomically. The temp name comes from mktemp, so a
+# symlink planted at a guessable "<dest>.tmp" is never followed (root writes these files, some in
+# www-data's /etc/qmanager). Empty input leaves <dest> alone; 0644 so the CGIs can still read it.
+command -v qm_replace >/dev/null 2>&1 || qm_replace() {
+    local t
+    t=$(mktemp "$1.XXXXXX" 2>/dev/null) || return 1
+    if cat > "$t" && [ -s "$t" ] && chmod 644 "$t" && mv -f "$t" "$1"; then return 0; fi
+    rm -f "$t"
+    return 1
+}
+
 _in_loaded=0
 _in_hist_enabled=true
 _in_hist_days=30
@@ -89,7 +100,7 @@ insights_load_config() {
 _in_save_state() {
     printf '{"cycle_start":%s,"cycle_base":%s,"warned":%s,"set_at":%s,"temp_high":%s}\n' \
         "$_in_cycle_start" "$_in_cycle_base" "$_in_warned" "$_in_state_set_at" "$_in_temp_high" \
-        > "${IN_STATE}.tmp" 2>/dev/null && mv "${IN_STATE}.tmp" "$IN_STATE" 2>/dev/null
+        | qm_replace "$IN_STATE"
 }
 
 # Send an alert event through the alert engine's routing (if it is loaded).
@@ -259,20 +270,30 @@ _in_write_status() {
                        percent: ($pct | tonumber? // null), cycle_start: ($start | tonumber? // null),
                        cycle_next: ($next | tonumber? // null), days_left: ($left | tonumber? // null)},
           temperature: {current: ($temp | tonumber? // null), alerting: ($hot == 1)}}' \
-        > "${IN_STATUS}.tmp" 2>/dev/null && mv "${IN_STATUS}.tmp" "$IN_STATUS" 2>/dev/null
+        2>/dev/null | qm_replace "$IN_STATUS"
 }
 
-# Alerts raised by CGIs (sign-ins) arrive as "event<TAB>message" lines; at most 10 per cycle.
+# Alerts raised by CGIs (sign-ins) arrive as "login<TAB>ok|locked<TAB>address" lines; at most 10 per
+# cycle. The queue sits in world-writable /tmp, so the text is written here from fixed sentences and
+# an address that passed a charset and length check; anything else in a line is dropped.
 : "${IN_ALERT_QUEUE:=/tmp/qmanager_alert_queue}"
 _in_drain_queue() {
     [ -s "$IN_ALERT_QUEUE" ] || return 0
-    local tmp="${IN_ALERT_QUEUE}.work" ev msg n=0
-    mv "$IN_ALERT_QUEUE" "$tmp" 2>/dev/null || return 0
-    while IFS="$(printf '\t')" read -r ev msg; do
+    local tmp ev kind ip msg n=0
+    [ -L "$IN_ALERT_QUEUE" ] && { rm -f "$IN_ALERT_QUEUE"; return 0; }
+    tmp=$(mktemp "${IN_ALERT_QUEUE}.XXXXXX" 2>/dev/null) || return 0
+    mv -f "$IN_ALERT_QUEUE" "$tmp" 2>/dev/null || { rm -f "$tmp"; return 0; }
+    while IFS="$(printf '\t')" read -r ev kind ip; do
         n=$((n + 1))
         [ "$n" -le 10 ] || break
-        case "$ev" in login) ;; *) continue ;; esac
-        [ -n "$msg" ] || continue
+        [ "$ev" = "login" ] || continue
+        case "$ip" in ''|*[!0-9A-Fa-f.:]*) ip="an unknown address" ;; esac
+        [ "${#ip}" -le 45 ] || ip="an unknown address"
+        case "$kind" in
+            ok) msg="Someone signed in to QManager from $ip" ;;
+            locked) msg="QManager sign-in locked after repeated wrong passwords from $ip" ;;
+            *) continue ;;
+        esac
         command -v append_event >/dev/null 2>&1 && append_event "login" "$msg" "info"
         _in_alert "$ev" "$msg"
     done < "$tmp"

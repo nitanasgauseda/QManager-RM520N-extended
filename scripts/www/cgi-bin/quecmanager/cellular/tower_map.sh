@@ -42,11 +42,9 @@ ocid_fetch() {
 ocid_fetch_one() {
     rm -f "$3"
     _url="$1?token=$(ocid_token)&type=mcc&file=$2.csv.gz"
-    if command -v curl >/dev/null 2>&1; then
-        printf 'url = "%s"\n' "$_url" | curl -sSL --max-time 180 --max-filesize 52428800 -K - -o "$3" 2>/dev/null
-    else
-        wget -q -T 180 -O "$3" "$_url" 2>/dev/null
-    fi
+    # curl only: wget would need the key on its command line, which /proc/<pid>/cmdline shows to everyone.
+    command -v curl >/dev/null 2>&1 || { printf 'no_curl'; return 1; }
+    printf 'url = "%s"\n' "$_url" | curl -sSL --max-time 180 --max-filesize 52428800 -K - -o "$3" 2>/dev/null
     if [ "$(head -c 2 "$3" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = "1f8b" ] && gzip -t "$3" 2>/dev/null; then
         return 0
     fi
@@ -209,6 +207,7 @@ case "$ACTION" in
                 case "$err" in
                     rate_limited) cgi_error "rate_limited" "OpenCelliD allows two downloads a day; try again tomorrow" ;;
                     invalid_token) cgi_error "invalid_token" "OpenCelliD did not accept the key" ;;
+                    no_curl) cgi_error "no_curl" "Downloading with an OpenCelliD key needs curl; remove the key to use the mirror" ;;
                     *) cgi_error "download_failed" "Could not download from OpenCelliD" ;;
                 esac
                 exit 0

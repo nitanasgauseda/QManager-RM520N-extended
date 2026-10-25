@@ -28,6 +28,17 @@ _wt_roam_alert=true; _wt_roam_block=false; _wt_ip_on=true
 _wt_roam_next=0; _wt_roam_state=unknown; _wt_roam_pending=""; _wt_roam_since=0
 _wt_ip_next=0; _wt_ip_wan=""; _wt_ip_public=""; _wt_ip_seen=0
 _wt_iccid=""; _wt_sim_in=""; _wt_sim_boot_done=0
+# qm_replace <dest> — stdin replaces <dest> atomically. The temp name comes from mktemp, so a
+# symlink planted at a guessable "<dest>.tmp" is never followed (root writes these files, some in
+# www-data's /etc/qmanager). Empty input leaves <dest> alone; 0644 so the CGIs can still read it.
+command -v qm_replace >/dev/null 2>&1 || qm_replace() {
+    local t
+    t=$(mktemp "$1.XXXXXX" 2>/dev/null) || return 1
+    if cat > "$t" && [ -s "$t" ] && chmod 644 "$t" && mv -f "$t" "$1"; then return 0; fi
+    rm -f "$t"
+    return 1
+}
+
 _wt_net=""; _wt_month_next=0; _wt_fw_next=0
 
 _wt_up() { local u r; read -r u r < /proc/uptime 2>/dev/null; printf '%s' "${u%%.*}"; }
@@ -171,7 +182,7 @@ _wt_ip_fetch() {
             printf '%s' "$ip" | awk -F. 'NF == 4 { for (i = 1; i <= 4; i++) if ($i !~ /^[0-9]+$/ || $i + 0 > 255) exit 1; exit 0 } { exit 1 }' && break
             ip=""
         done
-        printf '%s %s\n' "$(date +%s)" "$ip" > "$WT_PUBIP.raw.tmp" && mv "$WT_PUBIP.raw.tmp" "$WT_PUBIP.raw"
+        printf '%s %s\n' "$(date +%s)" "$ip" | qm_replace "$WT_PUBIP.raw"
     ) >/dev/null 2>&1 &
 }
 
@@ -189,12 +200,11 @@ _wt_check_ip() {
     read -r ts ip < "$WT_PUBIP.raw" 2>/dev/null
     [ "${ts:-0}" -gt "$_wt_ip_seen" ] 2>/dev/null || return 0
     _wt_ip_seen="$ts"
-    [ -n "$ip" ] || { printf '{"checked_at":%s,"public_ipv4":null,"wan_ipv4":"%s","cgnat":null,"error":"lookup_failed"}\n' "$ts" "$wan" > "$WT_PUBIP"; return 0; }
+    [ -n "$ip" ] || { printf '{"checked_at":%s,"public_ipv4":null,"wan_ipv4":"%s","cgnat":null,"error":"lookup_failed"}\n' "$ts" "$wan" | qm_replace "$WT_PUBIP"; return 0; }
     cgnat=false
     { [ "$ip" != "$wan" ] || _wt_private "$wan"; } && cgnat=true
     prev="$_wt_ip_public"
-    printf '{"checked_at":%s,"public_ipv4":"%s","wan_ipv4":"%s","cgnat":%s,"error":null}\n' "$ts" "$ip" "$wan" "$cgnat" > "$WT_PUBIP.tmp" \
-        && mv "$WT_PUBIP.tmp" "$WT_PUBIP"
+    printf '{"checked_at":%s,"public_ipv4":"%s","wan_ipv4":"%s","cgnat":%s,"error":null}\n' "$ts" "$ip" "$wan" "$cgnat" | qm_replace "$WT_PUBIP"
     _wt_ip_public="$ip"
     if [ -n "$prev" ] && [ "$prev" != "$ip" ]; then
         _wt_event "public_ip_changed" "Public IP changed from $prev to $ip" "info"
@@ -221,7 +231,7 @@ _wt_check_outage() {
         case "$st" in ''|*[!0-9]*) ;; *)
             [ "$now" -gt "$st" ] && printf '%s %s %s %s\n' "$st" "$now" "${enb:--}" "${net:--}" >> "$WT_OUTAGES"
             if [ "$(wc -l < "$WT_OUTAGES" 2>/dev/null)" -gt $((WT_OUTAGE_MAX + 200)) ]; then
-                tail -n "$WT_OUTAGE_MAX" "$WT_OUTAGES" > "$WT_OUTAGES.tmp" && mv "$WT_OUTAGES.tmp" "$WT_OUTAGES"
+                tail -n "$WT_OUTAGE_MAX" "$WT_OUTAGES" | qm_replace "$WT_OUTAGES"
             fi
             ;;
         esac
@@ -283,7 +293,7 @@ _wt_check_month() {
         text=$(wt_month_report "$prev" "$urx" "$utx")
         [ -n "$text" ] && { _wt_event "monthly_report" "Monthly report for $prev sent" "info"; _wt_alert monthly_report "$text"; }
     fi
-    printf '{"month":"%s","rx":%s,"tx":%s}\n' "$month" "$rx" "$tx" > "$WT_MONTH.tmp" && mv "$WT_MONTH.tmp" "$WT_MONTH"
+    printf '{"month":"%s","rx":%s,"tx":%s}\n' "$month" "$rx" "$tx" | qm_replace "$WT_MONTH"
 }
 
 _wt_write_status() {
@@ -291,14 +301,14 @@ _wt_write_status() {
     _wt_blocked && blocked=true
     printf '{"updated":%s,"roaming":{"state":"%s","since":%s,"alert":%s,"block":%s,"blocked":%s},"public_ip":{"enabled":%s}}\n' \
         "$(date +%s)" "$_wt_roam_state" "${_wt_roam_since:-0}" "$_wt_roam_alert" "$_wt_roam_block" "$blocked" "$_wt_ip_on" \
-        > "$WT_STATUS.tmp" 2>/dev/null && mv "$WT_STATUS.tmp" "$WT_STATUS"
+        | qm_replace "$WT_STATUS"
 }
 
-# Stealth / LAN IPv6 rules: a QCMAP re-dial flushes iptables, so put them back every 2 minutes.
+# QManager's firewall rules (web UI v4/v6, closed ports, stealth, LAN IPv6): a QCMAP re-dial
+# flushes iptables, so check them every 2 minutes. `ensure` only rebuilds when a hook is missing.
 _wt_check_fw() {
     [ "$1" -ge "$_wt_fw_next" ] || return 0
     _wt_fw_next=$(($1 + 120))
-    [ -f "${QM_STEALTH_FLAG:-/etc/qmanager/wan_stealth}" ] || [ -f "${QM_LAN6_OFF_FLAG:-/etc/qmanager/lan_ipv6_off}" ] || return 0
     [ -x "${WT_FIREWALL:-/usr/bin/qmanager_firewall}" ] && "${WT_FIREWALL:-/usr/bin/qmanager_firewall}" ensure >/dev/null 2>&1
 }
 

@@ -79,8 +79,10 @@ fi
 # Normal login
 # ---------------------------------------------------------------------------
 # Login alerts go through the poller's alert engine (routing for "login" is off unless the user turns it on).
+# Only the kind (ok | locked) and the client address go in the queue; the poller writes the text,
+# so a line planted in the world-writable /tmp queue cannot put words of its own into an alert.
 qm_login_alert() {
-    printf 'login\t%s\n' "$1" >> /tmp/qmanager_alert_queue 2>/dev/null
+    printf 'login\t%s\t%s\n' "$1" "${REMOTE_ADDR:-}" >> /tmp/qmanager_alert_queue 2>/dev/null
 }
 
 if ! qm_check_rate_limit; then
@@ -99,7 +101,7 @@ if ! qm_verify_password "$_password"; then
     qm_get_rate_limit_status
     qm_audit login failed
     if [ "${RATE_LIMIT_ATTEMPTS_REMAINING:-1}" = "0" ]; then
-        qm_login_alert "QManager sign-in locked after repeated wrong passwords from ${REMOTE_ADDR:-an unknown address}"
+        qm_login_alert locked
     fi
     qlog_warn "Failed login attempt"
     cgi_headers
@@ -113,7 +115,7 @@ qm_clear_attempts
 qm_cleanup_sessions
 _token=$(qm_create_session)
 qm_audit login ok
-qm_login_alert "Someone signed in to QManager from ${REMOTE_ADDR:-an unknown address}"
+qm_login_alert ok
 qlog_info "Successful login"
 
 qm_set_session_cookies "$_token"

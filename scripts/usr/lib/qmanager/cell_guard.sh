@@ -21,6 +21,17 @@ CG_MAX_KNOWN=3000
 CG_ALERT_GAP_SECS=600
 CG_SANE_EPOCH=1700000000
 
+# qm_replace <dest> — stdin replaces <dest> atomically. The temp name comes from mktemp, so a
+# symlink planted at a guessable "<dest>.tmp" is never followed (root writes these files, some in
+# www-data's /etc/qmanager). Empty input leaves <dest> alone; 0644 so the CGIs can still read it.
+command -v qm_replace >/dev/null 2>&1 || qm_replace() {
+    local t
+    t=$(mktemp "$1.XXXXXX" 2>/dev/null) || return 1
+    if cat > "$t" && [ -s "$t" ] && chmod 644 "$t" && mv -f "$t" "$1"; then return 0; fi
+    rm -f "$t"
+    return 1
+}
+
 _cg_enabled="true"
 _cg_learn_hours=24
 _cg_rayhunter="false"
@@ -118,7 +129,7 @@ _cg_status_write() {
         '{enabled: ($enabled == "true"), learning: $learning, since: ($since | tonumber? // null),
           known_cells: $known, last_finding: $last, updated: $ts,
           rayhunter: {enabled: ($rh == "true"), recording: $rhe, warnings: $rhn}}' \
-        > "${CG_STATUS}.tmp" 2>/dev/null && mv "${CG_STATUS}.tmp" "$CG_STATUS" 2>/dev/null
+        2>/dev/null | qm_replace "$CG_STATUS"
 }
 
 # Raise one finding: an event every time; a warning also alerts, at most once per CG_ALERT_GAP_SECS.
@@ -246,8 +257,12 @@ _cg_check_rayhunter() {
     [ -f "$log" ] && sz=$(wc -c < "$log" 2>/dev/null)
     case "$sz" in ''|*[!0-9]*) sz=0 ;; esac
     if [ "$sz" -gt 1048576 ]; then
-        tail -c 262144 "$log" > "$log.tmp" 2>/dev/null && cat "$log.tmp" > "$log" 2>/dev/null
-        rm -f "$log.tmp"
+        # Copied back into the same inode: the service keeps appending to its open file.
+        local t
+        if [ ! -L "$log" ] && t=$(mktemp "$log.XXXXXX" 2>/dev/null); then
+            tail -c 262144 "$log" > "$t" 2>/dev/null && cat "$t" > "$log" 2>/dev/null
+            rm -f "$t"
+        fi
     fi
     command -v curl >/dev/null 2>&1 || return 0
     local man name report n msg
@@ -363,15 +378,17 @@ _cg_sms_reason_text() {
 # Every CG_SMS_EVERY seconds: list stored SMS in PDU mode and report new suspicious ones once.
 _cg_check_sms() {
     [ "$_cg_sms" = "true" ] || return 0
-    local up out line reasons sender pdu key sev
+    local up out line reasons sender pdu key sev list
     up=$(_cg_up)
     case "$up" in ''|*[!0-9]*) return 0 ;; esac
     [ "$up" -ge "$_cg_sms_next" ] || return 0
     _cg_sms_next=$((up + CG_SMS_EVERY))
     command -v qcmd >/dev/null 2>&1 || return 0
-    qcmd 'AT+CMGF=0' >/dev/null 2>&1
-    out=$(qcmd 'AT+CMGL=4' 2>/dev/null) || return 0
-    printf '%s\n' "$out" | _cg_sms_classify > /tmp/qmanager_cg_sms.$$ 2>/dev/null
+    # One compound command: nothing can switch the SMS mode back to text between the two.
+    out=$(qcmd 'AT+CMGF=0;+CMGL=4' 2>/dev/null) || return 0
+    # Root writes here: a mktemp name, never a guessable /tmp path a symlink could be planted on.
+    list=$(mktemp /tmp/qmanager_cg_sms.XXXXXX 2>/dev/null) || return 0
+    printf '%s\n' "$out" | _cg_sms_classify > "$list" 2>/dev/null
     while IFS='|' read -r reasons sender pdu; do
         [ -n "$pdu" ] || continue
         key=$(printf '%s' "$pdu" | md5sum 2>/dev/null | cut -c1-16)
@@ -380,10 +397,10 @@ _cg_check_sms() {
         sev=warning
         case "$reasons" in type0*|*sim_download*|*wap_push*) ;; *) sev=info ;; esac
         _cg_sms_finding "Suspicious SMS from ${sender:-an unknown sender}: $(_cg_sms_reason_text "$reasons")" "$sev"
-    done < /tmp/qmanager_cg_sms.$$
-    rm -f /tmp/qmanager_cg_sms.$$
+    done < "$list"
+    rm -f "$list"
     if [ -f "$CG_SMS_SEEN" ] && [ "$(wc -l < "$CG_SMS_SEEN")" -gt 300 ]; then
-        tail -n 200 "$CG_SMS_SEEN" > "$CG_SMS_SEEN.tmp" 2>/dev/null && mv "$CG_SMS_SEEN.tmp" "$CG_SMS_SEEN"
+        tail -n 200 "$CG_SMS_SEEN" 2>/dev/null | qm_replace "$CG_SMS_SEEN"
     fi
     return 0
 }

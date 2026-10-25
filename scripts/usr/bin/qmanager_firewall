@@ -176,7 +176,10 @@ stealth_start() {
     iptables -N "$ST_OUT" 2>/dev/null
     iptables -A "$ST_OUT" -o rmnet+ -p icmp --icmp-type port-unreachable -j DROP
     iptables -A "$ST_OUT" -o rmnet+ -p icmp --icmp-type protocol-unreachable -j DROP
-    iptables -A "$ST_OUT" -o rmnet+ -p tcp --tcp-flags RST RST -j DROP
+    # Only resets in the REPLY direction (answers to probes from outside). Resets on connections the
+    # modem opened itself (Traffic Engine, Tailscale, curl) go out, so they never hang half-open.
+    iptables -A "$ST_OUT" -o rmnet+ -p tcp --tcp-flags RST RST -m conntrack --ctdir REPLY -j DROP 2>/dev/null \
+        || iptables -A "$ST_OUT" -o rmnet+ -p tcp --tcp-flags RST RST -j DROP
     _hook iptables INPUT "$ST_IN" on
     _hook iptables OUTPUT "$ST_OUT" on
     command -v ip6tables >/dev/null 2>&1 || return 0
@@ -185,7 +188,8 @@ stealth_start() {
     ip6tables -A "$ST_IN" -i rmnet+ -p ipv6-icmp --icmpv6-type echo-request -j DROP
     ip6tables -N "$ST_OUT" 2>/dev/null
     ip6tables -A "$ST_OUT" -o rmnet+ -p ipv6-icmp --icmpv6-type port-unreachable -j DROP
-    ip6tables -A "$ST_OUT" -o rmnet+ -p tcp --tcp-flags RST RST -j DROP
+    ip6tables -A "$ST_OUT" -o rmnet+ -p tcp --tcp-flags RST RST -m conntrack --ctdir REPLY -j DROP 2>/dev/null \
+        || ip6tables -A "$ST_OUT" -o rmnet+ -p tcp --tcp-flags RST RST -j DROP
     _hook ip6tables INPUT "$ST_IN" on
     _hook ip6tables OUTPUT "$ST_OUT" on
 }
@@ -212,13 +216,32 @@ lan6_start() {
     _hook ip6tables OUTPUT "$LAN6_OUT" on
 }
 
+# _hooked <tool> <builtin chain> <our chain> — is the jump in place?
+_hooked() { $1 -C "$2" -j "$3" 2>/dev/null; }
+
 # ensure — put back what a QCMAP firewall reload flushed (the poller calls this every 2 minutes).
+# Covers every chain this script owns, not only the optional ones: a flush that took the web UI
+# protection (IPv4 or IPv6) or the closed ports with it must not leave them open until a reboot.
+# Any mismatch rebuilds everything with do_start, which is idempotent and keeps the hook order.
 do_ensure() {
-    if [ -f "$STEALTH_FLAG" ] && ! iptables -C INPUT -j "$ST_IN" 2>/dev/null; then stealth_start; fi
-    if [ ! -f "$STEALTH_FLAG" ] && iptables -C INPUT -j "$ST_IN" 2>/dev/null; then stealth_stop; fi
-    if command -v ip6tables >/dev/null 2>&1; then
-        if [ -f "$LAN6_FLAG" ] && ! ip6tables -C FORWARD -j "$LAN6_FWD" 2>/dev/null; then lan6_start; fi
-        if [ ! -f "$LAN6_FLAG" ] && ip6tables -C FORWARD -j "$LAN6_FWD" 2>/dev/null; then lan6_stop; fi
+    local have6=0
+    command -v ip6tables >/dev/null 2>&1 && have6=1
+    _hooked iptables INPUT "$CHAIN" || { do_start; return 0; }
+    if [ "$have6" = 1 ]; then _hooked ip6tables INPUT "$CHAIN" || { do_start; return 0; }; fi
+    if [ -s "$WAN_CONF" ]; then
+        _hooked iptables INPUT "$WAN_CHAIN" || { do_start; return 0; }
+    fi
+    if [ -f "$STEALTH_FLAG" ]; then
+        _hooked iptables INPUT "$ST_IN" || { do_start; return 0; }
+    else
+        _hooked iptables INPUT "$ST_IN" && { do_start; return 0; }
+    fi
+    if [ "$have6" = 1 ]; then
+        if [ -f "$LAN6_FLAG" ]; then
+            _hooked ip6tables FORWARD "$LAN6_FWD" || { do_start; return 0; }
+        else
+            _hooked ip6tables FORWARD "$LAN6_FWD" && { do_start; return 0; }
+        fi
     fi
     return 0
 }
