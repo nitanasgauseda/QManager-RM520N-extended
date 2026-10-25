@@ -12,6 +12,8 @@
   ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square)
 </div>
 
+> **EU edition.** This fork builds on [QManager RM520N v0.1.17](https://github.com/dr-dolomite/QManager-RM520N) by dr-dolomite and adds Telegram alerts and commands, Tower Map, Cell Guard, DNS Privacy, eSIM profiles, Security Check and more. Every change against the original is listed in **[CHANGELOG-EU.md](CHANGELOG-EU.md)**.
+
 ---
 
 <div align="center">
