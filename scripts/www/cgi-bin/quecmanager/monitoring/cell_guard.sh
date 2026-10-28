@@ -2,7 +2,7 @@
 . /usr/lib/qmanager/cgi_base.sh
 # cell_guard.sh — Cell Guard (fake base station detection) settings, findings and the optional Rayhunter daemon.
 #   GET                       config, detector status, recent findings, Rayhunter state
-#   POST save {enabled, learn_hours, sms_guard?} | reset_baseline
+#   POST save {enabled, learn_hours, sms_guard?, jam_guard?} | reset_baseline
 #   POST rayhunter_install | rayhunter_install_status | rayhunter_enable | rayhunter_disable | rayhunter_uninstall
 # See docs/reference/cell-guard.md.
 
@@ -91,7 +91,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             enabled: ($c.enabled != false),
             learn_hours: ($c.learn_hours // 24),
             rayhunter: ($c.rayhunter == true),
-            sms_guard: ($c.sms_guard != false)
+            sms_guard: ($c.sms_guard != false),
+            jam_guard: ($c.jam_guard != false)
         },
         status: $status,
         findings: $findings,
@@ -116,8 +117,11 @@ case "$ACTION" in
         [ "$lh" -le 168 ] || { cgi_error "invalid_learn_hours" "learn_hours must be 0-168"; exit 0; }
         sg=$(printf '%s' "$POST_DATA" | jq -r 'if has("sms_guard") then (.sms_guard | tostring) else "keep" end' 2>/dev/null)
         case "$sg" in true|false|keep) ;; *) cgi_error "invalid_enabled" "sms_guard must be a boolean"; exit 0 ;; esac
+        jg=$(printf '%s' "$POST_DATA" | jq -r 'if has("jam_guard") then (.jam_guard | tostring) else "keep" end' 2>/dev/null)
+        case "$jg" in true|false|keep) ;; *) cgi_error "invalid_enabled" "jam_guard must be a boolean"; exit 0 ;; esac
         conf_merge '.enabled = ($e == "true") | .learn_hours = ($l | tonumber)
-            | (if $s == "keep" then . else .sms_guard = ($s == "true") end)' --arg e "$en" --arg l "$lh" --arg s "$sg" \
+            | (if $s == "keep" then . else .sms_guard = ($s == "true") end)
+            | (if $j == "keep" then . else .jam_guard = ($j == "true") end)' --arg e "$en" --arg l "$lh" --arg s "$sg" --arg j "$jg" \
             || { cgi_error "write_failed" "Could not save"; exit 0; }
         cgi_success
         ;;

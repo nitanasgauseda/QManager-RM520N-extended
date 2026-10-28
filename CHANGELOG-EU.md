@@ -32,14 +32,18 @@ Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.
 - **Turn IPv6 off for your network.** The same card can stop the router and devices behind the modem getting IPv6, so they use IPv4 only; the modem keeps its own IPv6. (Blocks IPv6 forwarding, router advertisements and DHCPv6 on the LAN bridge; re-applied after a re-dial.)
 - **eSIM profiles.** New **Cellular → Settings → eSIM** page: see the EID, switch, rename and delete profiles, and download a new one with the operator's activation code. Needs an eSIM chip or a removable eSIM card in the SIM slot; a regular SIM shows "No eSIM found". (lpac v2.3.0 over AT+CCHO/CGLA with an AT+CSIM fallback.)
 
+- **Jamming detection.** **Monitoring → Cell Guard** now warns when signal quality collapses while signal strength stays the same for 3 minutes, which is what a jammer does, and tells you when it is back to normal. Turn it off with **Detect jamming**. (LTE and 5G separately, against a learned per-cell baseline.)
+
 ## 🛠️ Improvements
 
+- **Software Update installs the EU edition.** **System Settings → Software Update** and automatic updates now look for new versions in this repository instead of the original, so updating no longer replaces the EU edition with the original. (Versions `vX.Y.Z-eu.N` count as newer than `vX.Y.Z`; a release needs `qmanager.tar.gz` and `sha256sum.txt` from `qmanager-build/`.)
 - **The web page loads faster.** Pages, scripts and styles are sent compressed and cached by the browser, so QManager opens several times faster over Wi-Fi. (lighttpd `mod_deflate` with a cache on `/usrdata`, enabled only if the installer's config test passes.)
 - **Less work while nobody is looking.** The background poller asks the modem about four times less often while no QManager page is open, and goes back to full speed as soon as one is.
 - **Less wear on the flash.** The Data Used counter is kept in memory and saved to flash every 5 minutes instead of every few seconds.
 
 ## 🐛 Fixes
 
+- **Uninstalling no longer stops halfway.** The uninstaller stopped at the first firewall chain that did not exist; it now carries on.
 - **Firewall protection comes back after the modem re-dials.** The web page's IPv4 and IPv6 protection and the ports closed in **System Settings → Security Check** are now checked every 2 minutes and put back if the operator connection reset wiped them; before, only stealth and LAN IPv6 rules were. (`qmanager_firewall ensure` checks every QManager hook and rebuilds on any mismatch.)
 - **Stealth mode no longer leaves the modem's own connections hanging.** Hiding from scans now drops only resets that answer outside connection attempts; connections the modem opens itself (Traffic Engine, Tailscale, updates) close normally. (OUTPUT RST drop limited to `--ctdir REPLY`.)
 - **Telegram commands work only in your private chat with the bot.** In a group, any member could send `/reboot`; commands sent in a group are now ignored, while alerts to a group still arrive.

@@ -1687,7 +1687,8 @@
       "unsaved": "Modifiche non salvate",
       "reset": "Dimentica celle conosciute",
       "save": "Salva",
-      "sms": "Controlla gli SMS in arrivo"
+      "sms": "Controlla gli SMS in arrivo",
+      "jam": "Rileva disturbi del segnale"
     },
     "findings": {
       "title": "Rilevazioni",

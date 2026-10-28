@@ -1687,7 +1687,8 @@
       "unsaved": "Unsaved changes",
       "reset": "Forget known cells",
       "save": "Save",
-      "sms": "Check incoming SMS"
+      "sms": "Check incoming SMS",
+      "jam": "Detect jamming"
     },
     "findings": {
       "title": "Findings",

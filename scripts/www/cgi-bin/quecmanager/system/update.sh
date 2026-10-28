@@ -27,7 +27,7 @@ cgi_handle_options
 
 # --- Configuration -----------------------------------------------------------
 
-GITHUB_REPO="dr-dolomite/QManager-RM520N"
+GITHUB_REPO="nitanasgauseda/QManager-RM520N-extended"
 VERSION_FILE="/etc/qmanager/VERSION"
 VERSION_PENDING="/etc/qmanager/VERSION.pending"
 UPDATES_DIR="/etc/qmanager/updates"

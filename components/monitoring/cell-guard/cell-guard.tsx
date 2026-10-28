@@ -123,21 +123,24 @@ function DetectionCard({ state, act, busy, locale }: { state: CellGuardState; ac
   const [learn, setLearn] = useState(String(state.config.learn_hours));
   const smsSaved = state.config.sms_guard !== false;
   const [sms, setSms] = useState(smsSaved);
+  const jamSaved = state.config.jam_guard !== false;
+  const [jam, setJam] = useState(jamSaved);
   // Re-seed when the saved values move (render-phase, not an effect).
-  const sig = `${state.config.enabled}|${state.config.learn_hours}|${smsSaved}`;
+  const sig = `${state.config.enabled}|${state.config.learn_hours}|${smsSaved}|${jamSaved}`;
   const [prevSig, setPrevSig] = useState(sig);
   if (sig !== prevSig) {
     setPrevSig(sig);
     setEnabled(state.config.enabled);
     setLearn(String(state.config.learn_hours));
     setSms(smsSaved);
+    setJam(jamSaved);
   }
-  const dirty = enabled !== state.config.enabled || learn !== String(state.config.learn_hours) || sms !== smsSaved;
+  const dirty = enabled !== state.config.enabled || learn !== String(state.config.learn_hours) || sms !== smsSaved || jam !== jamSaved;
   const s = state.status;
   const learningUntil = s?.since ? s.since + state.config.learn_hours * 3600 : null;
 
   const save = async () => {
-    const r = await act("save", { enabled, learn_hours: learn, sms_guard: sms });
+    const r = await act("save", { enabled, learn_hours: learn, sms_guard: sms, jam_guard: jam });
     if (r.ok) toast.success(t(`${K}.toast.saved`));
     else toast.error(t(`${K}.errors.save_failed`));
   };
@@ -186,6 +189,19 @@ function DetectionCard({ state, act, busy, locale }: { state: CellGuardState; ac
               { value: "off", label: t("state.off") },
             ]}
             ariaLabel={t(`${K}.detection.sms`)}
+            breakpoint="never"
+            glyph={glyph}
+          />
+        </Row>
+        <Row label={t(`${K}.detection.jam`)} wrap>
+          <SegmentedField
+            value={jam ? "on" : "off"}
+            onValueChange={(v) => setJam(v === "on")}
+            options={[
+              { value: "on", label: t("state.on") },
+              { value: "off", label: t("state.off") },
+            ]}
+            ariaLabel={t(`${K}.detection.jam`)}
             breakpoint="never"
             glyph={glyph}
           />

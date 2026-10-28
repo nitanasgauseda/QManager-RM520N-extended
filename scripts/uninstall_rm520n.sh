@@ -228,20 +228,21 @@ for _t in iptables ip6tables; do
     while $_t -C INPUT -j QMANAGER_DNS 2>/dev/null; do
         $_t -D INPUT -j QMANAGER_DNS 2>/dev/null || break
     done
-    $_t -t nat -F QMANAGER_DNS 2>/dev/null; $_t -t nat -X QMANAGER_DNS 2>/dev/null
-    $_t -F QMANAGER_DNS 2>/dev/null; $_t -X QMANAGER_DNS 2>/dev/null
+    # `|| true`: this script runs under set -e, and a chain that is not there fails -F/-X.
+    $_t -t nat -F QMANAGER_DNS 2>/dev/null || true; $_t -t nat -X QMANAGER_DNS 2>/dev/null || true
+    $_t -F QMANAGER_DNS 2>/dev/null || true; $_t -X QMANAGER_DNS 2>/dev/null || true
 done
 # Roaming data block (watch.sh).
 while iptables -C FORWARD -j QMANAGER_ROAM 2>/dev/null; do
     iptables -D FORWARD -j QMANAGER_ROAM 2>/dev/null || break
 done
-iptables -F QMANAGER_ROAM 2>/dev/null; iptables -X QMANAGER_ROAM 2>/dev/null
+iptables -F QMANAGER_ROAM 2>/dev/null || true; iptables -X QMANAGER_ROAM 2>/dev/null || true
 # Stealth mode and LAN IPv6 off (qmanager_firewall).
 for _t in iptables ip6tables; do
     for _hc in INPUT:QMANAGER_STEALTH OUTPUT:QMANAGER_STEALTH_OUT FORWARD:QMANAGER_LAN6 OUTPUT:QMANAGER_LAN6_OUT; do
         _b=${_hc%%:*}; _c=${_hc#*:}
         while $_t -C "$_b" -j "$_c" 2>/dev/null; do $_t -D "$_b" -j "$_c" 2>/dev/null || break; done
-        $_t -F "$_c" 2>/dev/null; $_t -X "$_c" 2>/dev/null
+        $_t -F "$_c" 2>/dev/null || true; $_t -X "$_c" 2>/dev/null || true
     done
 done
 # A block from the first DNS Privacy version (dnsmasq.conf) is stripped too. No reload: dnsmasq cannot

@@ -29,6 +29,20 @@ EOF
     [ "$a3" -gt "$b3" ] 2>/dev/null && return 0
     [ "$a3" -lt "$b3" ] 2>/dev/null && return 2
 
+    # EU edition: "-eu.N" is a later build of the same base (v0.1.17-eu.2 > v0.1.17), compared by N.
+    local a_eu="" b_eu=""
+    case "$a_pre" in eu|eu.*) a_eu="${a_pre#eu}"; a_eu="${a_eu#.}"; a_eu="${a_eu:-0}" ;; esac
+    case "$b_pre" in eu|eu.*) b_eu="${b_pre#eu}"; b_eu="${b_eu#.}"; b_eu="${b_eu:-0}" ;; esac
+    case "$a_eu" in *[!0-9]*) a_eu="" ;; esac
+    case "$b_eu" in *[!0-9]*) b_eu="" ;; esac
+    if [ -n "$a_eu" ] || [ -n "$b_eu" ]; then
+        [ -z "$b_eu" ] && return 0
+        [ -z "$a_eu" ] && return 2
+        [ "$a_eu" -gt "$b_eu" ] && return 0
+        [ "$a_eu" -lt "$b_eu" ] && return 2
+        return 1
+    fi
+
     # Equal major.minor.patch — no pre-release > any pre-release
     [ -z "$a_pre" ] && [ -n "$b_pre" ] && return 0
     [ -n "$a_pre" ] && [ -z "$b_pre" ] && return 2

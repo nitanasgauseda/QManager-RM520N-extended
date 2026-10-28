@@ -144,10 +144,10 @@ http_download() {
 validate_url() {
     local url="$1" strict="${2:-}"
     case "$url" in
-        https://github.com/dr-dolomite/QManager-RM520N/releases/download/*/qmanager.tar.gz)
+        https://github.com/nitanasgauseda/QManager-RM520N-extended/releases/download/*/qmanager.tar.gz)
             return 0
             ;;
-        https://github.com/dr-dolomite/QManager-RM520N/raw/*/qmanager-build/qmanager.tar.gz)
+        https://github.com/nitanasgauseda/QManager-RM520N-extended/raw/*/qmanager-build/qmanager.tar.gz)
             # raw/qmanager-build path is only permitted for the one-step install mode
             if [ "$strict" = "strict" ]; then
                 return 1
@@ -175,7 +175,7 @@ verify_archive() {
 derive_checksum_url() {
     local tarball_url="$1"
     case "$tarball_url" in
-        https://github.com/dr-dolomite/QManager-RM520N/releases/download/*/qmanager.tar.gz)
+        https://github.com/nitanasgauseda/QManager-RM520N-extended/releases/download/*/qmanager.tar.gz)
             printf '%s' "${tarball_url%/qmanager.tar.gz}/sha256sum.txt"
             ;;
         *)

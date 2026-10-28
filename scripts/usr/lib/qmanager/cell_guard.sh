@@ -37,6 +37,8 @@ _cg_learn_hours=24
 _cg_rayhunter="false"
 _cg_sms="true"
 _cg_sms_next=0
+_cg_jam="true"
+_cg_jam_next=0
 _cg_cfg_loaded=0
 _cg_last_sig=""
 _cg_last_rat=""
@@ -57,8 +59,10 @@ cg_load_config() {
         _cg_learn_hours=$(jq -r '.learn_hours // 24' "$CG_CONFIG" 2>/dev/null)
         _cg_rayhunter=$(jq -r 'if .rayhunter == true then "true" else "false" end' "$CG_CONFIG" 2>/dev/null)
         _cg_sms=$(jq -r 'if .sms_guard == false then "false" else "true" end' "$CG_CONFIG" 2>/dev/null)
+        _cg_jam=$(jq -r 'if .jam_guard == false then "false" else "true" end' "$CG_CONFIG" 2>/dev/null)
     fi
     case "$_cg_sms" in true|false) ;; *) _cg_sms="true" ;; esac
+    case "$_cg_jam" in true|false) ;; *) _cg_jam="true" ;; esac
     case "$_cg_learn_hours" in ''|*[!0-9]*) _cg_learn_hours=24 ;; esac
     case "$_cg_enabled" in true|false) ;; *) _cg_enabled="true" ;; esac
     _cg_cfg_loaded=1
@@ -159,11 +163,7 @@ _cg_finding() {
 _cg_known_get() { grep -m1 "^$1|" "$CG_KNOWN" 2>/dev/null; }
 
 _cg_known_put() {
-    local key="$1" line="$2" tmp
-    tmp="${CG_KNOWN}.tmp.$$"
-    { grep -v "^$key|" "$CG_KNOWN" 2>/dev/null; printf '%s\n' "$line"; } | tail -n "$CG_MAX_KNOWN" > "$tmp" 2>/dev/null \
-        && mv "$tmp" "$CG_KNOWN" 2>/dev/null
-    rm -f "$tmp" 2>/dev/null
+    { grep -v "^$1|" "$CG_KNOWN" 2>/dev/null; printf '%s\n' "$2"; } | tail -n "$CG_MAX_KNOWN" | qm_replace "$CG_KNOWN"
 }
 
 # _cg_check_cell — compare the serving cell against what this location has seen before.
@@ -405,6 +405,86 @@ _cg_check_sms() {
     return 0
 }
 
+# --- Jamming: signal quality collapses while signal strength stays put --------------------------
+# Per radio, against a slow average for the serving cell; thresholds and the recovery rule are in
+# docs/reference/cell-guard.md.
+CG_JAM_EVERY=10
+CG_JAM_LEARN=30
+CG_JAM_STREAK=18
+CG_JAM_DROP=10
+CG_JAM_RSRP=4
+
+# _cg_int <value> — whole dB from "-12", "7.5" or "-3.2"; empty when not a number.
+_cg_int() {
+    local v="${1%%.*}"
+    case "${v#-}" in ''|*[!0-9]*) return 0 ;; esac
+    printf '%s' "$v"
+}
+
+_cg_jam_one() {
+    local r="$1" label="$2" cell="$3" q p rs n bad alarm good q10 p10 r10 dq dp msg
+    q=$(_cg_int "$4"); p=$(_cg_int "$5"); rs=$(_cg_int "$6")
+    eval "n=\${_cg_j${r}_n:-0} bad=\${_cg_j${r}_bad:-0} alarm=\${_cg_j${r}_alarm:-0} good=\${_cg_j${r}_good:-0}"
+    eval "q10=\${_cg_j${r}_q10:-} p10=\${_cg_j${r}_p10:-} r10=\${_cg_j${r}_r10:-}"
+    if [ -z "$cell" ] || [ -z "$q" ] || [ -z "$p" ]; then
+        return 0
+    fi
+    if [ "$cell" != "$(eval "printf '%s' \"\${_cg_j${r}_cell:-}\"")" ]; then
+        eval "_cg_j${r}_cell=\$cell"
+        n=0; bad=0; alarm=0; good=0; q10=$((q * 10)); p10=$((p * 10)); r10=""
+        [ -n "$rs" ] && r10=$((rs * 10))
+    fi
+    if [ "$n" -lt "$CG_JAM_LEARN" ]; then
+        n=$((n + 1))
+        q10=$((q10 + (q * 10 - q10) / 4)); p10=$((p10 + (p * 10 - p10) / 4))
+        if [ -n "$rs" ]; then r10=$(( ${r10:-$((rs * 10))} + (rs * 10 - ${r10:-$((rs * 10))}) / 4 )); fi
+    else
+        dq=$(( (q10 - q * 10) / 10 )); dp=$(( (p10 - p * 10) / 10 ))
+        if [ "$dq" -ge "$CG_JAM_DROP" ] && [ "$dp" -le "$CG_JAM_RSRP" ]; then
+            bad=$((bad + 1)); good=0
+            if [ "$alarm" = "0" ] && [ "$bad" -ge "$CG_JAM_STREAK" ]; then
+                alarm=1
+                msg="Possible jamming on $label cell $cell: signal quality fell from $((q10 / 10)) to $q dB SINR for $((CG_JAM_STREAK * CG_JAM_EVERY / 60)) minutes while signal strength stayed at $p dBm"
+                if [ -n "$rs" ] && [ -n "$r10" ] && [ $((rs - r10 / 10)) -ge 3 ]; then
+                    msg="$msg and the received power rose by $((rs - r10 / 10)) dB"
+                fi
+                _cg_finding "$msg"
+            fi
+        else
+            bad=0
+            if [ "$alarm" = "1" ]; then
+                if [ "$dq" -le 5 ]; then good=$((good + 1)); else good=0; fi
+                if [ "$good" -ge 6 ]; then
+                    alarm=0; good=0
+                    _cg_finding "Signal quality on $label cell $cell is back to normal ($q dB SINR)" "info"
+                fi
+            else
+                # The average follows slow, real changes (weather, foliage) but not a sudden collapse.
+                q10=$((q10 + (q * 10 - q10) / 32)); p10=$((p10 + (p * 10 - p10) / 32))
+                if [ -n "$rs" ]; then r10=$(( ${r10:-$((rs * 10))} + (rs * 10 - ${r10:-$((rs * 10))}) / 32 )); fi
+            fi
+        fi
+    fi
+    eval "_cg_j${r}_n=\$n _cg_j${r}_bad=\$bad _cg_j${r}_alarm=\$alarm _cg_j${r}_good=\$good"
+    eval "_cg_j${r}_q10=\$q10 _cg_j${r}_p10=\$p10 _cg_j${r}_r10=\$r10"
+}
+
+_cg_check_jam() {
+    local up
+    [ "$_cg_jam" = "true" ] || return 0
+    up=$(_cg_up)
+    case "$up" in ''|*[!0-9]*) return 0 ;; esac
+    [ "$up" -ge "$_cg_jam_next" ] || return 0
+    _cg_jam_next=$((up + CG_JAM_EVERY))
+    case "${lte_cell_id:-}" in ''|*[!0-9]*) ;; *)
+        _cg_jam_one L LTE "${lte_enodeb_id:-?}/$lte_cell_id" "${lte_sinr:-}" "${lte_rsrp:-}" "${lte_rssi:-}" ;;
+    esac
+    case "${nr_pci:-}" in ''|*[!0-9]*) ;; *)
+        _cg_jam_one N 5G "PCI $nr_pci" "${nr_sinr:-}" "${nr_rsrp:-}" "" ;;
+    esac
+    return 0
+}
+
 # SMS findings are their own event type; warnings alert through the Cell Guard routing.
 # A flood of silent SMS logs every one but alerts at most once per CG_ALERT_GAP_SECS.
 _cg_sms_alert_up=-100000
@@ -437,6 +517,7 @@ cell_guard_check() {
     _cg_check_cell
     _cg_check_rayhunter
     _cg_check_sms
+    _cg_check_jam
     if [ "$before" != "$_cg_last_sig$_cg_last_rat$_cg_rh_seen" ] || [ ! -f "$CG_STATUS" ] \
         || [ $((${cycle_count:-0} % 150)) -eq 0 ]; then
         _cg_status_write

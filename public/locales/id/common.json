@@ -1687,7 +1687,8 @@
       "unsaved": "Perubahan belum disimpan",
       "reset": "Lupakan sel yang dikenal",
       "save": "Simpan",
-      "sms": "Periksa SMS masuk"
+      "sms": "Periksa SMS masuk",
+      "jam": "Deteksi gangguan sinyal"
     },
     "findings": {
       "title": "Temuan",

@@ -40,7 +40,15 @@ Alerts are rate-limited to one per 10 minutes (monotonic clock); suppressed find
 
 ## SMS checks
 
-- `_cg_check_sms` runs every 300 s while Cell Guard is on and `cell_guard.json .sms_guard` is not `false`: `AT+CMGF=0` then `AT+CMGL=4`, parsed by `_cg_sms_classify` (BusyBox awk PDU reader).
+- `_cg_check_sms` runs every 300 s while Cell Guard is on and `cell_guard.json .sms_guard` is not `false`: one compound `AT+CMGF=0;+CMGL=4`, parsed by `_cg_sms_classify` (BusyBox awk PDU reader).
 - Reported: TP-PID 0x40 (type 0, "silent"), 0x41–0x47 (replace), 0x7F (SIM data download), class 0 (flash), empty messages, WAP push that is not an MMS notification (content type ≠ 0xBE), and binary SMS to other application ports. Normal SMS and MMS notifications are not.
 - Each PDU is reported once (`/etc/qmanager/cell_guard_sms_seen`, md5 prefix, last 200 kept) as event `suspicious_sms`; warnings (type 0, SIM download, config push) alert through the `suspicious_cell` routing at most once per 10 minutes.
 - Limit: a modem may discard a type 0 SMS without storing it; then nothing is visible to QManager.
+
+## Jamming
+
+- `_cg_check_jam` runs every 10 s while Cell Guard is on and `cell_guard.json .jam_guard` is not `false`, separately for LTE (`L`, key eNB/cell) and 5G NR (`N`, key PCI), from the poller's `lte_sinr/lte_rsrp/lte_rssi` and `nr_sinr/nr_rsrp`.
+- Baseline: the first 30 samples on a serving cell (5 min) seed a running average (×10 integers); after that it follows slowly (1/32 per sample) only while no anomaly is in progress. A new serving cell starts a new baseline.
+- Warning (`suspicious_cell`, alert routing as other Cell Guard findings): 18 samples in a row (3 min) with SINR ≥ 10 dB below the baseline while RSRP is at most 4 dB weaker. The message adds the RSSI rise when it is ≥ 3 dB. One warning per episode.
+- Recovery: SINR back within 5 dB of the baseline for 6 samples gives an `info` finding "back to normal".
+- State is in memory only; a poller restart relearns for 5 minutes. A real signal drop (RSRP falls with SINR) is not reported.

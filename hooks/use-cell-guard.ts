@@ -23,7 +23,7 @@ export interface RayhunterWarning {
 }
 
 export interface CellGuardState {
-  config: { enabled: boolean; learn_hours: number; rayhunter: boolean; sms_guard: boolean };
+  config: { enabled: boolean; learn_hours: number; rayhunter: boolean; sms_guard: boolean; jam_guard: boolean };
   status: {
     enabled: boolean;
     learning: boolean;
