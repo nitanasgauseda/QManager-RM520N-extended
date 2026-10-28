@@ -15,6 +15,7 @@ _CELL_GUARD_LOADED=1
 : "${CG_STATUS:=/tmp/qmanager_cell_guard.json}"
 : "${CG_RAYHUNTER_URL:=http://127.0.0.1:8686}"
 : "${CG_SMS_SEEN:=/etc/qmanager/cell_guard_sms_seen}"
+: "${CG_UPTIME:=/proc/uptime}"
 CG_SMS_EVERY=300
 CG_RELOAD_FLAG="/tmp/qmanager_cell_guard_reload"
 CG_MAX_KNOWN=3000
@@ -414,22 +415,23 @@ CG_JAM_STREAK=18
 CG_JAM_DROP=10
 CG_JAM_RSRP=4
 
-# _cg_int <value> — whole dB from "-12", "7.5" or "-3.2"; empty when not a number.
+# _cg_int <var> <value> — sets var to whole dB from "-12", "7.5" or "-3.2", or empty. No subshell.
 _cg_int() {
-    local v="${1%%.*}"
-    case "${v#-}" in ''|*[!0-9]*) return 0 ;; esac
-    printf '%s' "$v"
+    local v="${2%%.*}"
+    case "${v#-}" in ''|*[!0-9]*) v="" ;; esac
+    eval "$1=\$v"
 }
 
 _cg_jam_one() {
-    local r="$1" label="$2" cell="$3" q p rs n bad alarm good q10 p10 r10 dq dp msg
-    q=$(_cg_int "$4"); p=$(_cg_int "$5"); rs=$(_cg_int "$6")
+    local r="$1" label="$2" cell="$3" q p rs n bad alarm good q10 p10 r10 dq dp msg prev
+    _cg_int q "$4"; _cg_int p "$5"; _cg_int rs "$6"
     eval "n=\${_cg_j${r}_n:-0} bad=\${_cg_j${r}_bad:-0} alarm=\${_cg_j${r}_alarm:-0} good=\${_cg_j${r}_good:-0}"
     eval "q10=\${_cg_j${r}_q10:-} p10=\${_cg_j${r}_p10:-} r10=\${_cg_j${r}_r10:-}"
     if [ -z "$cell" ] || [ -z "$q" ] || [ -z "$p" ]; then
         return 0
     fi
-    if [ "$cell" != "$(eval "printf '%s' \"\${_cg_j${r}_cell:-}\"")" ]; then
+    eval "prev=\${_cg_j${r}_cell:-}"
+    if [ "$cell" != "$prev" ]; then
         eval "_cg_j${r}_cell=\$cell"
         n=0; bad=0; alarm=0; good=0; q10=$((q * 10)); p10=$((p * 10)); r10=""
         [ -n "$rs" ] && r10=$((rs * 10))
@@ -470,9 +472,11 @@ _cg_jam_one() {
 }
 
 _cg_check_jam() {
-    local up
+    local up _
     [ "$_cg_jam" = "true" ] || return 0
-    up=$(_cg_up)
+    # Builtin read, not $(_cg_up): this runs every poll cycle and must not fork.
+    read -r up _ < "$CG_UPTIME" 2>/dev/null || return 0
+    up=${up%%.*}
     case "$up" in ''|*[!0-9]*) return 0 ;; esac
     [ "$up" -ge "$_cg_jam_next" ] || return 0
     _cg_jam_next=$((up + CG_JAM_EVERY))

@@ -16,3 +16,4 @@
 - **Data Used** loses at most 5 minutes of counting on a power cut; a poller restart within the same boot loads the RAM copy when it is newer. The health check reads the RAM copy's age.
 - `data_used.sh` answers with one jq instead of three. Cell Guard no longer rewrites its known-cell file when a known cell's line is unchanged.
 - **Resources:** CPU % is the jiffies delta between two GETs; kernel threads (no RSS) are listed only while they use ≥ 1 % CPU. `df` of `/usrdata` and `/etc` is deduplicated by mount point.
+- **Poller hot path forks nothing.** Code that runs every poll cycle (Cell Guard jamming check) reads `/proc/uptime` with the `read` builtin and sets variables through `eval`, never `$(...)`; measured with `strace -f`: 0 forks per 100 checks in bash and dash.
