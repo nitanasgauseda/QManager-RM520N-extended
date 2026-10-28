@@ -25,3 +25,11 @@ The poller sources `usr/lib/qmanager/watch.sh` and calls `watch_check` every cyc
 - **Outages** follow `conn_internet_available` (the ping daemon's verdict), not the events.sh debounce. Nothing is recorded before the clock is set.
 - **Monthly report** runs every 10 min; at the first check of a new month it builds the previous month from the outage log, the signal history day files (`/usrdata/qmanager/sighist/d<day>.csv`: average RSRP column 6, SINR column 8, most common eNB column 5) and the Data Used counter delta (a reset during the month counts from zero). The first run only seeds the state.
 - **Uninstall** removes the `QMANAGER_ROAM` chain.
+
+## IP Passthrough: router renew
+
+- `_wt_check_ippt` (watch.sh), only when the boot query found Ethernet IP Passthrough (`boot_ippt_mode = eth`) and `watch.json .ippt.renew` is not `false`.
+- Compares the poller's `t2_wan_ipv4` (Tier 2, `AT+QMAP="WWAN"`) with the last value; the first reading after a poller start is compared with `/etc/qmanager/ippt_last_ip` (written only on change), so a modem reboot that brings a new carrier IP is caught too.
+- On a change: 20 s later `eth0` is set down and up again (3 s, in the background) so the router renews its DHCP lease and takes the new address. At most once per 10 minutes; a change inside that window is postponed to the end of it, not dropped.
+- Event `public_ip_changed` (info); alert through the `ip_change` routing (off by default).
+- No AT command, no fork in the steady state (string compare per cycle).

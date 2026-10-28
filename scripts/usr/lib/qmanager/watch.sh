@@ -17,6 +17,8 @@ _WATCH_LOADED=1
 : "${WT_SIM_FLAG:=/tmp/qmanager_sim_swap_detected}"
 : "${WT_IPT:=/usr/sbin/iptables}"
 : "${WT_IP_URLS:=https://api.ipify.org https://ipv4.icanhazip.com}"
+: "${WT_IPPT_LAST:=/etc/qmanager/ippt_last_ip}"
+: "${WT_ETH_IF:=eth0}"
 WT_ROAM_CHAIN="QMANAGER_ROAM"
 WT_ROAM_EVERY=120
 WT_IP_EVERY=1800
@@ -27,6 +29,7 @@ _wt_loaded=0
 _wt_roam_alert=true; _wt_roam_block=false; _wt_ip_on=true
 _wt_roam_next=0; _wt_roam_state=unknown; _wt_roam_pending=""; _wt_roam_since=0
 _wt_ip_next=0; _wt_ip_wan=""; _wt_ip_public=""; _wt_ip_seen=0
+_wt_ippt_on=true; _wt_ippt_ip=""; _wt_ippt_due=0; _wt_ippt_last_renew=-100000
 _wt_iccid=""; _wt_sim_in=""; _wt_sim_boot_done=0
 # qm_replace <dest> — stdin replaces <dest> atomically. The temp name comes from mktemp, so a
 # symlink planted at a guessable "<dest>.tmp" is never followed (root writes these files, some in
@@ -56,14 +59,15 @@ _wt_alert() {
 _wt_event() { command -v append_event >/dev/null 2>&1 && append_event "$1" "$2" "${3:-info}"; return 0; }
 
 wt_load_config() {
-    _wt_roam_alert=true; _wt_roam_block=false; _wt_ip_on=true
+    _wt_roam_alert=true; _wt_roam_block=false; _wt_ip_on=true; _wt_ippt_on=true
     if [ -f "$WT_CONFIG" ]; then
         local v
-        v=$(jq -r '[(.roaming.alert != false), (.roaming.block == true), (.public_ip.enabled != false)] | map(tostring) | join(" ")' "$WT_CONFIG" 2>/dev/null)
+        v=$(jq -r '[(.roaming.alert != false), (.roaming.block == true), (.public_ip.enabled != false), (.ippt.renew != false)] | map(tostring) | join(" ")' "$WT_CONFIG" 2>/dev/null)
         set -- $v
         [ "$1" = "false" ] && _wt_roam_alert=false
         [ "$2" = "true" ] && _wt_roam_block=true
         [ "$3" = "false" ] && _wt_ip_on=false
+        [ "$4" = "false" ] && _wt_ippt_on=false
     fi
     _wt_loaded=1
 }
@@ -312,6 +316,40 @@ _wt_check_fw() {
     [ -x "${WT_FIREWALL:-/usr/bin/qmanager_firewall}" ] && "${WT_FIREWALL:-/usr/bin/qmanager_firewall}" ensure >/dev/null 2>&1
 }
 
+# IP Passthrough hands the carrier IPv4 to the router behind the modem. When the carrier gives a new
+# one (re-dial, modem reboot) the router keeps the old lease and loses the internet until it renews,
+# so the Ethernet link is bounced once (20 s after the change, at most every 10 min) to make it ask.
+_wt_check_ippt() {
+    local ip="${t2_wan_ipv4:-}" last=""
+    [ "$_wt_ippt_on" = "true" ] && [ "${boot_ippt_mode:-}" = "eth" ] || return 0
+    case "$ip" in ''|0.0.0.0|*[!0-9.]*) return 0 ;; esac
+    if [ -z "$_wt_ippt_ip" ]; then
+        # First reading since the poller started: compare with the address before the restart.
+        [ -f "$WT_IPPT_LAST" ] && read -r last < "$WT_IPPT_LAST" 2>/dev/null
+        _wt_ippt_ip="$ip"
+        [ "$last" = "$ip" ] && return 0
+        printf '%s\n' "$ip" > "$WT_IPPT_LAST" 2>/dev/null
+        [ -n "$last" ] || return 0
+        _wt_ippt_due=$(($1 + 20))
+    elif [ "$ip" != "$_wt_ippt_ip" ]; then
+        last="$_wt_ippt_ip"; _wt_ippt_ip="$ip"
+        printf '%s\n' "$ip" > "$WT_IPPT_LAST" 2>/dev/null
+        _wt_ippt_due=$(($1 + 20))
+    fi
+    [ "$_wt_ippt_due" -gt 0 ] && [ "$1" -ge "$_wt_ippt_due" ] || return 0
+    # A second change within 10 minutes is not dropped: the renew waits until 10 minutes have passed.
+    if [ $(($1 - _wt_ippt_last_renew)) -lt 600 ]; then
+        _wt_ippt_due=$((_wt_ippt_last_renew + 600))
+        return 0
+    fi
+    _wt_ippt_due=0
+    _wt_ippt_last_renew="$1"
+    # Background: the link stays down ~3 s and the poller must not wait for it.
+    ( ip link set "$WT_ETH_IF" down 2>/dev/null; sleep 3; ip link set "$WT_ETH_IF" up 2>/dev/null ) >/dev/null 2>&1 &
+    _wt_event "public_ip_changed" "Carrier IP changed to $ip; the Ethernet link was restarted so the router in IP Passthrough takes the new address" "info"
+    _wt_alert ip_change "The carrier IP changed to $ip. The router behind the modem was told to renew its address; if it has no internet, restart it."
+}
+
 watch_check() {
     local up before
     if [ "$_wt_loaded" != "1" ] || [ -f "$WT_RELOAD_FLAG" ]; then
@@ -319,7 +357,9 @@ watch_check() {
         wt_load_config
         _wt_roam_next=0; _wt_ip_next=0
     fi
-    up=$(_wt_up)
+    # Builtin read: watch_check runs every poll cycle and must not fork.
+    read -r up before < /proc/uptime 2>/dev/null || return 0
+    up=${up%%.*}
     case "$up" in ''|*[!0-9]*) return 0 ;; esac
     command -v jq >/dev/null 2>&1 || return 0
     before="$_wt_roam_state"
@@ -329,6 +369,7 @@ watch_check() {
     _wt_check_ip "$up"
     _wt_check_month "$up"
     _wt_check_fw "$up"
+    _wt_check_ippt "$up"
     if [ "$before" != "$_wt_roam_state" ] || [ ! -f "$WT_STATUS" ] || [ $((${cycle_count:-0} % 60)) -eq 0 ]; then
         _wt_write_status
     fi
