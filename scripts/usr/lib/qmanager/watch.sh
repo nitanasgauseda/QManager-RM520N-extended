@@ -22,6 +22,11 @@ _WATCH_LOADED=1
 WT_ROAM_CHAIN="QMANAGER_ROAM"
 WT_ROAM_EVERY=120
 WT_IP_EVERY=1800
+: "${WT_ROUTER_RAW:=/tmp/qmanager_router.raw}"
+: "${WT_LAN_IF:=bridge0}"
+WT_ROUTER_EVERY=60
+WT_ROUTER_FAILS=3
+WT_ROUTER_GRACE=300
 WT_MONTH_EVERY=600
 WT_OUTAGE_MAX=2000
 
@@ -30,6 +35,8 @@ _wt_roam_alert=true; _wt_roam_block=false; _wt_ip_on=true
 _wt_roam_next=0; _wt_roam_state=unknown; _wt_roam_pending=""; _wt_roam_since=0
 _wt_ip_next=0; _wt_ip_wan=""; _wt_ip_public=""; _wt_ip_seen=0
 _wt_ippt_on=true; _wt_ippt_ip=""; _wt_ippt_due=0; _wt_ippt_last_renew=-100000
+_wt_rt_on=true; _wt_rt_addr=""; _wt_rt_next=0; _wt_rt_seen=-1; _wt_rt_fails=0
+_wt_rt_state=unknown; _wt_rt_since=0; _wt_rt_target=""; _wt_up_now=0
 _wt_iccid=""; _wt_sim_in=""; _wt_sim_boot_done=0
 # qm_replace <dest> — stdin replaces <dest> atomically. The temp name comes from mktemp, so a
 # symlink planted at a guessable "<dest>.tmp" is never followed (root writes these files, some in
@@ -59,16 +66,21 @@ _wt_alert() {
 _wt_event() { command -v append_event >/dev/null 2>&1 && append_event "$1" "$2" "${3:-info}"; return 0; }
 
 wt_load_config() {
-    _wt_roam_alert=true; _wt_roam_block=false; _wt_ip_on=true; _wt_ippt_on=true
+    _wt_roam_alert=true; _wt_roam_block=false; _wt_ip_on=true; _wt_ippt_on=true; _wt_rt_on=true; _wt_rt_addr=""
     if [ -f "$WT_CONFIG" ]; then
         local v
-        v=$(jq -r '[(.roaming.alert != false), (.roaming.block == true), (.public_ip.enabled != false), (.ippt.renew != false)] | map(tostring) | join(" ")' "$WT_CONFIG" 2>/dev/null)
+        v=$(jq -r '[(.roaming.alert != false), (.roaming.block == true), (.public_ip.enabled != false), (.ippt.renew != false),
+            (.router.alert != false), (.router.address // "" | tostring | if . == "" then "-" else . end)] | map(tostring) | join(" ")' "$WT_CONFIG" 2>/dev/null)
         set -- $v
         [ "$1" = "false" ] && _wt_roam_alert=false
         [ "$2" = "true" ] && _wt_roam_block=true
         [ "$3" = "false" ] && _wt_ip_on=false
         [ "$4" = "false" ] && _wt_ippt_on=false
+        [ "$5" = "false" ] && _wt_rt_on=false
+        _wt_ipv4 "$6" && _wt_rt_addr="$6"
     fi
+    # New settings start a fresh count: a changed address must not inherit the old one's failures.
+    _wt_rt_fails=0; _wt_rt_state=unknown; _wt_rt_next=0
     _wt_loaded=1
 }
 
@@ -301,10 +313,14 @@ _wt_check_month() {
 }
 
 _wt_write_status() {
-    local blocked=false
+    local blocked=false now rsince=0
     _wt_blocked && blocked=true
-    printf '{"updated":%s,"roaming":{"state":"%s","since":%s,"alert":%s,"block":%s,"blocked":%s},"public_ip":{"enabled":%s}}\n' \
-        "$(date +%s)" "$_wt_roam_state" "${_wt_roam_since:-0}" "$_wt_roam_alert" "$_wt_roam_block" "$blocked" "$_wt_ip_on" \
+    now=$(date +%s)
+    # The router state change is kept in uptime seconds (the clock can step at boot); shown as a date.
+    [ "$_wt_rt_since" -gt 0 ] 2>/dev/null && rsince=$((now - (_wt_up_now - _wt_rt_since)))
+    printf '{"updated":%s,"roaming":{"state":"%s","since":%s,"alert":%s,"block":%s,"blocked":%s},"public_ip":{"enabled":%s},"router":{"state":"%s","since":%s,"address":"%s","auto":%s}}\n' \
+        "$now" "$_wt_roam_state" "${_wt_roam_since:-0}" "$_wt_roam_alert" "$_wt_roam_block" "$blocked" "$_wt_ip_on" \
+        "$_wt_rt_state" "$rsince" "$_wt_rt_target" "$([ -n "$_wt_rt_addr" ] && echo false || echo true)" \
         | qm_replace "$WT_STATUS"
 }
 
@@ -350,6 +366,78 @@ _wt_check_ippt() {
     _wt_alert ip_change "The carrier IP changed to $ip. The router behind the modem was told to renew its address; if it has no internet, restart it."
 }
 
+_wt_ipv4() {
+    case "$1" in ''|*[!0-9.]*|*..*|.*|*.) return 1 ;; esac
+    printf '%s' "$1" | awk -F. 'NF == 4 { for (i = 1; i <= 4; i++) if ($i + 0 > 255) exit 1; exit 0 } { exit 1 }'
+}
+
+# Router behind the modem: one ping (or ARP, which a router firewall cannot drop) every minute, in
+# the background. Three misses in a row (~3 min) is "not responding"; one answer is "back". The
+# address is the setting, else the carrier IP in IP Passthrough, else the only neighbour on the LAN.
+_wt_router_probe() {
+    (
+        t="$1"
+        if [ -z "$t" ]; then
+            t=$(ip -4 neigh show dev "$WT_LAN_IF" 2>/dev/null | awk '/lladdr/ && $1 !~ /^169\.254\./ { n++; a = $1 } END { if (n == 1) print a }')
+        fi
+        if [ -z "$t" ]; then r=none
+        elif ping -c 1 -W 2 -I "$WT_LAN_IF" "$t" >/dev/null 2>&1; then r=ok
+        elif command -v arping >/dev/null 2>&1 && arping -c 1 -w 2 -I "$WT_LAN_IF" "$t" >/dev/null 2>&1; then r=ok
+        else r=fail
+        fi
+        # Uptime in hundredths: two results are never stamped the same.
+        read -r u _x < /proc/uptime
+        printf '%s %s %s\n' "$(printf '%s' "$u" | tr -d .)" "${t:--}" "$r" | qm_replace "$WT_ROUTER_RAW"
+    ) >/dev/null 2>&1 &
+}
+
+_wt_check_router() {
+    local ts tgt r prev changed=0
+    if [ "$_wt_rt_on" != "true" ]; then
+        [ "$_wt_rt_state" = "off" ] || { _wt_rt_state=off; _wt_write_status; }
+        return 0
+    fi
+    if [ -s "$WT_ROUTER_RAW" ] && read -r ts tgt r < "$WT_ROUTER_RAW" 2>/dev/null \
+        && [ "${ts:-0}" -gt "$_wt_rt_seen" ] 2>/dev/null; then
+        _wt_rt_seen="$ts"
+        [ "$tgt" = "-" ] && tgt=""
+        [ "$tgt" != "$_wt_rt_target" ] && { _wt_rt_target="$tgt"; changed=1; }
+        prev="$_wt_rt_state"
+        case "$r" in
+            ok)
+                _wt_rt_fails=0
+                if [ "$prev" != "up" ]; then
+                    _wt_rt_state=up; _wt_rt_since="$1"; changed=1
+                    if [ "$prev" = "down" ]; then
+                        _wt_event "router_up" "The router behind the modem ($tgt) responds again" "info"
+                        _wt_alert router "The router behind the modem ($tgt) responds again."
+                    fi
+                fi
+                ;;
+            fail)
+                _wt_rt_fails=$((_wt_rt_fails + 1))
+                # Right after boot the router may still be starting: no verdict in the first 5 minutes.
+                if [ "$_wt_rt_fails" -ge "$WT_ROUTER_FAILS" ] && [ "$prev" != "down" ] && [ "$1" -ge "$WT_ROUTER_GRACE" ]; then
+                    _wt_rt_state=down; _wt_rt_since="$1"; changed=1
+                    _wt_event "router_down" "The router behind the modem ($tgt) has not responded for 3 minutes" "warning"
+                    _wt_alert router "The router behind the modem ($tgt) is not responding. Devices on your network have no internet until it is back; check its power and cable, or restart it."
+                fi
+                ;;
+            *)
+                [ "$prev" = "unknown" ] || { _wt_rt_state=unknown; changed=1; }
+                ;;
+        esac
+    fi
+    [ "$changed" = 1 ] && _wt_write_status
+    [ "$1" -ge "$_wt_rt_next" ] || return 0
+    _wt_rt_next=$(($1 + WT_ROUTER_EVERY))
+    tgt="$_wt_rt_addr"
+    if [ -z "$tgt" ] && [ "${boot_ippt_mode:-}" = "eth" ]; then
+        _wt_ipv4 "${t2_wan_ipv4:-}" && tgt="$t2_wan_ipv4"
+    fi
+    _wt_router_probe "$tgt"
+}
+
 watch_check() {
     local up before
     if [ "$_wt_loaded" != "1" ] || [ -f "$WT_RELOAD_FLAG" ]; then
@@ -370,6 +458,8 @@ watch_check() {
     _wt_check_month "$up"
     _wt_check_fw "$up"
     _wt_check_ippt "$up"
+    _wt_up_now="$up"
+    _wt_check_router "$up"
     if [ "$before" != "$_wt_roam_state" ] || [ ! -f "$WT_STATUS" ] || [ $((${cycle_count:-0} % 60)) -eq 0 ]; then
         _wt_write_status
     fi

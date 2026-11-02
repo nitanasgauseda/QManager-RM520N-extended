@@ -33,3 +33,12 @@ The poller sources `usr/lib/qmanager/watch.sh` and calls `watch_check` every cyc
 - On a change: 20 s later `eth0` is set down and up again (3 s, in the background) so the router renews its DHCP lease and takes the new address. At most once per 10 minutes; a change inside that window is postponed to the end of it, not dropped.
 - Event `public_ip_changed` (info); alert through the `ip_change` routing (off by default).
 - No AT command, no fork in the steady state (string compare per cycle).
+
+## Router behind the modem
+
+- `_wt_check_router` (watch.sh), every 60 s: a background `ping -c 1 -W 2 -I bridge0`, then `arping` if ping got no answer (a router firewall can drop ping, not ARP). Result line `<uptime in 1/100 s> <address> ok|fail|none` in `/tmp/qmanager_router.raw`, read on a later cycle, so the poller never waits.
+- Address: `watch.json .router.address`; else in Ethernet IP Passthrough (`boot_ippt_mode = eth`) the carrier IP `t2_wan_ipv4` (the router holds it); else the only `lladdr` neighbour on `bridge0`. Several neighbours and no setting = `none` (state `unknown`).
+- 3 misses in a row = `down` (event `router_down`, warning, alert `router`); one answer = `up` (event `router_up` only after a `down`). No `down` verdict in the first 300 s of uptime: after a power cut the router boots slower than the modem.
+- `.router.alert == false` stops the probes (state `off`). Status `/tmp/qmanager_watch.json .router {state, since (epoch), address, auto}`.
+- It sees a router that is off, frozen or unplugged. A router that still forwards but whose DHCP or DNS has crashed answers ping and is not caught.
+- `monitoring/watch.sh` save merges into the existing `watch.json`, so keys the page does not edit (`ippt.renew`) are kept.

@@ -2739,7 +2739,8 @@
       "code": "Activation code",
       "code_hint": "The text inside the operator's QR code, starting with LPA:1$. The download uses the current internet connection.",
       "confirm": "Confirmation code (if given)",
-      "running": "Downloading the profile…"
+      "running": "Downloading the profile…",
+      "scan": "Scan QR code"
     },
     "toast": {
       "enabled": "Switched to {{name}}.",
@@ -2747,7 +2748,8 @@
       "renamed": "Profile renamed.",
       "deleted": "{{name}} deleted.",
       "download_started": "Download started.",
-      "downloaded": "Profile downloaded. Switch to it to use it."
+      "downloaded": "Profile downloaded. Switch to it to use it.",
+      "qr_read": "Activation code read from the QR code."
     },
     "errors": {
       "no_euicc": "No eSIM found in the SIM slot.",
@@ -2758,7 +2760,9 @@
       "invalid_code": "The activation code must start with LPA:1$.",
       "invalid_name": "Use 1 to 64 characters.",
       "not_installed": "eSIM tools are not installed.",
-      "failed": "The eSIM refused the request."
+      "failed": "The eSIM refused the request.",
+      "qr_none": "No QR code found in the picture. Try again closer and in good light.",
+      "qr_not_esim": "That QR code is not an eSIM activation code."
     }
   }
 }

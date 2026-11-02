@@ -8,6 +8,7 @@ import {
   PlaneIcon,
   GlobeIcon,
   CalendarDaysIcon,
+  RouterIcon,
   MailIcon,
   MessageCircleIcon,
   MessageSquareIcon,
@@ -40,6 +41,7 @@ export const EVENT_GLYPH: Record<AlertEventKey, LucideIcon> = {
   roaming: PlaneIcon,
   ip_change: GlobeIcon,
   monthly_report: CalendarDaysIcon,
+  router: RouterIcon,
 };
 
 export const channelNameKey = (channel: AlertChannel) =>

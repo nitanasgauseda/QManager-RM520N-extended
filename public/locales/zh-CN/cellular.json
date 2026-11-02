@@ -2739,7 +2739,8 @@
       "code": "激活码",
       "code_hint": "运营商二维码中的文本，以 LPA:1$ 开头。下载使用当前的网络连接。",
       "confirm": "确认码（如有）",
-      "running": "正在下载配置文件…"
+      "running": "正在下载配置文件…",
+      "scan": "扫描二维码"
     },
     "toast": {
       "enabled": "已切换到 {{name}}。",
@@ -2747,7 +2748,8 @@
       "renamed": "配置文件已重命名。",
       "deleted": "已删除 {{name}}。",
       "download_started": "已开始下载。",
-      "downloaded": "配置文件已下载，切换到它即可使用。"
+      "downloaded": "配置文件已下载，切换到它即可使用。",
+      "qr_read": "已从二维码读取激活码。"
     },
     "errors": {
       "no_euicc": "SIM 卡槽中未找到 eSIM。",
@@ -2758,7 +2760,9 @@
       "invalid_code": "激活码必须以 LPA:1$ 开头。",
       "invalid_name": "请使用 1 到 64 个字符。",
       "not_installed": "未安装 eSIM 工具。",
-      "failed": "eSIM 拒绝了该请求。"
+      "failed": "eSIM 拒绝了该请求。",
+      "qr_none": "图片中未找到二维码。请靠近一些并在光线充足处重试。",
+      "qr_not_esim": "该二维码不是 eSIM 激活码。"
     }
   }
 }

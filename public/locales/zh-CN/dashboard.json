@@ -406,7 +406,9 @@
       "roaming": "漫游",
       "public_ip_changed": "公网 IP 变更",
       "monthly_report": "月度报告",
-      "telegram_command": "Telegram 命令"
+      "telegram_command": "Telegram 命令",
+      "router_down": "路由器无响应",
+      "router_up": "路由器恢复"
     }
   },
   "connection_quality": {

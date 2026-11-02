@@ -875,6 +875,8 @@ export type NetworkEventType =
   | "roaming"             // Roaming started or ended
   | "public_ip_changed"   // The public IPv4 address changed
   | "monthly_report"      // Monthly report sent
+  | "router_down"         // The router behind the modem stopped answering
+  | "router_up"           // The router behind the modem answers again
   | "telegram_command";   // A command (reboot) arrived over Telegram
 
 /** Severity level for UI icon coloring */

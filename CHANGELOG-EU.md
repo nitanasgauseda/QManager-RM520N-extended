@@ -35,6 +35,8 @@ Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.
 - **Jamming detection.** **Monitoring → Cell Guard** now warns when signal quality collapses while signal strength stays the same for 3 minutes, which is what a jammer does, and tells you when it is back to normal. Turn it off with **Detect jamming**. (LTE and 5G separately, against a learned per-cell baseline.)
 
 - **The router keeps its internet after the carrier changes the IP (IP Passthrough).** When the carrier gives the modem a new IPv4 address (after a reboot or a re-dial), the router behind it used to keep the old one and lose the internet until it was restarted. The modem now restarts its Ethernet link 20 seconds after the change, so the router asks for the new address. (At most once per 10 minutes; logged in Network Events.)
+- **Alert when the router behind the modem stops responding.** **Local Network → Ethernet** has a new **Router behind the modem** card: the modem checks every minute that your router answers and alerts you by SMS, email, Telegram or Discord after 3 minutes of silence, and again when it is back. The router is found automatically in IP Passthrough. (Ping, then ARP, on the LAN bridge; a router that still forwards but whose DHCP or DNS crashed is not detected.)
+- **Scan an eSIM QR code.** **Cellular → Settings → eSIM** has a **Scan QR code** button: take a photo of the operator's QR code or pick a screenshot, and the activation code fills in by itself. The picture stays in your browser.
 
 ## 🛠️ Improvements
 

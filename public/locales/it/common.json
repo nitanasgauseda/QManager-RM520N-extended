@@ -109,6 +109,29 @@
       "toast_success": "Velocità collegamento aggiornata",
       "toast_error": "Impossibile impostare la velocità del collegamento",
       "toast_confirm_error": "Impossibile confermare la nuova velocità. Controlla il collegamento."
+    },
+    "router": {
+      "title": "Router dietro il modem",
+      "description": "Controlla ogni minuto che il router risponda e ti avvisa quando smette.",
+      "router": "Router",
+      "since": "dal {{time}}",
+      "state": {
+        "up": "Risponde",
+        "down": "Non risponde",
+        "unknown": "Verifica",
+        "off": "Disattivato"
+      },
+      "not_found": "Nessun router trovato. Se al modem sono collegati più dispositivi, inserisci qui sotto l'indirizzo del router.",
+      "alert": "Avvisa quando smette di rispondere",
+      "alert_hint": "Dopo 3 minuti senza risposta, tramite i canali impostati per “Router che non risponde” nella pagina Avvisi.",
+      "address": "Indirizzo del router",
+      "address_hint": "Lascia vuoto per trovarlo da solo: l'IP dell'operatore in IP Passthrough, altrimenti l'unico dispositivo sulla rete del modem.",
+      "address_auto": "Automatico",
+      "address_invalid": "Inserisci un indirizzo IPv4 come 192.168.225.20, oppure lascia vuoto.",
+      "discard": "Annulla",
+      "save": "Salva",
+      "toast_saved": "Controllo del router salvato.",
+      "save_failed": "Impossibile salvare il controllo del router."
     }
   },
   "profile_override": {
@@ -1087,6 +1110,9 @@
         },
         "monthly_report": {
           "name": "Rapporto mensile"
+        },
+        "router": {
+          "name": "Router che non risponde"
         }
       },
       "loading": "Caricamento della copertura…",

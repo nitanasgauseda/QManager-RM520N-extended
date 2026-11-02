@@ -17,3 +17,4 @@
 - One operation at a time (`flock -n` on the lock). Download runs detached with `-status` progress; the page polls GET every 2 s while `job.running`. After a successful download the CGI runs `notify` (`notification process -a -r`) and re-reads the profiles.
 - Enable/disable pass refresh flag 1, so the eUICC asks the modem to re-read the SIM; the connection drops for a few seconds.
 - lpac v2.3.0's stdio APDU driver inverted the `json_request()` success check and never worked; the patch fixes only that. Newer lpac loads drivers with `dlopen`, which a static binary cannot.
+- "Scan QR code" (`lib/qr-decode.ts`): a file input with `capture="environment"` (no camera permission, works over plain HTTP); the browser's `BarcodeDetector` if it supports `qr_code`, else `jsqr` loaded on demand. The photo never leaves the browser; only an `LPA:1$` result fills the field.

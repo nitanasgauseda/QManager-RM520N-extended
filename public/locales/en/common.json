@@ -109,6 +109,29 @@
       "toast_success": "Link speed updated",
       "toast_error": "Failed to set link speed",
       "toast_confirm_error": "Couldn't confirm the new speed. Check the link."
+    },
+    "router": {
+      "title": "Router behind the modem",
+      "description": "Checks every minute that your router answers, and alerts you when it stops.",
+      "router": "Router",
+      "since": "since {{time}}",
+      "state": {
+        "up": "Responding",
+        "down": "Not responding",
+        "unknown": "Checking",
+        "off": "Off"
+      },
+      "not_found": "No router found yet. If several devices are connected to the modem, enter the router's address below.",
+      "alert": "Alert when it stops responding",
+      "alert_hint": "After 3 minutes without an answer, through the channels set for “Router not responding” on the Alerts page.",
+      "address": "Router address",
+      "address_hint": "Leave empty to find it automatically: the carrier IP in IP Passthrough, otherwise the only device on the modem's network.",
+      "address_auto": "Automatic",
+      "address_invalid": "Enter an IPv4 address such as 192.168.225.20, or leave it empty.",
+      "discard": "Discard",
+      "save": "Save",
+      "toast_saved": "Router check saved.",
+      "save_failed": "Could not save the router check."
     }
   },
   "profile_override": {
@@ -875,6 +898,9 @@
         },
         "monthly_report": {
           "name": "Monthly report"
+        },
+        "router": {
+          "name": "Router not responding"
         }
       },
       "reason": {

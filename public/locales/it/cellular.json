@@ -2739,7 +2739,8 @@
       "code": "Codice di attivazione",
       "code_hint": "Il testo del QR code dell'operatore, che inizia con LPA:1$. Il download usa la connessione internet attuale.",
       "confirm": "Codice di conferma (se fornito)",
-      "running": "Download del profilo…"
+      "running": "Download del profilo…",
+      "scan": "Scansiona codice QR"
     },
     "toast": {
       "enabled": "Attivato {{name}}.",
@@ -2747,7 +2748,8 @@
       "renamed": "Profilo rinominato.",
       "deleted": "{{name}} eliminato.",
       "download_started": "Download avviato.",
-      "downloaded": "Profilo scaricato. Attivalo per usarlo."
+      "downloaded": "Profilo scaricato. Attivalo per usarlo.",
+      "qr_read": "Codice di attivazione letto dal codice QR."
     },
     "errors": {
       "no_euicc": "Nessuna eSIM nello slot SIM.",
@@ -2758,7 +2760,9 @@
       "invalid_code": "Il codice di attivazione deve iniziare con LPA:1$.",
       "invalid_name": "Usa da 1 a 64 caratteri.",
       "not_installed": "Strumenti eSIM non installati.",
-      "failed": "La eSIM ha rifiutato la richiesta."
+      "failed": "La eSIM ha rifiutato la richiesta.",
+      "qr_none": "Nessun codice QR trovato nella foto. Riprova più vicino e con buona luce.",
+      "qr_not_esim": "Quel codice QR non è un codice di attivazione eSIM."
     }
   }
 }

@@ -12,6 +12,7 @@ import { staggerContainer, staggerItem } from "@/lib/motion";
 
 import { LinkStateStrip } from "./link-state-strip";
 import { SpeedLimitCard } from "./speed-limit-card";
+import { RouterWatchCard } from "./router-watch-card";
 import { PAGE_ROOT } from "./shapes";
 import type { EthernetStatus } from "./types";
 
@@ -308,6 +309,10 @@ const EthernetStatusComponent = () => {
           interfacePresent={status?.interface_present !== false}
           onSpeedChange={handleSpeedChange}
         />
+      </motion.div>
+
+      <motion.div variants={staggerItem}>
+        <RouterWatchCard />
       </motion.div>
     </motion.div>
   );

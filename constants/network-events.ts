@@ -36,6 +36,8 @@ export const EVENT_LABELS: Record<NetworkEventType, string> = {
   roaming: "Roaming",
   public_ip_changed: "Public IP Changed",
   monthly_report: "Monthly Report",
+  router_down: "Router Not Responding",
+  router_up: "Router Back",
   telegram_command: "Telegram Command",
 };
 
@@ -79,6 +81,8 @@ export const EVENT_TAB_CATEGORIES: Record<NetworkEventType, EventTabCategory> =
     roaming: "networkMode",
     public_ip_changed: "dataConnection",
     monthly_report: "dataConnection",
+    router_down: "dataConnection",
+    router_up: "dataConnection",
     telegram_command: "dataConnection",
   };
 

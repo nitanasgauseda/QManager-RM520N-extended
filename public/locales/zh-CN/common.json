@@ -109,6 +109,29 @@
       "toast_success": "链路速度已更新",
       "toast_error": "设置链路速度失败",
       "toast_confirm_error": "无法确认新速度。请检查链路。"
+    },
+    "router": {
+      "title": "调制解调器后面的路由器",
+      "description": "每分钟检查路由器是否响应，停止响应时提醒您。",
+      "router": "路由器",
+      "since": "自 {{time}}",
+      "state": {
+        "up": "正常响应",
+        "down": "无响应",
+        "unknown": "检查中",
+        "off": "已关闭"
+      },
+      "not_found": "尚未找到路由器。如果有多台设备连接到调制解调器，请在下方输入路由器地址。",
+      "alert": "停止响应时提醒",
+      "alert_hint": "3 分钟无响应后，通过“提醒”页面中为“路由器无响应”设置的渠道发送。",
+      "address": "路由器地址",
+      "address_hint": "留空则自动查找：IP 直通模式下为运营商 IP，否则为调制解调器网络中唯一的设备。",
+      "address_auto": "自动",
+      "address_invalid": "请输入 IPv4 地址（如 192.168.225.20），或留空。",
+      "discard": "放弃",
+      "save": "保存",
+      "toast_saved": "路由器检查已保存。",
+      "save_failed": "无法保存路由器检查。"
     }
   },
   "profile_override": {
@@ -1087,6 +1110,9 @@
         },
         "monthly_report": {
           "name": "月度报告"
+        },
+        "router": {
+          "name": "路由器无响应"
         }
       },
       "loading": "正在加载覆盖范围",

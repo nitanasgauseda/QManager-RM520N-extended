@@ -406,7 +406,9 @@
       "roaming": "Roaming",
       "public_ip_changed": "IP Publik Berubah",
       "monthly_report": "Laporan Bulanan",
-      "telegram_command": "Perintah Telegram"
+      "telegram_command": "Perintah Telegram",
+      "router_down": "Router Tidak Merespons",
+      "router_up": "Router Kembali"
     }
   },
   "connection_quality": {

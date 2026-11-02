@@ -10,11 +10,13 @@ const POLL_MS = 30_000;
 export interface WatchConfig {
   roaming: { alert: boolean; block: boolean };
   public_ip: { enabled: boolean };
+  router: { alert: boolean; address: string };
 }
 
 export interface WatchState {
   config: WatchConfig;
   roaming: { state: "home" | "roaming" | "unknown"; since: number; blocked: boolean } | null;
+  router: { state: "up" | "down" | "unknown" | "off"; since: number; address: string; auto: boolean } | null;
   public_ip: {
     checked_at: number;
     public_ipv4: string | null;

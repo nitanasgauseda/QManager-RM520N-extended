@@ -109,6 +109,29 @@
       "toast_success": "鏈路速度已更新",
       "toast_error": "設定鏈路速度失敗",
       "toast_confirm_error": "無法確認新速度。請檢查鏈路。"
+    },
+    "router": {
+      "title": "數據機後方的路由器",
+      "description": "每分鐘檢查路由器是否回應，停止回應時提醒您。",
+      "router": "路由器",
+      "since": "自 {{time}}",
+      "state": {
+        "up": "正常回應",
+        "down": "無回應",
+        "unknown": "檢查中",
+        "off": "已關閉"
+      },
+      "not_found": "尚未找到路由器。如果有多台裝置連接到數據機，請在下方輸入路由器位址。",
+      "alert": "停止回應時提醒",
+      "alert_hint": "3 分鐘無回應後，透過「提醒」頁面中為「路由器無回應」設定的管道傳送。",
+      "address": "路由器位址",
+      "address_hint": "留空則自動尋找：IP 直通模式下為電信業者 IP，否則為數據機網路中唯一的裝置。",
+      "address_auto": "自動",
+      "address_invalid": "請輸入 IPv4 位址（如 192.168.225.20），或留空。",
+      "discard": "捨棄",
+      "save": "儲存",
+      "toast_saved": "路由器檢查已儲存。",
+      "save_failed": "無法儲存路由器檢查。"
     }
   },
   "profile_override": {
@@ -1087,6 +1110,9 @@
         },
         "monthly_report": {
           "name": "每月報告"
+        },
+        "router": {
+          "name": "路由器無回應"
         }
       },
       "loading": "正在載入涵蓋範圍",

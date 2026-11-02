@@ -26,7 +26,8 @@ export type AlertEventKey =
   | "sim_change"
   | "roaming"
   | "ip_change"
-  | "monthly_report";
+  | "monthly_report"
+  | "router";
 
 // ─── Channel transport state (identity + master enable) ──────────────────────
 
@@ -208,6 +209,7 @@ export const ALERT_EVENT_ORDER: AlertEventKey[] = [
   "roaming",
   "ip_change",
   "monthly_report",
+  "router",
 ];
 
 export const ALERT_CHANNEL_ORDER: AlertChannel[] = ["sms", "email", "telegram", "discord"];

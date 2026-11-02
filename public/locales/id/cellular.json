@@ -2739,7 +2739,8 @@
       "code": "Kode aktivasi",
       "code_hint": "Teks di dalam kode QR operator, diawali LPA:1$. Unduhan memakai koneksi internet saat ini.",
       "confirm": "Kode konfirmasi (jika ada)",
-      "running": "Mengunduh profil…"
+      "running": "Mengunduh profil…",
+      "scan": "Pindai kode QR"
     },
     "toast": {
       "enabled": "Beralih ke {{name}}.",
@@ -2747,7 +2748,8 @@
       "renamed": "Nama profil diganti.",
       "deleted": "{{name}} dihapus.",
       "download_started": "Unduhan dimulai.",
-      "downloaded": "Profil terunduh. Aktifkan untuk menggunakannya."
+      "downloaded": "Profil terunduh. Aktifkan untuk menggunakannya.",
+      "qr_read": "Kode aktivasi dibaca dari kode QR."
     },
     "errors": {
       "no_euicc": "eSIM tidak ditemukan di slot SIM.",
@@ -2758,7 +2760,9 @@
       "invalid_code": "Kode aktivasi harus diawali LPA:1$.",
       "invalid_name": "Gunakan 1 sampai 64 karakter.",
       "not_installed": "Alat eSIM belum terpasang.",
-      "failed": "eSIM menolak permintaan."
+      "failed": "eSIM menolak permintaan.",
+      "qr_none": "Kode QR tidak ditemukan di gambar. Coba lagi lebih dekat dengan cahaya cukup.",
+      "qr_not_esim": "Kode QR itu bukan kode aktivasi eSIM."
     }
   }
 }

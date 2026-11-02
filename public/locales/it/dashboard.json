@@ -406,7 +406,9 @@
       "roaming": "Roaming",
       "public_ip_changed": "IP pubblico cambiato",
       "monthly_report": "Rapporto mensile",
-      "telegram_command": "Comando Telegram"
+      "telegram_command": "Comando Telegram",
+      "router_down": "Router non risponde",
+      "router_up": "Router di nuovo attivo"
     }
   },
   "connection_quality": {

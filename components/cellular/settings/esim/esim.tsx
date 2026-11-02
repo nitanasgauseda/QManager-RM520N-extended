@@ -36,6 +36,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useEsim, type EsimProfile } from "@/hooks/use-esim";
 import { staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { decodeQrFromFile } from "@/lib/qr-decode";
 
 import {
   CARD_FOOTNOTE,
@@ -353,6 +354,24 @@ function DownloadCard({ api }: { api: ReturnType<typeof useEsim> }) {
   const [confirm, setConfirm] = React.useState("");
   const running = api.job?.running === true;
   const valid = /^lpa:1\$/i.test(code.trim());
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [scanning, setScanning] = React.useState(false);
+
+  // The photo never leaves the browser: it is decoded here and only the code goes in the field.
+  const onPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setScanning(true);
+    const text = (await decodeQrFromFile(file))?.trim() ?? "";
+    setScanning(false);
+    if (/^lpa:1\$/i.test(text)) {
+      setCode(text);
+      toast.success(t(`${K}.toast.qr_read`));
+    } else {
+      toast.error(t(text ? `${K}.errors.qr_not_esim` : `${K}.errors.qr_none`));
+    }
+  };
 
   // Toast once when a download this page watched finishes (never for a result loaded on mount).
   const wasRunning = React.useRef<boolean | null>(null);
@@ -399,6 +418,28 @@ function DownloadCard({ api }: { api: ReturnType<typeof useEsim> }) {
             aria-invalid={code.trim() !== "" && !valid}
           />
           <span className="text-on-surface-variant text-xs text-pretty">{t(`${K}.add.code_hint`)}</span>
+          <div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => void onPhoto(e)}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="tonal-neutral"
+              disabled={running || scanning}
+              onClick={() => fileRef.current?.click()}
+            >
+              {scanning ? (
+                <MaterialSymbol name="progress_activity" size={PILL_ACTION_GLYPH} className="motion-safe:animate-spin" />
+              ) : null}
+              {t(`${K}.add.scan`)}
+            </Button>
+          </div>
         </Field>
         <Field className="gap-2">
           <FieldLabel htmlFor="esim-confirm" className="text-sm font-semibold">

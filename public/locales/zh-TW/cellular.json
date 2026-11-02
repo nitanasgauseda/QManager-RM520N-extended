@@ -2739,7 +2739,8 @@
       "code": "啟用碼",
       "code_hint": "電信業者 QR 碼中的文字，以 LPA:1$ 開頭。下載會使用目前的網路連線。",
       "confirm": "確認碼（如有）",
-      "running": "正在下載設定檔…"
+      "running": "正在下載設定檔…",
+      "scan": "掃描 QR 碼"
     },
     "toast": {
       "enabled": "已切換到 {{name}}。",
@@ -2747,7 +2748,8 @@
       "renamed": "設定檔已重新命名。",
       "deleted": "已刪除 {{name}}。",
       "download_started": "已開始下載。",
-      "downloaded": "設定檔已下載，切換到它即可使用。"
+      "downloaded": "設定檔已下載，切換到它即可使用。",
+      "qr_read": "已從 QR 碼讀取啟用碼。"
     },
     "errors": {
       "no_euicc": "SIM 卡槽中未找到 eSIM。",
@@ -2758,7 +2760,9 @@
       "invalid_code": "啟用碼必須以 LPA:1$ 開頭。",
       "invalid_name": "請使用 1 到 64 個字元。",
       "not_installed": "未安裝 eSIM 工具。",
-      "failed": "eSIM 拒絕了此請求。"
+      "failed": "eSIM 拒絕了此請求。",
+      "qr_none": "圖片中未找到 QR 碼。請靠近一些並在光線充足處重試。",
+      "qr_not_esim": "該 QR 碼不是 eSIM 啟用碼。"
     }
   }
 }
