@@ -1,10 +1,18 @@
 {
   "known_sims": {
-    "row_label": "SIM Dikenal",
-    "info_aria": "Info SIM dikenal",
-    "tooltip": "QManager mengingat SIM yang pernah terdeteksi, sehingga hanya memberi tahu Anda saat SIM yang benar-benar baru dipasang. Menghapus akan melupakan semua SIM kecuali yang sedang terpasang.",
-    "remembered_count_one": "{{count}} SIM",
-    "remembered_count_other": "{{count}} SIM",
+    "section": "SIM Terdaftar",
+    "rows": {
+      "count": {
+        "consequence": "QManager mengingat SIM yang pernah terdeteksi, sehingga hanya memberi tahu Anda saat SIM yang benar-benar baru dipasang. Menghapus akan melupakan semua SIM kecuali yang sedang terpasang.",
+        "label": "SIM yang diingat"
+      }
+    },
+    "states": {
+      "empty_title": "Belum ada SIM yang tercatat",
+      "empty_description": "QManager mencatat setiap SIM saat pertama kali dipasang. Pasang SIM untuk memulai daftar.",
+      "error_title": "Tidak dapat membaca SIM terdaftar",
+      "error_description": "Perangkat tidak menjawab. Tidak ada yang dilupakan; ini kegagalan pembacaan dan jumlahnya masih tersimpan di modem."
+    },
     "clear_button": "Hapus",
     "clear_dialog_title": "Hapus SIM yang dikenal?",
     "clear_dialog_description": "Ini akan melupakan setiap SIM yang pernah dikenali QManager, kecuali yang sedang terpasang — sehingga SIM aktif Anda tidak ditandai sebagai baru. SIM yang pernah digunakan akan diberitahukan lagi saat dipasang berikutnya.",
@@ -12,67 +20,12 @@
     "clear_dialog_clearing": "Menghapus…",
     "toast_cleared": "SIM yang dikenal telah dihapus",
     "toast_clear_failed": "Gagal menghapus SIM yang dikenal",
-    "remembered_unknown": "Tidak bisa membaca jumlah yang diingat"
-  },
-  "sim_registry": {
-    "title": "SIM Terdaftar",
-    "description": "Semua SIM yang pernah dikenali QManager, dan apakah masih memunculkan peringatan SIM baru.",
-    "carrier_unknown": "Operator tidak diketahui",
-    "no_phone_number": "Nomor belum tersedia",
-    "added_on": "Ditambahkan {{date}}",
-    "added_unknown": "Ditambahkan sebelum pencatatan dimulai",
-    "badge_active": "Aktif",
-    "badge_alerts_on": "Peringatan aktif",
-    "badge_alerts_off": "Peringatan mati",
-    "show_alert": "Aktifkan Peringatan",
-    "restoring": "Mengaktifkan…",
-    "retry": "Coba lagi",
-    "stale_notice": "Menampilkan data terakhir yang berhasil dibaca. Perangkat tidak menjawab pembaruan terakhir.",
-    "empty_title": "Belum ada SIM yang tercatat",
-    "empty_description": "QManager mencatat setiap SIM saat pertama kali dipasang. Pasang SIM untuk memulai daftar.",
-    "toast_restored": "Peringatan diaktifkan kembali",
-    "toast_restored_detail": "QManager akan memberi tahu lagi saat SIM {{carrier}} dipasang.",
-    "toast_restore_failed": "Gagal mengaktifkan kembali peringatan",
-    "remembered_count_one": "{{count}} SIM diingat",
-    "remembered_count_other": "{{count}} SIM diingat",
-    "toast_cleared_partial": "Sudah dihapus, tetapi daftar mungkin belum diperbarui",
-    "toast_cleared_partial_detail": "Perangkat sudah melupakan SIM tersebut tetapi gagal memperbarui daftar ini. Muat ulang halaman untuk memeriksa.",
-    "error_title": "Tidak dapat membaca SIM terdaftar",
-    "error_description": "Perangkat tidak menjawab. Tidak ada yang dilupakan — ini kegagalan pembacaan, dan daftarnya masih tersimpan di modem."
-  },
-  "ssh": {
-    "card": {
-      "title": "Akses SSH",
-      "description": "Kata sandi root untuk sesi SSH ke modem ini. Berbeda dari kata sandi yang Anda pakai untuk masuk ke QManager.",
-      "save": "Perbarui Kata Sandi SSH"
-    },
-    "fields": {
-      "current": {
-        "label": "Kata sandi QManager Anda",
-        "consequence": "Untuk memastikan ini memang Anda. Ini kata sandi web yang Anda pakai saat masuk, bukan kata sandi SSH."
-      },
-      "new": {
-        "label": "Kata sandi SSH baru",
-        "consequence": "Minimal enam karakter. Langsung berlaku — sesi SSH yang sedang berjalan tetap terbuka."
-      },
-      "confirm": {
-        "label": "Konfirmasi kata sandi baru"
-      }
-    },
-    "toggle": {
-      "show": "Tampilkan kata sandi",
-      "hide": "Sembunyikan kata sandi"
-    },
-    "errors": {
-      "too_short": "Kata sandi SSH minimal 6 karakter.",
-      "mismatch": "Kata sandi tidak cocok.",
-      "failed": "Gagal mengubah kata sandi SSH."
-    },
-    "toast_saved": "Kata sandi SSH berhasil diperbarui."
+    "toast_cleared_partial": "SIM yang dikenal dihapus, tetapi belum seluruhnya",
+    "toast_cleared_partial_detail": "Perangkat telah melupakan SIM tersebut tetapi tidak dapat memperbarui catatan per SIM. Muat ulang halaman untuk memeriksa."
   },
   "page": {
     "title": "Pengaturan Sistem",
-    "description": "Bagaimana perangkat ini menyimpan waktu, siapa yang bisa mengaksesnya, dan SIM mana saja yang diingatnya.",
+    "description": "Bagaimana perangkat ini menyimpan waktu, kapan perangkat dimulai ulang, dan SIM mana saja yang diingatnya.",
     "refresh": "Segarkan"
   },
   "band": {
@@ -98,16 +51,16 @@
     "sims": {
       "eyebrow": "SIM Terdaftar",
       "caption_none": "Belum ada yang tercatat",
-      "caption_all_alerting": "Semua memunculkan peringatan SIM baru",
-      "caption_muted_one": "{{count}} dibisukan dari peringatan SIM baru",
-      "caption_muted_other": "{{count}} dibisukan dari peringatan SIM baru"
+      "caption_known": "Hanya SIM baru yang memunculkan peringatan",
+      "caption_unread": "Tidak dapat membaca jumlahnya"
     },
     "stale": "Pembacaan terakhir yang dikonfirmasi"
   },
   "preferences": {
+    "section": "Waktu & Satuan",
     "card": {
-      "title": "Waktu & Satuan",
-      "description": "Bagaimana modem ini menyimpan waktu, dan satuan yang dipakai untuk setiap pembacaan.",
+      "title": "Perangkat & Satuan",
+      "description": "Bagaimana modem ini menyimpan waktu, satuan yang dipakai pembacaan, dan SIM yang diingatnya.",
       "save": "Simpan Preferensi"
     },
     "rows": {
@@ -142,7 +95,8 @@
     },
     "toast": {
       "saved": "Preferensi tersimpan",
-      "failed": "Gagal menyimpan preferensi"
+      "failed": "Gagal menyimpan preferensi",
+      "tz_not_applied": "Preferensi disimpan, tetapi zona waktu belum diterapkan ke jam perangkat"
     }
   },
   "reboot": {
@@ -166,6 +120,12 @@
         "label": "Ulangi pada",
         "consequence": "Tanpa hari yang dipilih, jadwal tidak akan pernah berjalan.",
         "rail": "Hari reboot dalam seminggu"
+      },
+      "clock": {
+        "label": "Waktu modem",
+        "consequence": "Tanggal dan waktu yang dipakai jadwal, dalam zona waktu yang diatur di Perangkat & Satuan.",
+        "unsynced": "Belum diatur",
+        "unsynced_consequence": "Modem belum mengambil waktu dari jaringan, jadi reboot terjadwal tidak bisa berjalan sampai itu terjadi."
       }
     },
     "days": {
@@ -202,7 +162,9 @@
       "rejected": {
         "no_days": "Pilih minimal satu hari, atau matikan jadwalnya.",
         "invalid_time": "Waktu tersebut tidak valid. Gunakan format 24 jam HH:MM.",
-        "network": "Tidak dapat menjangkau perangkat untuk menyimpan. Periksa koneksi lalu coba lagi."
+        "network": "Tidak dapat menjangkau perangkat untuk menyimpan. Periksa koneksi lalu coba lagi.",
+        "invalid_day": "Salah satu hari yang dipilih tidak valid. Pilih hari dari Minggu sampai Sabtu.",
+        "missing_enabled": "Perangkat tidak menerima pengaturan aktif/nonaktif. Coba lagi."
       }
     }
   },
@@ -211,7 +173,8 @@
       "title": "Log Sistem",
       "description": "QManager menyimpan lognya di memori modem, sehingga log ini kosong lagi setelah setiap reboot dan tidak menggerus flash. Saring di sini untuk melihat aktivitas masing-masing komponen.",
       "refresh": "Segarkan",
-      "clear": "Hapus log"
+      "clear": "Hapus log",
+      "copy": "Salin"
     },
     "band": {
       "head": "Kondisi log",
@@ -316,7 +279,9 @@
     "toast": {
       "cleared": "Log sistem telah dihapus",
       "clear_failed": "Gagal menghapus log sistem",
-      "refresh_failed": "Gagal membaca log sistem"
+      "refresh_failed": "Gagal membaca log sistem",
+      "copied": "Log disalin ke clipboard",
+      "copy_failed": "Tidak dapat menyalin log"
     }
   },
   "languages": {
@@ -466,6 +431,7 @@
       "unsaved": "Belum tersimpan",
       "save": "Simpan Target Probe",
       "save_failed": "Gagal menyimpan target probe",
+      "cadence_clear_failed": "Tidak dapat mengatur ulang interval probe",
       "leg": {
         "host_1": "Jalur nama host 1",
         "host_2": "Jalur nama host 2",
@@ -483,7 +449,8 @@
         "action": "Pulihkan bawaan"
       },
       "toast": {
-        "saved": "Target probe tersimpan"
+        "saved": "Target probe tersimpan",
+        "cadence_cleared": "Interval probe kini mengikuti profil"
       },
       "validation": {
         "empty": "Masukkan sebuah target.",
@@ -502,15 +469,24 @@
       },
       "group": {
         "hostnames": "Nama host",
-        "fallback": "Cadangan IPv4"
+        "fallback": "Cadangan IPv4",
+        "sensitivity": "Sensitivitas"
       },
       "fallback_hint": "Tidak perlu DNS, jadi gangguan resolver tidak dianggap sebagai pemadaman.",
       "fallback_hint_label": "Tentang cadangan IPv4",
       "interval": {
         "label": "Interval probe",
-        "value": "Setiap {{seconds}} detik"
+        "value": "Setiap {{seconds}} detik",
+        "override": "Setiap {{seconds}} detik (Watchdog)",
+        "use_profile": "Gunakan interval profil"
       },
-      "failed": "Gagal menyimpan"
+      "failed": "Gagal menyimpan",
+      "profile": {
+        "sensitive": "Sensitif",
+        "regular": "Reguler",
+        "relaxed": "Santai",
+        "quiet": "Senyap"
+      }
     },
     "thresholds": {
       "title": "Ambang Kualitas",
@@ -524,7 +500,8 @@
       "preset": {
         "standard": "Standar",
         "tolerant": "Toleran",
-        "very_tolerant": "Sangat toleran"
+        "very_tolerant": "Sangat toleran",
+        "custom": "Kustom"
       },
       "unsaved": "Belum tersimpan",
       "save": "Simpan Ambang",
@@ -539,13 +516,15 @@
       },
       "row": {
         "flags": "Ditandai setelah",
-        "now": "Saat ini"
+        "now": "Saat ini",
+        "limit": "Batas"
       },
       "flags": {
         "latency_one": "{{count}} sampel di atas {{ms}} ms",
         "latency_other": "{{count}} sampel di atas {{ms}} ms",
         "loss_one": "{{count}} sampel pada {{pct}}% atau lebih",
-        "loss_other": "{{count}} sampel pada {{pct}}% atau lebih"
+        "loss_other": "{{count}} sampel pada {{pct}}% atau lebih",
+        "pending": "Masukkan batas"
       },
       "now": {
         "latency": "{{ms}} ms",
@@ -556,7 +535,14 @@
         "over_loss": "Melebihi batas {{pct}}%"
       },
       "default_chip": "Nilai bawaan",
-      "failed": "Gagal menyimpan"
+      "failed": "Gagal menyimpan",
+      "unit": {
+        "latency": "ms",
+        "loss": "%"
+      },
+      "validation": {
+        "range": "Masukkan bilangan bulat dari {{min}} sampai {{max}}."
+      }
     }
   },
   "software_update": {
@@ -577,7 +563,8 @@
       "read_full_notes": "Baca catatan lengkapnya",
       "rebooting": "Me-reboot…",
       "verifying": "Memverifikasi…",
-      "retry_download": "Coba unduh lagi"
+      "retry_download": "Coba unduh lagi",
+      "reboot_now": "Reboot sekarang"
     },
     "band": {
       "head": "Status pembaruan",
@@ -712,7 +699,8 @@
       "failed_check": "QManager gagal membaca daftar rilis. Build di modem ini tidak tersentuh, jadi ini kegagalan pembacaan, bukan kehilangan.",
       "failed_download": "Unduhan tidak selesai, jadi tidak ada yang terpasang. Build yang sudah ada di modem tidak tersentuh.",
       "versions": "Setiap opsi di sini me-reboot modem, dan build yang lebih lama bisa membatalkan pengaturan yang dibawa build yang lebih baru.",
-      "failed_install": "Pemasangan tidak selesai, jadi modem mungkin menjalankan berkas yang tercampur. Memasang lagi mengembalikannya ke build yang pasti."
+      "failed_install": "Pemasangan tidak selesai, jadi modem mungkin menjalankan berkas yang tercampur. Memasang lagi mengembalikannya ke build yang pasti.",
+      "stalled": "Pemasang tidak menunjukkan kemajuan selama dua menit. Jika tidak pulih, reboot modem untuk menyelesaikan atau membatalkan pemasangan."
     },
     "notes": {
       "title": "Apa yang berubah",
@@ -789,6 +777,12 @@
       "auto_on": "Pembaruan otomatis diaktifkan",
       "auto_off": "Pembaruan otomatis dinonaktifkan",
       "save_failed": "Tidak dapat menyimpan preferensi itu"
+    },
+    "stall_dialog": {
+      "title": "Reboot modem sekarang?",
+      "description": "Pemasangan tampak macet. Reboot akan menghentikannya dan memutus sesi ini; modem kembali sendiri.",
+      "cancel": "Tetap tunggu",
+      "confirm": "Reboot sekarang"
     }
   },
   "at_terminal": {
@@ -831,6 +825,7 @@
       "cancel": "Batal"
     },
     "rules": {
+      "not_at": "Di sini hanya perintah AT yang bisa dikirim. Awali baris dengan AT, misalnya AT+CSQ.",
       "qscanfreq": "Pemindaian frekuensi ditolak di sini. Pemindaian menahan radio tetap mati selama beberapa menit tanpa menampilkan apa pun — gunakan halaman Pemindai Sel, yang melaporkan kemajuan dan bisa dihentikan.",
       "qscan": "Pemindaian jaringan ditolak di sini. Pemindaian menahan radio tetap mati selama beberapa menit tanpa menampilkan apa pun — gunakan halaman Pemindai Sel, yang melaporkan kemajuan dan bisa dihentikan.",
       "resetfactory": "Reset pabrik ditolak di sini. Reset menghapus seluruh pengaturan modem sekaligus, termasuk yang dibutuhkan QManager untuk menjangkaunya, dan tidak ada di halaman ini yang bisa membatalkannya.",
@@ -973,5 +968,269 @@
         "description": "Shell pada modem sudah keluar, jadi terminal ini tertutup. Tidak ada yang hilang — mulai sesi baru kapan pun Anda membutuhkannya."
       }
     }
+  },
+  "passwords": {
+    "card": {
+      "title": "Kata Sandi",
+      "description": "Ubah kata sandi yang Anda pakai untuk masuk ke QManager, atau kata sandi root untuk SSH. Masing-masing meminta kata sandinya yang sekarang terlebih dahulu."
+    },
+    "tabs": {
+      "aria": "Kata sandi yang diubah",
+      "web": "Kata Sandi Web",
+      "ssh": "Kata Sandi SSH"
+    },
+    "web": {
+      "label": "Kata sandi web saat ini",
+      "consequence": "Kata sandi yang Anda pakai untuk masuk ke QManager.",
+      "dialog_title": "Ubah kata sandi web",
+      "dialog_description": "Anda akan keluar setelah mengubahnya."
+    },
+    "ssh": {
+      "label": "Kata sandi SSH saat ini",
+      "consequence": "Kata sandi root untuk sesi SSH ke modem ini.",
+      "dialog_title": "Ubah kata sandi SSH",
+      "dialog_description": "Langsung berlaku; sesi SSH yang sedang berjalan tetap terbuka.",
+      "toast_saved": "Kata sandi SSH berhasil diperbarui."
+    },
+    "continue": "Lanjutkan",
+    "toggle": {
+      "show": "Tampilkan kata sandi",
+      "hide": "Sembunyikan kata sandi"
+    },
+    "dialog": {
+      "new_label": "Kata sandi baru",
+      "confirm_label": "Konfirmasi kata sandi baru",
+      "match": "Kata sandi cocok",
+      "mismatch": "Kata sandi tidak cocok",
+      "cancel": "Batal",
+      "save": "Simpan kata sandi"
+    },
+    "errors": {
+      "too_short": "Kata sandi minimal {{min}} karakter.",
+      "weak": "Kata sandi minimal {{min}} karakter dan menyertakan huruf besar, huruf kecil, dan angka.",
+      "verify_failed": "Tidak dapat memeriksa kata sandi. Coba lagi.",
+      "change_failed": "Tidak dapat mengubah kata sandi. Coba lagi.",
+      "invalid_password_one": "Kata sandi salah. Sisa {{count}} percobaan sebelum proses masuk dikunci untuk sementara.",
+      "invalid_password_other": "Kata sandi salah. Sisa {{count}} percobaan sebelum proses masuk dikunci untuk sementara.",
+      "rate_limited_one": "Terlalu banyak percobaan yang salah. Coba lagi dalam {{count}} detik.",
+      "rate_limited_other": "Terlalu banyak percobaan yang salah. Coba lagi dalam {{count}} detik."
+    }
+  },
+  "device_access": {
+    "page": {
+      "title": "Akses Perangkat",
+      "description": "Kata sandi dan port yang dipakai untuk menjangkau modem ini."
+    }
+  },
+  "config_backup": {
+    "page_title": "Cadangan Konfigurasi",
+    "page_description": "Simpan pengaturan QManager ke file terenkripsi, atau pulihkan dari file tersebut.",
+    "excluded": "Kata sandi, token, port web, riwayat SIM, log, dan penghitung pemakaian tidak pernah disertakan.",
+    "not_supported_here": "Tidak didukung di sini",
+    "mutex_parent_on": "Diatur oleh {{parent}}, yang sedang dipilih.",
+    "mutex_member_on": "Hapus pilihan {{members}} untuk menyertakan ini.",
+    "group_count": "{{on}} dari {{total}}",
+    "reboot_failed_toast": "Tidak dapat memulai reboot. Reboot masih menunggu di banner.",
+    "reboot_now_button": "Reboot sekarang",
+    "groups": {
+      "connection": "Koneksi",
+      "local_network": "Jaringan lokal",
+      "monitoring": "Pemantauan dan peringatan",
+      "system": "Sistem"
+    },
+    "sections": {
+      "network_mode": "Mode jaringan",
+      "bands": "Band LTE/5G",
+      "apn": "APN",
+      "tower_lock": "Kunci menara",
+      "ttl_mtu": "TTL & MTU",
+      "imei": "IMEI",
+      "profiles": "Profil SIM kustom",
+      "scenarios": "Skenario koneksi",
+      "ip_passthrough": "IP Passthrough",
+      "sms": "Pengaturan SMS",
+      "lan": "LAN & DHCP",
+      "custom_dns": "DNS kustom",
+      "ethernet": "Ethernet",
+      "traffic_engine": "Mesin Lalu Lintas",
+      "watchdog": "Watchdog",
+      "quality": "Kualitas koneksi",
+      "sites": "Situs pemantau latensi",
+      "alerts": "Peringatan",
+      "adaptive_polling": "Polling adaptif",
+      "system": "Pengaturan sistem"
+    },
+    "create": {
+      "card_title": "Buat cadangan",
+      "card_description": "Pilih apa yang akan disimpan. File dienkripsi di peramban Anda.",
+      "group_encryption": "Enkripsi",
+      "passphrase_label": "Frasa sandi",
+      "warning": "Minimal {{min}} karakter. Tanpanya cadangan tidak dapat dipulihkan.",
+      "passphrase_too_short": "Gunakan minimal {{min}} karakter.",
+      "confirm_label": "Konfirmasi frasa sandi",
+      "confirm_match": "Frasa sandi cocok",
+      "confirm_mismatch": "Frasa sandi tidak cocok",
+      "passphrase_show_aria": "Tampilkan frasa sandi",
+      "passphrase_hide_aria": "Sembunyikan frasa sandi",
+      "selected_count_one": "{{count}} bagian dipilih",
+      "selected_count_other": "{{count}} bagian dipilih",
+      "stage_collecting": "Membaca pengaturan…",
+      "stage_encrypting": "Mengenkripsi…",
+      "stage_downloading": "Menyimpan file…",
+      "button_default": "Unduh cadangan",
+      "toast_success": "Cadangan diunduh.",
+      "toast_unavailable_one": "Cadangan diunduh, tetapi {{count}} bagian tidak dapat dibaca.",
+      "toast_unavailable_other": "Cadangan diunduh, tetapi {{count}} bagian tidak dapat dibaca.",
+      "toast_failed": "Tidak dapat membuat cadangan.",
+      "load_failed_title": "Tidak dapat memuat opsi cadangan",
+      "load_failed_description": "Modem tidak memberi tahu pengaturan mana yang dapat dicadangkan.",
+      "empty_title": "Tidak ada yang bisa dicadangkan",
+      "empty_description": "Build QManager ini tidak memiliki pengaturan yang dapat dicadangkan."
+    },
+    "restore": {
+      "card_title": "Pulihkan dari file",
+      "card_description": "Buka file cadangan dan pilih apa yang akan dipulihkan.",
+      "idle_title": "Belum ada cadangan dibuka",
+      "reading_title": "Membaca file…",
+      "idle_description": "Pilih file .qmbackup. Anda memerlukan frasa sandi yang dipakai saat menyimpannya.",
+      "upload_button": "Pilih file",
+      "button_choose_another": "Pilih file lain",
+      "read_failed": "Tidak dapat membaca file ini.",
+      "receipt_model": "Dibuat di",
+      "receipt_created": "Dibuat pada",
+      "passphrase_label": "Frasa sandi",
+      "passphrase_consequence": "Frasa sandi yang diatur saat cadangan ini dibuat.",
+      "password_incorrect": "Frasa sandi salah, atau file telah diubah.",
+      "button_unlock": "Buka",
+      "model_warning": "Cadangan ini dari {{from}} dan modem ini {{to}}. Pengaturan yang tidak dapat dipakai akan dilewati.",
+      "backup_first": "Pemulihan mengganti pengaturan Anda saat ini. Unduh cadangannya terlebih dahulu.",
+      "backup_first_action": "Cadangkan dulu",
+      "overwrite_label": "Mengganti pengaturan Anda saat ini",
+      "note_reboot": "Perlu reboot.",
+      "note_lan": "Dapat mengubah alamat yang Anda pakai untuk membuka QManager. Perlu reboot.",
+      "note_profiles_imei": "Perlu reboot. Profil dengan IMEI yang berbeda dari modem ini kehilangan IMEI tersebut kecuali Anda menyimpannya di bawah.",
+      "profiles_imei_confirm_one": "{{count}} profil mengatur IMEI yang berbeda saat diaktifkan. Simpan IMEI tersebut.",
+      "profiles_imei_confirm_other": "{{count}} profil mengatur IMEI yang berbeda saat diaktifkan. Simpan IMEI tersebut.",
+      "imei_confirm": "Tulis IMEI {{backup}} menggantikan {{current}} milik modem ini.",
+      "selected_count_one": "{{count}} bagian akan dipulihkan",
+      "selected_count_other": "{{count}} bagian akan dipulihkan",
+      "button_apply": "Pulihkan",
+      "toast_success": "Pengaturan dipulihkan.",
+      "toast_partial_one": "Pemulihan selesai, tetapi {{count}} bagian gagal.",
+      "toast_partial_other": "Pemulihan selesai, tetapi {{count}} bagian gagal.",
+      "toast_cancelled_one": "Pemulihan dihentikan setelah {{count}} bagian.",
+      "toast_cancelled_other": "Pemulihan dihentikan setelah {{count}} bagian.",
+      "toast_crashed": "Pemulihan berhenti secara tak terduga.",
+      "toast_failed": "Tidak dapat memulai pemulihan.",
+      "toast_stop_failed": "Tidak dapat menghentikan pemulihan.",
+      "reboot_dialog_title": "Reboot untuk menyelesaikan pemulihan?",
+      "reboot_dialog_description": "Beberapa pengaturan yang dipulihkan berlaku setelah reboot. Koneksi terputus sekitar satu menit.",
+      "reboot_later_button": "Nanti"
+    },
+    "pipeline": {
+      "title": "Memulihkan pengaturan",
+      "description": "Dari cadangan yang dibuat di {{model}}.",
+      "preparing": "Menyiapkan…",
+      "stopping": "Berhenti setelah bagian ini…",
+      "step_progress": "Bagian {{current}} dari {{total}}",
+      "done_headline": "Pemulihan selesai",
+      "done_sub_one": "{{count}} bagian dipulihkan.",
+      "done_sub_other": "{{count}} bagian dipulihkan.",
+      "partial_headline": "Pemulihan selesai dengan masalah",
+      "partial_sub": "{{restored}} dari {{total}} bagian dipulihkan.",
+      "cancelled_sub": "Dihentikan sebelum semua bagian dipulihkan.",
+      "failed_headline": "Pemulihan gagal",
+      "failed_sub": "Tidak ada yang dipulihkan.",
+      "crashed_sub": "Pemulihan berhenti secara tak terduga.",
+      "detail_incompatible": "Tidak kompatibel",
+      "detail_not_supported": "Tidak didukung di sini",
+      "detail_sim_mismatch": "SIM berbeda",
+      "detail_unchanged": "Dilewati",
+      "detail_retrying": "Percobaan {{n}}",
+      "detail_failed": "Gagal",
+      "note_ignored_one": "{{count}} pengaturan tidak didukung di sini",
+      "note_ignored_other": "{{count}} pengaturan tidak didukung di sini",
+      "note_dropped_one": "{{count}} entri dilewati (tidak valid)",
+      "note_dropped_other": "{{count}} entri dilewati (tidak valid)",
+      "state_done": "Selesai",
+      "state_running": "Berjalan",
+      "state_retrying": "Mencoba ulang",
+      "state_failed": "Gagal",
+      "state_skipped": "Dilewati",
+      "state_pending": "Menunggu",
+      "progress_aria": "Kemajuan pemulihan",
+      "ledger_aria": "Bagian",
+      "reboot_notice": "Perlu reboot untuk menyelesaikan. Anda dapat memilih waktunya setelah menutup ini.",
+      "failed_hint": "Bagian yang gagal mempertahankan pengaturan saat ini. Anda dapat memulihkan lagi.",
+      "close": "Tutup",
+      "stop": "Hentikan"
+    }
+  },
+  "adaptive_polling": {
+    "page_title": "Polling Adaptif",
+    "page_description": "Kueri modem lebih jarang saat tidak ada yang membuka QManager.",
+    "card_title": "Polling adaptif",
+    "card_description": "Status diperbarui dengan kecepatan penuh saat halaman terbuka, lalu melambat.",
+    "tier": {
+      "active": "Kecepatan penuh",
+      "idle": "Siaga (diperlambat)",
+      "deep": "Siaga dalam (minimal)"
+    },
+    "tier_aria": "Polling saat ini: {{tier}}",
+    "enabled": {
+      "label": "Perlambat saat siaga",
+      "on": "Polling melambat setelah masa tenggang di bawah.",
+      "off": "Status selalu diperbarui dengan kecepatan penuh.",
+      "hint_label": "Yang tetap berjalan",
+      "hint": "Peringatan dan watchdog koneksi tetap bekerja pada kecepatan apa pun. Hanya pembaruan status yang melambat."
+    },
+    "fields": {
+      "active_grace": {
+        "label": "Masa tenggang",
+        "consequence": "Kecepatan penuh berlanjut selama ini setelah halaman terakhir ditutup ({{min}} hingga {{max}} dtk)."
+      },
+      "idle_interval": {
+        "label": "Interval siaga",
+        "consequence": "Jeda antar pembaruan saat siaga ({{min}} hingga {{max}} dtk)."
+      },
+      "idle_threshold": {
+        "label": "Siaga dalam setelah",
+        "consequence": "Waktu siaga sebelum pembaruan melambat lebih lanjut ({{min}} hingga {{max}} dtk)."
+      },
+      "deep_idle_interval": {
+        "label": "Interval siaga dalam",
+        "consequence": "Jeda antar pembaruan saat siaga dalam ({{min}} hingga {{max}} dtk)."
+      }
+    },
+    "unit_seconds": "dtk",
+    "error_title": "Tidak dapat memuat polling adaptif",
+    "error_description": "Pengaturan tidak dimuat. Coba lagi sebentar lagi.",
+    "save_failed_status": "Belum disimpan",
+    "default_status": "Waktu default",
+    "toast_saved": "Polling adaptif disimpan.",
+    "toast_failed": "Tidak dapat menyimpan polling adaptif."
+  },
+  "web_port": {
+    "card_title": "Port Web",
+    "card_description": "Port yang didengarkan antarmuka ini.",
+    "http_label": "Port HTTP",
+    "http_consequence": "HTTP biasa hanya dialihkan ke port HTTPS.",
+    "https_label": "Port HTTPS",
+    "https_consequence": "Port terenkripsi tempat antarmuka ini disajikan.",
+    "pending": "Akan terbuka di {{origin}} setelah diterapkan.",
+    "moving": "Pindah ke {{origin}}… Jika browser meminta, terima sertifikat untuk port baru.",
+    "invalid": "Gunakan bilangan bulat dari 1 sampai 65535.",
+    "same": "HTTP dan HTTPS harus memakai port yang berbeda.",
+    "confirm_title": "Ubah port web?",
+    "confirm_description": "QManager dimulai ulang di port baru dan halaman ini pindah ke {{origin}}. Jika port baru gagal dimulai, port lama kembali dengan sendirinya.",
+    "confirm_action": "Ubah port",
+    "toast_failed": "Tidak dapat mengubah port web.",
+    "toast_unchanged": "Port web disimpan.",
+    "toast_unreachable": "Port baru tidak merespons, jadi QManager tetap di port lama.",
+    "toast_back_on": "Port baru tidak berjalan, jadi QManager kembali ke {{origin}}.",
+    "toast_timeout": "Perubahan port belum selesai, jadi muat ulang halaman ini sebentar lagi.",
+    "open_origin": "Buka",
+    "error_title": "Tidak dapat membaca port web",
+    "error_description": "Port tidak termuat. Coba lagi sebentar lagi."
   }
 }

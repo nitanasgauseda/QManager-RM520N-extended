@@ -11,7 +11,6 @@
     "cellular_information": "Cellular Information",
     "antenna_statistics": "Antenna Statistics",
     "antenna_alignment": "Antenna Alignment",
-    "tower_map": "Tower Map",
     "sms_center": "SMS Center",
     "sms_forwarding": "SMS Forwarding",
     "custom_profiles": "Custom Profiles",
@@ -36,13 +35,15 @@
     "latency_monitor": "Latency Monitor",
     "alerts": "Alerts",
     "watchdog": "Watchdog",
-    "cell_guard": "Cell Guard",
     "tailscale": "Tailscale VPN",
     "system_settings": "System Settings",
     "logs": "Logs",
+    "config_backup": "Configuration Backup",
     "system_health_check": "System Health Check",
     "connection_quality": "Connection Quality",
     "languages": "Languages",
+    "device_access": "Device Access",
+    "adaptive_polling": "Adaptive Polling",
     "software_update": "Software Update",
     "terminals": "Terminals",
     "at_terminal": "AT Terminal",
@@ -51,6 +52,15 @@
     "support": "Support",
     "donate": "Donate to the Project",
     "traffic_engine": "Traffic Engine",
+    "cellular_overview": "Overview",
+    "sms_inbox": "Inbox",
+    "band_locking_bands": "Band Locking",
+    "cell_scanner_full_scan": "Full Scan",
+    "cellular_settings_general": "General",
+    "connection_quality_overview": "Overview",
+    "system_settings_general": "General",
+    "tower_map": "Tower Map",
+    "cell_guard": "Cell Guard",
     "signal_history": "Signal History",
     "usage": "Data Plan & Temperature",
     "backup": "Backup & Restore",
@@ -68,12 +78,19 @@
     "signed_in": "Signed in"
   },
   "actions": {
-    "toggle_section": "Toggle {{section}} section"
+    "toggle_section": "Toggle {{section}} section",
+    "toggle_sidebar": "Toggle sidebar",
+    "skip_to_content": "Skip to main content"
   },
   "status": {
     "watchdog_acting": "acting",
     "watchdog_acting_detail": "Watchdog is recovering the connection (tier {{tier}}).",
     "watchdog_settling": "settling",
     "watchdog_settling_detail": "Watchdog is verifying the connection held after a recovery."
-  }
+  },
+  "mobile": {
+    "title": "Sidebar",
+    "description": "Main navigation for QManager."
+  },
+  "breadcrumb": "Breadcrumb"
 }

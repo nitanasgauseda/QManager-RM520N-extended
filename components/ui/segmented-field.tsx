@@ -138,6 +138,11 @@ const SEGMENTED_BREAKPOINTS = {
     /** Natural width, never stretched or squeezed: 2–3 short segments always fit. */
     WRAP: "flex w-auto shrink-0",
   },
+  sm: {
+    GROUP: "hidden @sm/card:flex",
+    SELECT: "flex w-full @sm/card:hidden",
+    WRAP: "flex w-full @sm/card:w-auto",
+  },
   lg: {
     GROUP: "hidden @lg/card:flex",
     SELECT: "flex w-full @lg/card:hidden",
@@ -271,7 +276,8 @@ export function SegmentedField<T extends string>({
 
       <Select
         value={value}
-        onValueChange={(next) => onValueChange(next as T)}
+        // Radix's hidden native select bubbles "" when the value moves before its options register.
+        onValueChange={(next) => next && onValueChange(next as T)}
         disabled={disabled}
       >
         <SelectTrigger

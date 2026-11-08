@@ -11,7 +11,6 @@
     "cellular_information": "Informazioni rete mobile",
     "antenna_statistics": "Statistiche dell'antenna",
     "antenna_alignment": "Allineamento dell'antenna",
-    "tower_map": "Mappa torri",
     "sms_center": "Centro SMS",
     "sms_forwarding": "Inoltro SMS",
     "custom_profiles": "Profili personalizzati",
@@ -36,13 +35,15 @@
     "latency_monitor": "Monitoraggio della latenza",
     "alerts": "Avvisi",
     "watchdog": "Watchdog",
-    "cell_guard": "Cell Guard",
     "tailscale": "Tailscale VPN",
     "system_settings": "Impostazioni di sistema",
     "logs": "Log",
+    "config_backup": "Backup configurazione",
     "system_health_check": "Controllo dello stato del sistema",
     "connection_quality": "Qualità della connessione",
     "languages": "Lingue",
+    "device_access": "Accesso al dispositivo",
+    "adaptive_polling": "Polling Adattivo",
     "software_update": "Aggiornamento del software",
     "terminals": "Terminali",
     "at_terminal": "Terminale AT",
@@ -51,6 +52,15 @@
     "support": "Supporto",
     "donate": "Dona al progetto",
     "traffic_engine": "Motore di traffico",
+    "cellular_overview": "Panoramica",
+    "sms_inbox": "Posta in arrivo",
+    "band_locking_bands": "Blocco bande",
+    "cell_scanner_full_scan": "Scansione completa",
+    "cellular_settings_general": "Generali",
+    "connection_quality_overview": "Panoramica",
+    "system_settings_general": "Generali",
+    "tower_map": "Mappa torri",
+    "cell_guard": "Cell Guard",
     "signal_history": "Cronologia segnale",
     "usage": "Piano dati e temperatura",
     "backup": "Backup e ripristino",
@@ -68,12 +78,19 @@
     "signed_in": "Connesso"
   },
   "actions": {
-    "toggle_section": "Apri o chiudi la sezione {{section}}"
+    "toggle_section": "Apri o chiudi la sezione {{section}}",
+    "toggle_sidebar": "Mostra o nascondi la barra laterale",
+    "skip_to_content": "Vai al contenuto principale"
   },
   "status": {
     "watchdog_acting": "in azione",
     "watchdog_acting_detail": "Il watchdog sta ripristinando la connessione (livello {{tier}}).",
     "watchdog_settling": "verifica",
     "watchdog_settling_detail": "Il watchdog sta verificando che la connessione regga dopo il ripristino."
-  }
+  },
+  "mobile": {
+    "title": "Barra laterale",
+    "description": "Navigazione principale di QManager."
+  },
+  "breadcrumb": "Percorso di navigazione"
 }

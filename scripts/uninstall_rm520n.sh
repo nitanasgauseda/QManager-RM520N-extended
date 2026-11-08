@@ -155,7 +155,7 @@ confirm_uninstall() {
     printf "\n  ${BOLD}QManager — RM520N-GL Uninstaller${NC}\n\n"
     printf "  The following will be removed:\n"
     printf "    • All QManager systemd services and boot symlinks\n"
-    printf "    • Daemons and binaries: /usr/bin/qmanager_*, qcmd, atcli_smd11, sms_tool\n"
+    printf "    • Daemons and binaries: /usr/bin/qmanager_* (incl. the qmanager_atd broker), qcmd, qsms\n"
     printf "    • Shared libraries: %s\n" "$LIB_DIR"
     printf "    • udev rule: /etc/udev/rules.d/99-qmanager-smd11.rules\n"
     printf "    • CGI endpoints and frontend: %s\n" "$WWW_ROOT"
@@ -163,7 +163,7 @@ confirm_uninstall() {
     printf "    • Sudoers rules\n"
     printf "    • Web console (ttyd): %s\n" "$CONSOLE_DIR"
     printf "    • Speedtest CLI: /usrdata/root/bin/speedtest\n"
-    printf "    • Runtime state: /tmp/qmanager_*\n"
+    printf "    • Runtime state: /tmp/qmanager_*, /var/run/qmanager*, /run/qmanager_at (AT lock)\n"
     printf "    • Cron jobs referencing qmanager\n"
     if [ "$PURGE" = "1" ]; then
         printf "    • Config directory: %s  ${YELLOW}[--purge]${NC}\n" "$CONF_DIR"
@@ -210,9 +210,13 @@ for unit_file in "$SYSTEMD_DIR"/qmanager-*.service; do
     [ -f "$unit_file" ] || continue
     _units="$_units $(basename "$unit_file" .service)"
 done
+# Old v0.1.14-v0.1.18 sms_forward never exited on TERM; queue its stop, then KILL the cgroup.
+systemctl --no-block stop qmanager-sms-forward 2>/dev/null || true
+systemctl kill -s KILL qmanager-sms-forward 2>/dev/null || true
 # Also stop lighttpd (QManager owns its service file; restored below)
 if [ -n "$_units" ]; then
     systemctl stop $_units lighttpd 2>/dev/null || true
+    systemctl reset-failed $_units 2>/dev/null || true
 else
     systemctl stop lighttpd 2>/dev/null || true
 fi
@@ -419,8 +423,15 @@ info "Removed /usr/bin/qmanager_*"
 
 # Bundled transport and tool binaries
 rm -f "$BIN_DIR/qcmd" "$BIN_DIR/qcmd_test"
+# atcli_smd11 and sms_tool were retired in T5.1 S6; older installs still carry them.
 rm -f "$BIN_DIR/atcli_smd11" "$BIN_DIR/sms_tool"
-info "Removed qcmd, atcli_smd11, sms_tool"
+info "Removed qcmd and retired AT binaries"
+
+# qsms is a symlink to qmanager_atd; remove the link only, never a real directory
+if [ -L "$BIN_DIR/qsms" ]; then
+    rm -f "$BIN_DIR/qsms"
+    info "Removed qsms"
+fi
 
 # Shared libraries (includes staged tailscaled.service + qmanager_smd11_udev.sh)
 rm -rf "$LIB_DIR"
@@ -466,8 +477,13 @@ step "Removing CGI, frontend, lighttpd config, and TLS certs"
 rm -rf "$WWW_ROOT"
 info "Removed frontend and CGI endpoints ($WWW_ROOT)"
 
-rm -f "$LIGHTTPD_CONF" "${LIGHTTPD_CONF}.bak"
+rm -f "$LIGHTTPD_CONF" "${LIGHTTPD_CONF}.bak" "${LIGHTTPD_CONF}.new"
 info "Removed lighttpd config"
+
+# The web port file belongs to this conf; the stock lighttpd that comes back uses its own port.
+rm -f "$QMANAGER_ROOT/web_port" "$QMANAGER_ROOT"/.web_port.*
+rm -rf /run/qmanager_web_port
+info "Removed web port setting"
 
 rm -rf "$CERT_DIR"
 info "Removed TLS certs ($CERT_DIR)"
@@ -522,6 +538,10 @@ if [ "$PURGE" = "1" ]; then
     rm -rf "$TAILSCALE_DIR"
     info "Removed $TAILSCALE_DIR (binaries + state)"
 
+    # Interrupted-download residue
+    rm -rf /usrdata/tailscale_*_arm*
+    rm -f "$SYSTEMD_DIR/qmanager_tailscale_install.service"
+
     # Two symlinks the installer creates for CLI accessibility
     rm -f /usrdata/root/bin/tailscale
     rm -f "$BIN_DIR/tailscale"
@@ -543,18 +563,36 @@ step "Cleaning up firewall rules"
 
 # Legacy TTL/MTU helper files that may persist independently of the service
 rm -f /etc/firewall.user.ttl /etc/firewall.user.mtu 2>/dev/null || true
+# Leftover per-PID temps from the root MTU / hostname helpers
+rm -f /etc/firewall.user.mtu.tmp.* /etc/firewall.user.mtu.prev.* /etc/hostname.tmp.* 2>/dev/null || true
 
 # The qmanager-firewall service (stopped in Step 1) runs ExecStop to flush
 # its rules. The fallbacks below cover the case where the service was
 # already gone before uninstall started — both the new chain-based layout
 # and any pre-chain INPUT-direct rules from older installs are cleaned.
 if command -v iptables >/dev/null 2>&1; then
-    # New layout: tear down the QMANAGER_FW chain
-    while iptables -C INPUT -j QMANAGER_FW 2>/dev/null; do
-        iptables -D INPUT -j QMANAGER_FW 2>/dev/null || break
+    # New layout: tear down the QMANAGER_FW chain (and a staging chain left by
+    # an interrupted reload) in both IPv4 and IPv6
+    for _ipt in iptables ip6tables; do
+        command -v "$_ipt" >/dev/null 2>&1 || continue
+        for _chain in QMANAGER_FW QMANAGER_FW_NEW; do
+            while "$_ipt" -C INPUT -j "$_chain" 2>/dev/null; do
+                "$_ipt" -D INPUT -j "$_chain" 2>/dev/null || break
+            done
+            "$_ipt" -F "$_chain" 2>/dev/null || true
+            "$_ipt" -X "$_chain" 2>/dev/null || true
+        done
     done
-    iptables -F QMANAGER_FW 2>/dev/null || true
-    iptables -X QMANAGER_FW 2>/dev/null || true
+    if command -v ip6tables >/dev/null 2>&1; then
+        for _chain in QMANAGER_FWD6 QMANAGER_FWD6_NEW; do
+            while ip6tables -C FORWARD -i rmnet+ -j "$_chain" 2>/dev/null; do
+                ip6tables -D FORWARD -i rmnet+ -j "$_chain" 2>/dev/null || break
+            done
+            ip6tables -F "$_chain" 2>/dev/null || true
+            ip6tables -X "$_chain" 2>/dev/null || true
+        done
+    fi
+    rm -f /run/qmanager_firewall.lock
 
     # Legacy layout: drain INPUT-direct rules from pre-chain installs
     for port in 80 443; do
@@ -598,7 +636,17 @@ step "Removing runtime state and temporary files"
 # underscore, so `qmanager_*` does not match it.
 rm -f  /tmp/qmanager_*   2>/dev/null || true
 rm -f  /tmp/qmanager.log* 2>/dev/null || true
+rm -f  /tmp/.qmanager_web_port_result.* 2>/dev/null || true
+rm -f  /run/qmanager_profile_boot_applied 2>/dev/null || true
 rm -rf "$SESSION_DIR"
+rm -rf /tmp/qmanager_console_tokens
+rm -rf /tmp/qmanager_stage   # OTA stage dir (a staged download is tens of MB of RAM)
+
+# qmanager_atd broker runtime (/var/run, not /tmp) and the QMI sidecar
+rm -f  /var/run/qmanager_atd.sock /var/run/qmanager_atd.proto 2>/dev/null || true
+rm -rf /var/run/qmanager 2>/dev/null || true
+rm -rf /run/qmanager_at 2>/dev/null || true   # AT lock dir; the line above does not match it
+rm -f  /tmp/qmanager_qmi.json 2>/dev/null || true
 
 # Update artifacts that live under /etc/qmanager but are runtime, not config
 rm -f "$CONF_DIR/VERSION.pending"                2>/dev/null || true
@@ -727,6 +775,10 @@ if [ "$PURGE" = "1" ]; then
     info "Purged sites monitor history"
     rm -rf "$QMANAGER_ROOT/sighist"
     info "Purged long-term signal history"
+
+    # Crash log moved out of www-data's /etc/qmanager; it too would block the rmdir below.
+    rm -f "$QMANAGER_ROOT/crash.log" "$QMANAGER_ROOT"/crash.log.* "$QMANAGER_ROOT/.crash_log_migrated"
+    info "Purged crash log"
 elif [ -d "$CONF_DIR" ]; then
     warn "Config preserved at $CONF_DIR, /etc/qmanager.env, /etc/qmanager-secrets and /etc/qmanager-backups (use --purge to remove)"
     warn "/etc/qmanager-secrets still holds the Discord token / email app password (root-only, 0700)"
@@ -755,6 +807,11 @@ printf "  ═══════════════════════�
 printf "  ${GREEN}${BOLD}  QManager uninstalled successfully.${NC}\n"
 printf "  ══════════════════════════════════════════\n\n"
 printf "  ${DIM}Log: %s${NC}\n\n" "$LOG_FILE"
+
+rm -f /etc/data/.qm_lan_apply.lock /usrdata/.qm_lan_subnet_set
+if [ -f /etc/data/mobileap_cfg.xml.qm-bak ]; then
+    info "LAN settings left as they are; original LAN config saved at /etc/data/mobileap_cfg.xml.qm-bak"
+fi
 
 if [ "$NO_REBOOT" = "1" ]; then
     info "Skipping reboot (--no-reboot). Some changes (udev, kernel modules) require a reboot to take full effect."

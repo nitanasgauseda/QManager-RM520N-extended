@@ -33,6 +33,7 @@ export PATH="/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin:$PATH"
 # ---------------------------------------------------------------------------
 . /usr/lib/qmanager/platform.sh 2>/dev/null || {
     pid_alive() { [ -n "$1" ] && [ -d "/proc/$1" ]; }
+    pid_is() { return 1; }
 }
 
 # ---------------------------------------------------------------------------
@@ -152,31 +153,22 @@ cgi_error() {
 }
 
 # ---------------------------------------------------------------------------
-# Authentication — source cgi_auth.sh with no-op fallbacks if missing
+# Authentication — fail CLOSED if cgi_auth.sh is missing, broken or truncated.
+# cgi_auth.sh sets _CGI_AUTH_COMPLETE on its last line; a truncated file never does.
 # ---------------------------------------------------------------------------
-. /usr/lib/qmanager/cgi_auth.sh 2>/dev/null || {
-    require_auth()          { :; }
-    is_setup_required()     { return 1; }
-    qm_get_cookie()         { :; }
-    qm_set_session_cookies(){ :; }
-    qm_clear_session_cookies(){ :; }
-    qm_create_session()     { :; }
-    qm_validate_session()   { return 1; }
-    qm_destroy_session()    { :; }
-    qm_cleanup_sessions()   { :; }
-    qm_verify_password()    { return 1; }
-    qm_save_password()      { :; }
-    qm_check_rate_limit()   { return 0; }
-    qm_get_rate_limit_status() { RATE_LIMIT_RETRY_AFTER=0; RATE_LIMIT_ATTEMPTS_REMAINING=5; return 0; }
-    qm_record_failed_attempt() { :; }
-    qm_clear_attempts()     { :; }
+_cgi_auth_unavailable() {
+    echo "Status: 500 Internal Server Error"
+    cgi_headers
+    cgi_error "auth_unavailable" "Authentication library failed to load"
+    exit 0
 }
+[ -r /usr/lib/qmanager/cgi_auth.sh ] || _cgi_auth_unavailable
+. /usr/lib/qmanager/cgi_auth.sh 2>/dev/null
+[ "$_CGI_AUTH_COMPLETE" = "1" ] || _cgi_auth_unavailable
 
 # Auto-enforce auth unless the calling script set _SKIP_AUTH=1
 if [ "$_SKIP_AUTH" != "1" ]; then
-    require_auth
-    # Someone has the UI open: the poller runs at full speed while this file is fresh.
-    : > /tmp/qmanager_ui_active 2>/dev/null
+    require_auth || _cgi_auth_unavailable
 fi
 
 # ---------------------------------------------------------------------------
@@ -259,7 +251,8 @@ qm_audit_post() {
 : "${QM_REBOOT_POST_ACK_DELAY:=1}"
 
 cgi_reboot_response() {
-    echo '{"success":true}'
+    # Optional $1: JSON body to print instead of {"success":true}.
+    if [ -n "${1:-}" ]; then printf '%s\n' "$1"; else echo '{"success":true}'; fi
     _reboot_cmd="reboot"
     command -v run_reboot >/dev/null 2>&1 && _reboot_cmd="run_reboot"
     (

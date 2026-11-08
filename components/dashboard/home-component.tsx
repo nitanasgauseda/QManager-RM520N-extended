@@ -8,6 +8,7 @@ import { staggerContainer, staggerItem } from "@/lib/motion";
 import { Banner } from "@/components/ui/banner";
 import { useModemStatus } from "@/hooks/use-modem-status";
 import { useAboutDevice } from "@/hooks/use-about-device";
+import { useConnectionStatus } from "@/lib/reboot/connection";
 import { BAND, PAGE_GRID } from "./shapes";
 import { DashboardPageHeader } from "./page-header";
 import { DashboardStatusRail } from "./status-rail";
@@ -31,10 +32,15 @@ const HomeComponent = () => {
     pollInterval,
   });
   const { data: aboutDevice } = useAboutDevice();
+  // Once an outage escalates to "reconnecting", the global banner in app-layout
+  // owns it; suppress this page-level one so the two never stack.
+  const { reconnecting } = useConnectionStatus();
 
   // Tie poll cadence to the ping daemon's write interval (Connection Sensitivity).
   // history_interval_sec comes straight from the active profile, so this adapts
   // automatically when the user changes Sensitivity in System Settings.
+  // The shared status store caps any request at 10 s, so a 30-60 s profile still
+  // keeps the poller's active tier alive.
   const daemonIntervalSec = data?.connectivity?.history_interval_sec;
   React.useEffect(() => {
     if (!daemonIntervalSec || daemonIntervalSec <= 0) return;
@@ -69,7 +75,7 @@ const HomeComponent = () => {
       aria-live="polite"
       aria-atomic="false"
     >
-      {error && !isLoading && (
+      {error && !isLoading && !reconnecting && (
         <Banner
           role="stale"
           title={t("alert.modem_unreachable")}
@@ -185,6 +191,7 @@ const HomeComponent = () => {
             deviceData={data?.device ?? null}
             lteData={data?.lte ?? null}
             nrData={data?.nr ?? null}
+            dataUsed={data?.data_used ?? null}
             isLoading={isLoading}
             modemReachable={data?.modem_reachable ?? false}
           />

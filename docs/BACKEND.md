@@ -50,7 +50,7 @@ QManager runs as a self-contained web management stack inside the RM520N-GL mode
 | Web server | lighttpd 1.4.82 (Entware, `/opt/sbin/lighttpd`) |
 | Package manager | Entware opkg at `/opt/` (Entware libc 2.27 alongside system glibc 2.31) |
 | Config store | JSON files under `/etc/qmanager/` (no UCI) |
-| AT transport | `atcli_smd11` via `/dev/smd11` (direct, no socat) |
+| AT transport | `qcmd` → `qmanager_atd` on `/dev/smd11` (direct, no socat; broker daemon on RM520N-GL, in-process elsewhere) |
 | Firewall | iptables 1.8.4 legacy (direct, no nftables/fw4) |
 | Shell | `/bin/sh` is **BusyBox `ash`** (`/bin/sh -> busybox.nosuid`); `/bin/bash` exists but is **bash 3.2.57(1)-release** — see [§14 Common Pitfalls](#14-common-pitfalls) for missing modern bashisms |
 
@@ -63,7 +63,7 @@ Shared libraries       -- scripts/usr/lib/qmanager/
      |
 Shell daemons          -- scripts/usr/bin/qmanager_*
      |
-AT command gatekeeper  -- scripts/usr/bin/qcmd -> atcli_smd11 -> /dev/smd11
+AT command gatekeeper  -- /usr/bin/qcmd -> qmanager_atd (native/qmanager_atd/) -> /dev/smd11
      |
 systemd services       -- scripts/etc/systemd/system/
      |
@@ -88,7 +88,7 @@ These constraints cause silent failures or security issues if violated.
 - A **www-data-owned** file there is **not writable by root** — and this check has **no root override**, at any mode including `0666`.
 
 So the only ownership under which both a root daemon and a `www-data` CGI can write the same `/tmp` file is **`root:root` mode `0666`**, seeded at boot by `qmanager_setup`. Rules that follow:
-- `qmanager_setup` pre-creates every shared `/tmp` file `root:root` mode 666. Files where root's access is read-only (`/tmp/qmanager_at.lock`, `/tmp/qmanager_at.pid` — `qcmd` holds the `flock` on `9<`) are `www-data`-owned instead.
+- `qmanager_setup` pre-creates every shared `/tmp` file `root:root` mode 666. (The AT lock is no longer one of them: since T4.3 it is `/run/qmanager_at/at.lock`, see §11.)
 - Every writer of a seeded file writes **in place** (`>`, `>>`, `cat tmp > file`, `: >`). Never tmp+`mv`, never `rm` to reset — both swap the inode and replace the seed with the writer's own uid at its umask.
 - For worker scripts that reset their **own** single-UID log, `rm -f` then create fresh is fine (as in `qmanager_update`).
 - Do not confuse this with plain mode bits: a root-owned `0644` file blocks `www-data` through ordinary permissions, not through this sysctl. The two fail in opposite directions.
@@ -186,7 +186,7 @@ All paths are relative to the repository root. The source tree mirrors the devic
 
 | Source path | Device path | Contents |
 |-------------|-------------|----------|
-| `scripts/usr/bin/` | `/usr/bin/` | Daemon and utility scripts (qcmd, qmanager_*) |
+| `scripts/usr/bin/` | `/usr/bin/` | Daemon and utility scripts (qmanager_*) |
 | `scripts/usr/lib/qmanager/` | `/usr/lib/qmanager/` | Shared shell libraries |
 | `scripts/etc/systemd/system/` | `/lib/systemd/system/` | Systemd unit files |
 | `scripts/etc/sudoers.d/qmanager` | `/etc/sudoers.d/qmanager` (also `/opt/etc/sudoers.d/qmanager`) | Sudoers rules for www-data |
@@ -196,8 +196,7 @@ All paths are relative to the repository root. The source tree mirrors the devic
 | `scripts/www/cgi-bin/quecmanager/` | `/usrdata/qmanager/www/cgi-bin/quecmanager/` | CGI scripts |
 | `scripts/usrdata/qmanager/lighttpd.conf` | `/usrdata/qmanager/lighttpd.conf` | lighttpd configuration |
 | `scripts/usrdata/qmanager/console/` | `/usrdata/qmanager/console/` | Web console (ttyd) |
-| `dependencies/atcli_smd11` | `/usr/bin/atcli_smd11` | AT CLI binary (Rust, ARMv7 static) |
-| `dependencies/sms_tool` | `/usr/bin/sms_tool` | SMS send/receive binary (ARMv7) |
+| `dependencies/qmanager_atd` | `/usr/bin/qmanager_atd` (+ `qcmd`, `qsms` symlinks) | AT/SMS/QMI broker (Rust, static musl armhf) |
 | `dependencies/ttyd` | `/usrdata/qmanager/console/ttyd` | Web terminal binary (ARMv7) |
 
 **Note on `qmanager_smd11_udev.sh`:** The source path (`scripts/etc/udev/scripts/`) is deliberately outside `scripts/usr/lib/qmanager/` to prevent the installer's glob copy from resetting its execute bit to 644. The installer copies it to `/usr/lib/qmanager/` with explicit `chmod +x`.
@@ -238,7 +237,8 @@ Session tokens are 64-char hex strings (256 bits). Session TTL is 3600 seconds.
 | `qm_timing_safe_compare <a> <b>` | Constant-time string comparison via awk |
 | `qm_verify_password <pw>` | Verify password against stored hash+salt in `auth.json` |
 | `qm_save_password <pw>` | Hash and persist a new password to `auth.json` (chmod 600) |
-| `qm_get_cookie <name>` | Extract named cookie value from `$HTTP_COOKIE` |
+| `qm_cookie_var <name> <var>` | Set `<var>` to the named cookie's value from `$HTTP_COOKIE` with no subshell; returns 0 if present, 1 if absent. Prefer this |
+| `qm_get_cookie <name>` | Print the named cookie value (wrapper over `qm_cookie_var`; forks when used as `$(…)`) |
 | `qm_set_session_cookies <token>` | Emit `Set-Cookie` headers for session + indicator cookies |
 | `qm_clear_session_cookies` | Emit `Set-Cookie` headers that expire both cookies |
 | `qm_generate_token` | Generate a 64-char hex session token |
@@ -496,13 +496,13 @@ Semantic version comparison. Used by `qmanager_update` and `qmanager_auto_update
 
 ### 4.12 `sms_alerts.sh`
 
-SMS alert **transport** library. Sourced by `qmanager_poller` (via `alert_engine.sh`) and by the `monitoring/alerts.sh` CGI. Mirrors `email_alerts.sh`: since the centralized-alerts consolidation it only knows how to **send** an SMS via `sms_tool` — downtime tracking and threshold evaluation moved to `alert_engine.sh`. SMS is the only channel capable of `connection_lost` alerts, since `sms_tool` rides the cellular control channel and works while the data bearer is down. Shares `/tmp/qmanager_at.lock` with `qcmd` and the SMS Center CGI to serialize `/dev/smd11` access.
+SMS alert **transport** library. Sourced by `qmanager_poller` (via `alert_engine.sh`) and by the `monitoring/alerts.sh` CGI. Mirrors `email_alerts.sh`: since the centralized-alerts consolidation it only knows how to **send** an SMS via `qsms send` — downtime tracking and threshold evaluation moved to `alert_engine.sh`. SMS is the only channel capable of `connection_lost` alerts, since it rides the cellular control channel and works while the data bearer is down. On the RM520N-GL `qsms` uses QMI WMS and takes no AT lock; see [`reference/sms.md`](reference/sms.md#transport-qsms).
 
 Config: `/etc/qmanager/sms_alerts.json`. Log: `/tmp/qmanager_sms_log.json` (NDJSON, max 100 entries). Reload flag: `/tmp/qmanager_sms_reload` (touched by the CGI, consumed by `alert_engine.sh`).
 
 **Registration guard:** Before every send attempt, `_sa_is_registered()` verifies that `modem_reachable="true"` AND (`lte_state="connected"` OR `nr_state="connected"`).
 
-**Phone number format:** Stored with leading `+` in config; `+` is stripped via `${_sa_recipient#+}` before calling `sms_tool send` (sms_tool does not accept `+` prefix).
+**Phone number format:** Stored with leading `+` in config; `+` is stripped via `${_sa_recipient#+}` before calling `qsms send`.
 
 **CGI test send override:** CGI sets `_sa_is_registered() { return 0; }` after sourcing the library (the `_SMS_ALERTS_LOADED` guard prevents re-source clobber) because CGI context lacks poller globals.
 
@@ -512,8 +512,7 @@ Config: `/etc/qmanager/sms_alerts.json`. Log: `/tmp/qmanager_sms_log.json` (NDJS
 | `sms_alert_send <body>` | Send one SMS now (the transport entry point called by `alert_engine.sh` and the CGI test) |
 | `_sa_read_config` | Read `sms_alerts.json` into `_sa_*` state variables (`_sa_enabled`, `_sa_recipient`, `_sa_threshold_minutes`, …) |
 | `_sa_is_registered` | Check modem reachable + LTE or NR connected; return 0/1 |
-| `_sa_flock_wait <fd> <timeout>` | BusyBox-compatible flock polling loop |
-| `_sa_sms_locked [sms_tool_args...]` | Run sms_tool under the shared AT lock |
+| `_sa_send_error <qsms-output>` | Plain-language reason from a failed `qsms send` envelope (`.detail // .error`, else a fixed sentence) |
 | `_sa_do_send <body>` | Send SMS with retry; returns 0=success, 1=failed, 2=not attempted |
 | `_sa_send_test_sms` | Send test SMS (called by CGI) |
 | `_sa_log_event <trigger> <status> <recipient>` | Append NDJSON entry to SMS log |
@@ -523,7 +522,7 @@ Config: `/etc/qmanager/sms_alerts.json`. Log: `/tmp/qmanager_sms_log.json` (NDJS
 
 Unified alert engine. Sourced by `qmanager_poller`; replaces the three independent per-channel downtime state machines with ONE monotonic downtime timer (`/proc/uptime`) plus a routing × capability matrix that decides which enabled + routed + capable channel(s) fire for each of three events: `connection_lost`, `connection_restored`, `reboot`. Reads the poller globals `conn_internet_available` and `conn_during_recovery`; never probes or issues AT commands itself. Full contract in `docs/reference/alerts.md`.
 
-Config: `/etc/qmanager/alert_routing.json` (routing matrix, version 1) plus each channel's own config. Reboot bookkeeping: `/etc/qmanager/{last_boot_id,reboot_history.json}` and read-only `/etc/qmanager/crash.log`.
+Config: `/etc/qmanager/alert_routing.json` (routing matrix, version 1) plus each channel's own config. Reboot bookkeeping: `/etc/qmanager/{last_boot_id,reboot_history.json}` and read-only `/usrdata/qmanager/crash.log` (root-owned; path from `crash_log.sh`).
 
 | Function | Description |
 |----------|-------------|
@@ -540,7 +539,7 @@ System settings abstraction. Replaces `uci system.@system[0].*` for hostname and
 | Function | Description |
 |----------|-------------|
 | `sys_get_hostname` | Read hostname from `qmanager.conf` -> `/etc/hostname` -> default `"RM520N-GL"` |
-| `sys_set_hostname <name>` | Persist to `qmanager.conf`, write `/proc/sys/kernel/hostname`, update `/etc/hostname` |
+| `sys_set_hostname <name>` | Persist the display name to `qmanager.conf`, then derive an RFC 1123 label and apply it via `sudo -n /usr/bin/qmanager_hostname_apply` (writes `/etc/hostname` and `/proc/sys/kernel/hostname`). rc 0 ok (also when no label can be derived), rc 1 config write failed, rc 2 saved but system apply failed |
 | `sys_get_timezone` | Read POSIX TZ string from `qmanager.conf` (default `"UTC0"`) |
 | `sys_get_zonename` | Read IANA zone name from `qmanager.conf` (default `"UTC"`) |
 | `sys_set_timezone <tz> [zonename]` | Persist TZ + zonename to `qmanager.conf`, then apply the live clock via `sudo -n /usr/bin/qmanager_timezone_apply <zonename>` (copies the resolved TZif over `/etc/localtime`). Prints a status token on stdout: `applied` / `failed` / `not_attempted` / `invalid`. Does **not** write `/etc/TZ` or export `$TZ` (glibc 2.31 reads `/etc/localtime`, and `/etc/TZ` is inert here) |
@@ -620,10 +619,12 @@ Main data collection daemon. Sources `qlog.sh`, `parse_at.sh`, `events.sh`, and 
 
 | Tier | Interval | AT commands |
 |------|----------|-------------|
-| Tier 1 (hot) | Every cycle (~2s) | `AT+QENG="servingcell"`, `/proc` traffic stats |
-| Tier 1.5 (signal) | Every 5 cycles (~10s) | `AT+QRSRP`, `AT+QRSRQ`, `AT+QSINR` |
-| Tier 2 (warm) | Every 15 cycles (~30s) | `AT+QTEMP`, `AT+COPS?`, `AT+CPIN?`, `AT+QUIMSLOT?`, `AT+QCAINFO`, `AT+QNWCFG="lte_time_advance"`, `AT+QNWCFG="nr5g_time_advance"`, `AT+QNWCFG="lte_mimo_layers"`, `AT+QNWCFG="nr5g_mimo_layers"`, `AT+CGCONTRDP`, `AT+QMAP="WWAN"` |
+| Tier 1 (hot) | Every cycle (~2.6–4 s measured, not 2 s) | `AT+QENG="servingcell"`, `AT+QCAINFO`, `/proc` traffic stats |
+| Tier 1.5 (signal) | Every 5 cycles | `AT+QRSRP;+QRSRQ;+QSINR` (one compound call) |
+| Tier 2 (warm) | Every 15 cycles | `AT+QTEMP;+COPS?;+QUIMSLOT?;+CNUM;+QSIMSTAT?;+CPIN?`, `AT+CGCONTRDP;+QMAP="WWAN"`, the network-mode-gated `AT+QNWCFG="*_time_advance"` / `"*_mimo_layers"` reads |
 | Boot-only | Once at startup | `AT+CVERSION`, `AT+CGSN`, `AT+CIMI`, `AT+QCCID`, `AT+CNUM`, `AT+QGETCAPABILITY`, `AT+QNWPREFCFG="policy_band"`, IPPT parsers |
+
+The table is the `active` tier, which runs while a browser has polled within the last 20 s (`/tmp/qmanager_ui_active` heartbeat). In `idle` and `deep` the AT reads above run on longer uptime deadlines while local work still runs every cycle; the tier is published as `.device.poller_tier`. See [adaptive-polling.md](reference/adaptive-polling.md).
 
 Network interface for traffic stats is auto-detected from the presence of `/etc/quectel-project-version`: `rmnet_ipa0` on the RM520N-GL. The `else` branch falls back to `wwan0` — a legacy holdover from the RM551E/OpenWRT lineage that the sentinel-file check bypasses on this platform.
 
@@ -665,7 +666,7 @@ Times a TCP connect (`curl -I`, `time_connect − time_namelookup`) to each conf
 #### `qmanager_watchcat`
 
 **Location:** `/usr/bin/qmanager_watchcat`
-**State files:** `/tmp/qmanager_watchcat.json`, `/tmp/qmanager_watchcat.pid`, `/tmp/qmanager_watchcat.lock`, `/tmp/qmanager_recovery_active`, `/etc/qmanager/qmanager_sim_failover` (persistent), `/etc/qmanager/last_iccid` (persistent), `/etc/qmanager/crash.log`
+**State files:** `/tmp/qmanager_watchcat.json`, `/tmp/qmanager_watchcat.pid`, `/tmp/qmanager_watchcat.lock`, `/tmp/qmanager_recovery_active`, `/etc/qmanager/qmanager_sim_failover` (persistent), `/etc/qmanager/last_iccid` (persistent), `/usrdata/qmanager/crash.log` (persistent, root-owned)
 **Config:** `qmanager.conf` section `watchcat`
 
 Pure state machine. Reads `qmanager_ping.json`; never pings independently. Full feature reference: `docs/reference/connection-watchdog.md`.
@@ -697,16 +698,16 @@ These are started on-demand by CGI actions and stop when their task completes.
 #### `qmanager_cell_scanner`
 
 **Location:** `/usr/bin/qmanager_cell_scanner`
-**State files:** `/tmp/qmanager_cell_scan_result.json`, `/tmp/qmanager_cell_scan_error`, `/tmp/qmanager_cell_scan.pid`, `/tmp/qmanager_long_running`
+**State files:** `/tmp/qmanager_cell_scan_result.json`, `/tmp/qmanager_cell_scan_error`, `/tmp/qmanager_cell_scan.pid`
 
-Runs `AT+QSCAN` (may take >60 seconds). Writes scan results with MCC/MNC lookups from `/usrdata/qmanager/www/cgi-bin/quecmanager/operator-list.json`. Spawned by `at_cmd/cell_scan_start.sh`; polled by `at_cmd/cell_scan_status.sh`. Raises the `/tmp/qmanager_long_running` maintenance marker before taking the AT mutex and clears it in its `EXIT` trap. It inherits the `/tmp/qmanager_scan.lock` `flock` from the start endpoint and holds it for its whole run.
+Runs `AT+QSCAN` (may take >60 seconds). Writes scan results with MCC/MNC lookups from `/usrdata/qmanager/www/cgi-bin/quecmanager/operator-list.json`. Spawned by `at_cmd/cell_scan_start.sh`; polled by `at_cmd/cell_scan_status.sh`. It does not write the long-running flag: the broker raises `/run/qmanager_at/long_running` around `AT+QSCAN` once it holds the AT lock. It inherits the `/tmp/qmanager_scan.lock` `flock` from the start endpoint and holds it for its whole run.
 
 #### `qmanager_neighbour_scanner`
 
 **Location:** `/usr/bin/qmanager_neighbour_scanner`
 **State files:** `/tmp/qmanager_neighbour_scan_result.json`, `/tmp/qmanager_neighbour_scan_error`, `/tmp/qmanager_neighbour_scan.pid`
 
-Runs `AT+QENG="neighbourcell"` (LTE leg) then `AT+QNWCFG="nr5g_meas_info"` (NR leg). Spawned by `at_cmd/neighbour_scan_start.sh`; polled by `at_cmd/neighbour_scan_status.sh`. Inherits the same `/tmp/qmanager_scan.lock` `flock`. It captures each leg's `qcmd` stderr to a `*_err.tmp` file so a `modem_busy` collision is reported differently from a real AT failure, and a leg that was blocked while the other found zero rows is reported as an **error**, never as "complete — 0 cells". It deliberately does **not** raise `/tmp/qmanager_long_running` (~2 s hold). See [reference/cell-scanner.md](reference/cell-scanner.md).
+Runs `AT+QENG="neighbourcell"` (LTE leg) then `AT+QNWCFG="nr5g_meas_info"` (NR leg). Spawned by `at_cmd/neighbour_scan_start.sh`; polled by `at_cmd/neighbour_scan_status.sh`. Inherits the same `/tmp/qmanager_scan.lock` `flock`. It captures each leg's `qcmd` stderr to a `*_err.tmp` file so a `modem_busy` collision is reported differently from a real AT failure, and a leg that was blocked while the other found zero rows is reported as an **error**, never as "complete — 0 cells". `AT+QENG` is not a long command, so no long-running flag is raised for it (~2 s hold). See [reference/cell-scanner.md](reference/cell-scanner.md).
 
 #### `qmanager_band_failover`
 
@@ -755,7 +756,7 @@ These run once at boot via systemd oneshot units.
 Pre-create shared `/tmp` files with correct ownership for `fs.protected_regular=1`. Set `/dev/smd11` permissions. Ensure required directories exist. Initialize `qmanager.conf` defaults. Make all CGI scripts and binaries executable.
 
 Key pre-creates (see §10 and §11 for the full list and rationale):
-- `/tmp/qmanager_at.lock` -- `www-data:www-data` mode 666
+- `/run/qmanager_at/` -- `root:dialout` mode 0750, and `/run/qmanager_at/at.lock` -- `root:dialout` mode 0640 (first thing the script does; never truncates an existing lock)
 - `/tmp/qmanager.log` -- `root:root` mode 666
 - `/tmp/qmanager_sessions/` -- `www-data:www-data` mode 700
 
@@ -813,21 +814,18 @@ These are invoked on-demand by CGI scripts via sudo, or interactively.
 #### `qcmd`
 
 **Location:** `/usr/bin/qcmd`
-**Lock file:** `/tmp/qmanager_at.lock`
-**Depends on:** `atcli_smd11` (Rust, ARMv7 static binary), flock
+**Lock file:** `/run/qmanager_at/at.lock`
+**Is:** a symlink to `qmanager_atd` (Rust, static), on every model
 
-The single entry point for all modem AT communication. Serializes access to `/dev/smd11` via `flock`. Uses `atcli_smd11` which accesses the device directly (no PTY bridge, no socat).
+The single entry point for all modem AT communication. Serializes access to `/dev/smd11` via `flock`. On the RM520N-GL and the RG501Q-EU it sends through the `qmanager_atd` broker and falls back in-process when the broker is down; on an unknown model (no broker unit) it always runs in-process. No PTY bridge, no socat.
 
 ```sh
 qcmd "AT+COMMAND"      # Returns raw response
 qcmd -j "AT+COMMAND"   # Returns JSON-wrapped response
+qcmd -t 2500 "AT+..."  # Caps the wait at 2500 ms; a cap that runs out is modem_busy (or QCMD_WAIT_MS=2500 for one call)
 ```
 
-`atcli_smd11` always exits 0. `qcmd` detects errors by scanning the response for `ERROR`. Long commands (`QSCAN`, `QSCANFREQ`, `QFOTADL`) get a longer lock wait (10s vs 5s).
-
-**Lock pattern:** `( flock_wait 9 $TIMEOUT; atcli_smd11 "$CMD" ) 9<"$LOCK_FILE"`
-
-See §11 for the `flock_wait` polling pattern.
+Failure is exit 1 with an empty stdout and `ERROR: modem_busy` or `ERROR: command_failed` on stderr. Long commands (`QSCAN`, `QSCANFREQ`, `QFOTADL`, `COPS=2`, `COPS=0`, plus `/etc/qmanager/long_commands.list`) get a longer lock wait (10s vs 5s). Full contract: [at-command-transport.md](reference/at-command-transport.md).
 
 #### `qmanager_tailscale_mgr`
 
@@ -910,12 +908,13 @@ OTA update worker. See §12 for full pipeline description. Called via `sudo -n` 
 | Service | Type | Binary | Description |
 |---------|------|--------|-------------|
 | `lighttpd.service` | simple | `/opt/sbin/lighttpd` | Entware lighttpd; uses `/usrdata/qmanager/lighttpd.conf`; after `opt.mount` |
+| `qmanager-atd.service` | notify (`WatchdogSec=30`) | `/usr/bin/qmanager_atd` | AT broker; **RM520N-GL and RG501Q-EU** (gate `qm_hw_atd_enabled`; the installer leaves the unit off other models). `After=qmanager-setup`, `Before=qmanager-poller`; `ExecStartPre` waits up to 30 s for `/dev/smd11`; `Restart=on-failure`. Socket `/var/run/qmanager_atd.sock` (`root:dialout 0660`). See [at-command-transport.md](reference/at-command-transport.md) |
 | `qmanager-console.service` | simple | `/usrdata/qmanager/console/ttyd` | Web terminal on `127.0.0.1:8080`, reverse-proxied at `/console` |
 | `qmanager-firewall.service` | oneshot | `/usr/bin/qmanager_firewall` | Port firewall; runs before setup and lighttpd |
 | `qmanager-imei-check.service` | oneshot | `/usr/bin/qmanager_imei_check` | Post-boot IMEI restore; guarded by `ExecStartPre` condition checks |
 | `qmanager-mtu.service` | simple | `/usr/bin/qmanager_mtu_apply` | MTU persistence; `ConditionPathExists=/etc/firewall.user.mtu` |
 | `qmanager-ping.service` | simple | `/usr/bin/qmanager_ping` | Ping daemon; required by poller |
-| `qmanager-poller.service` | simple | `/usr/bin/qmanager_poller` | Main data poller; guards `/dev/smd11` in `ExecStartPre`; sources Data Used (schema v5, with a static SoC-derived orientation map resolved once at startup) from `/proc/net/dev` at the 2 s Tier 1 cadence |
+| `qmanager-poller.service` | simple | `/usr/bin/qmanager_poller` | Main data poller; guards `/dev/smd11` in `ExecStartPre`; sources Data Used (schema 6, with a static SoC-derived orientation map resolved once at startup) from `/proc/net/dev` every cycle, in every activity tier |
 | `qmanager-setup.service` | oneshot (RemainAfterExit) | `/usr/bin/qmanager_setup` | Permission setup; before ping and poller |
 | `qmanager-sites.service` | simple | `/usr/bin/qmanager_sites` | Sites monitor; `After=network.target qmanager-setup.service`, `Restart=on-failure`; idles while `sites.json` has `"enabled": false` |
 | `qmanager-tower-failover.service` | simple | `/usr/bin/qmanager_tower_failover` | Tower lock failover; guarded by config check in `ExecStartPre` |
@@ -925,30 +924,34 @@ OTA update worker. See §12 for full pipeline description. Called via `sudo -n` 
 
 **`tailscaled.service`** is staged in `/usr/lib/qmanager/tailscaled.service` (source: `scripts/etc/systemd/system/tailscaled.service`). It is only copied to `/lib/systemd/system/` when the user installs Tailscale via `qmanager_tailscale_mgr install`. `ExecStartPost=/bin/chmod 755 /usrdata/tailscale` restores directory permissions after tailscaled resets them to 700.
 
-**Service ordering:** `qmanager-firewall` -> `qmanager-setup` -> `qmanager-ping` -> `qmanager-poller` -> `qmanager-watchcat`.
+**Service ordering:** `qmanager-firewall` -> `qmanager-setup` -> `qmanager-atd` (RM520N-GL) and `qmanager-ping` -> `qmanager-poller` -> `qmanager-watchcat`.
 
 ---
 
 ## 7. Sudoers Rules
 
-File deployed to `/etc/sudoers.d/qmanager` (and `/opt/etc/sudoers.d/qmanager` for Entware sudo).
+Source `scripts/etc/sudoers.d/qmanager`, installed to `$SUDOERS_DIR/qmanager` — `/opt/etc/sudoers.d/qmanager` when Entware sudo is present (the measured case; the device has no `/etc/sudoers.d`), else `/etc/sudoers.d/qmanager`.
 
 ```
 # QManager -- sudoers rules for CGI scripts (lighttpd runs as www-data)
 # Install location: /opt/etc/sudoers.d/qmanager (Entware) or /etc/sudoers.d/qmanager
 
-# Service control (used by platform.sh svc_* functions)
-www-data ALL=(root) NOPASSWD: /bin/systemctl start *, /bin/systemctl stop *, /bin/systemctl restart *, /bin/systemctl is-active *
+# sudo 1.8.31 here has no built-in secure_path, so pin one for www-data.
+Defaults:www-data secure_path="/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 
-# Boot persistence (symlink-based -- systemctl enable doesn't work on RM520N-GL)
-www-data ALL=(root) NOPASSWD: /bin/ln -sf /lib/systemd/system/qmanager*.service /lib/systemd/system/multi-user.target.wants/qmanager*.service
-www-data ALL=(root) NOPASSWD: /bin/rm -f /lib/systemd/system/multi-user.target.wants/qmanager*.service
+# QManager units: one helper that validates verb + unit itself
+www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_svc
+# tailscaled: the one third-party unit, exact lines
+www-data ALL=(root) NOPASSWD: /bin/systemctl start tailscaled
+www-data ALL=(root) NOPASSWD: /bin/systemctl stop tailscaled
+www-data ALL=(root) NOPASSWD: /bin/systemctl restart tailscaled
+www-data ALL=(root) NOPASSWD: /bin/systemctl is-active tailscaled
 
-# Firewall rules (used by TTL, VPN firewall)
-www-data ALL=(root) NOPASSWD: /usr/sbin/iptables, /usr/sbin/iptables-restore, /usr/sbin/ip6tables, /usr/sbin/ip6tables-restore
+# Firewall rules (TTL/HL, Traffic Engine): allow-listed helper, no raw iptables
+www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_fw_apply
 
-# System reboot (used by system/reboot.sh, update installer)
-www-data ALL=(root) NOPASSWD: /sbin/reboot
+# System reboot: the empty "" pins the no-argument form
+www-data ALL=(root) NOPASSWD: /sbin/reboot ""
 
 # Scheduled Reboot + Tower Lock schedule timer arming (replaced the dead crontab
 # path — RM520N runs no crond; these arm runtime systemd OnCalendar timers)
@@ -968,8 +971,15 @@ www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_email_send
 
 # Tailscale VPN management
 www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_tailscale_mgr
-www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale
-www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscaled --version
+# Exact argument forms used by vpn/tailscale.sh (`=` is backslash-escaped)
+www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale version
+www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale status --json
+www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale up --reset --accept-dns\=false
+www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale up --reset --accept-dns\=false --ssh
+www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale down
+www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale logout
+www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale set --ssh\=true
+www-data ALL=(root) NOPASSWD: /usrdata/tailscale/tailscale set --ssh\=false
 
 # Tailscale boot persistence (symlink-based)
 www-data ALL=(root) NOPASSWD: /bin/ln -sf /lib/systemd/system/tailscaled.service /lib/systemd/system/multi-user.target.wants/tailscaled.service
@@ -986,10 +996,12 @@ www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_update
 
 | Rule | Used by |
 |------|---------|
-| `systemctl start/stop/restart/is-active *` | `platform.sh` `svc_start`, `svc_stop`, `svc_restart`, `svc_is_running`; all CGI scripts that control services |
-| `ln -sf qmanager*.service` / `rm -f qmanager*.service` | `platform.sh` `svc_enable`/`svc_disable`; `tower/settings.sh`, `monitoring/watchdog.sh` |
-| `iptables*`, `ip6tables*`, `*-restore` | `platform.sh` `run_iptables`/`run_ip6tables`; `network/ttl.sh`, `qmanager_firewall` |
-| `/sbin/reboot` | `cgi_base.sh` `cgi_reboot_response`; `system/reboot.sh`; `qmanager_update` |
+| `Defaults:www-data secure_path=...` | Every `sudo` call from `www-data`: root helpers no longer inherit lighttpd's/the caller's `PATH` (opt-first order matches `cgi_base.sh`) |
+| `qmanager_svc` | `platform.sh` `svc_start`/`svc_stop`/`svc_restart`/`svc_reset_failed`/`svc_is_running`/`svc_enable`/`svc_disable` when running as `www-data`; root callers use `systemctl`/`ln`/`rm` directly |
+| `systemctl start/stop/restart/is-active tailscaled` | `platform.sh` `_svc_ctl` when the mapped unit is `tailscaled` |
+| `qmanager_fw_apply` | `platform.sh` `run_iptables`/`run_ip6tables` when running as `www-data`: `ttl_state.sh` (TTL/HL) and `dpi_state.sh` (Traffic Engine). Root callers run iptables directly |
+| `/sbin/reboot ""` | `platform.sh` `run_reboot`; `cgi_base.sh` `cgi_reboot_response`; `system/reboot.sh`. Arguments are refused |
+| `qmanager_dns_apply` | `network/custom_dns.sh` save/clear — see [custom-dns.md](reference/custom-dns.md#apply-pipeline) |
 | `qmanager_auto_update_arm` | `system/update.sh` `save_auto_update` — arms/disarms `qmanager-auto-update.timer` live via its `/lib` boot symlink |
 | `qmanager_scheduled_reboot_arm` | `system/settings.sh` `save_scheduled_reboot` — arms/disarms `qmanager-scheduled-reboot.timer` |
 | `qmanager_tower_schedule_arm` | `tower/schedule.sh` — arms/clears the `qmanager-tower-schedule-apply`/`-clear` timer pair |
@@ -997,20 +1009,23 @@ www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_update
 | `qmanager_secret_set` | `monitoring/alerts.sh` `save_settings` — stores/clears the Discord token and Gmail app password in `/etc/qmanager-secrets/`, renders `msmtprc`, maintains the `*_set` markers |
 | `qmanager_email_send` | `monitoring/alerts.sh` `send_test` (email channel) — the CGI can no longer read `msmtprc` |
 | `qmanager_tailscale_mgr` | `vpn/tailscale.sh` |
-| `/usrdata/tailscale/tailscale` | `vpn/tailscale.sh` (status queries, `tailscale up`) |
-| `/usrdata/tailscale/tailscaled --version` | `vpn/tailscale.sh` (installed version check) |
+| `/usrdata/tailscale/tailscale <exact args>` | `vpn/tailscale.sh` `get_ts_version` and `ts_cmd` — one line per call form; a new verb or flag needs a new line ([tailscale.md](reference/tailscale.md#sudoers-surface)) |
 | `ln/rm tailscaled.service` | `vpn/tailscale.sh` (enable/disable Tailscale at boot) |
 | `qmanager_console_mgr` | Console management via system settings CGI |
 | `qmanager_update` | `system/update.sh` (OTA update; added in v0.1.5 -- previously required ADB/SSH) |
 | `qmanager_timezone_apply` | `system_config.sh` `sys_set_timezone` (copies resolved TZif over `/etc/localtime`) |
+| `qmanager_mtu_set` | `connection_store.sh` `conn_mtu_set` / `conn_mtu_disable` (`network/mtu.sh`, config restore), `tower_lock_mgr.sh` `mtu_reapply_after_bounce` (`apply`) |
+| `qmanager_hostname_apply` | `system_config.sh` `sys_set_hostname` (`system/settings.sh`, config restore) |
 
-> ℹ️ NOTE: The rules block quoted above is illustrative and not exhaustive. The authoritative file is `scripts/etc/sudoers.d/qmanager`, which also carries `qmanager_health_check`, `qmanager_ethernet_apply`, `qmanager_timezone_apply`, and the Custom DNS rules.
+> ℹ️ NOTE: The rules block quoted above is illustrative and not exhaustive. The authoritative file is `scripts/etc/sudoers.d/qmanager`, which also carries `qmanager_crash_log_append`, `qmanager_dpi_install`, `qmanager_dpi_verify`, `qmanager_scenario_schedule_arm`, `qmanager_health_check`, `qmanager_ethernet_apply`, `qmanager_lan_apply`, `qmanager_language_pack_apply`, `qmanager_sim_registry_apply` and `qmanager_dns_apply`.
 
-**Security note:** All rules use full absolute paths. sudo's `secure_path` is overridden by Entware's sudo configuration, but absolute paths in rules are immune to PATH injection regardless.
+**Security note:** All rules use full absolute paths, and the drop-in sets `Defaults:www-data secure_path` because this sudo (1.8.31) has no built-in one — before that line, the caller's `PATH` reached every root helper. Most granted helpers also pin `PATH=/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin` themselves. Three do not: `qmanager_set_ssh_password` and `qmanager_console_mgr` set no `PATH`, and `qmanager_update` prepends that list but keeps the inherited `PATH` after it — all three rely on `secure_path` alone. Pin `PATH` in any new helper.
 
-**Bare paths, validation inside the helper.** New grants are a bare helper path with no arguments and no wildcards (`qmanager_crash_log_append`, `qmanager_*_arm`, `qmanager_secret_set`, `qmanager_email_send`). A sudoers wildcard cannot express an argument whitelist, a length cap, or a symlink refusal; the helper can, and it can be read and tested.
+**Bare paths, validation inside the helper.** New grants are a bare helper path with no arguments and no wildcards (`qmanager_svc`, `qmanager_fw_apply`, `qmanager_dns_apply`, `qmanager_crash_log_append`, `qmanager_*_arm`, `qmanager_secret_set`, `qmanager_email_send`). A sudoers `*` in a command's arguments matches any text, **including spaces and `/`**, so a line like `systemctl start qmanager-*` also matched extra units and extra options after the prefix, and `ln -sf .../qmanager*.service ...` matched paths outside the unit directory. A sudoers wildcard cannot express an argument whitelist, a length cap, or a symlink refusal; the helper can, and it can be read and tested. The only argument-carrying grants left are exact, wildcard-free lines (`tailscaled`, the `tailscale` CLI forms, `/sbin/reboot ""`).
 
 > ⚠️ WARNING: **The drop-in is `visudo -c -f`-gated at install time.** sudo parses all of `sudoers.d` as one unit, so a single malformed line does not disable one grant — it makes sudo reject the **entire directory**, taking out every privileged CGI action at once (reboot, OTA, Tailscale, ethernet, timezone, secret writes). `install_backend()` stages the file as `$SUDOERS_DIR/qmanager.qm_stage.$$` (sudo skips any include-directory filename containing a `.`, so the stage file is never parsed), runs `visudo -c -f` against it, and only then renames it into place. A validation failure leaves the previously-installed known-good file completely untouched. If `visudo` itself is absent the install proceeds unvalidated but warns loudly — the pre-existing behavior. Do not "simplify" this back to a direct `install_file` into `sudoers.d`.
+>
+> There is also an **early** check: `preflight()` runs `visudo -c -f` on the shipped drop-in (when `DO_BACKEND=1`) and `die`s **before any service is stopped or file installed**. That ordering matters because the new helpers and the grants that replace raw commands ship together: new helpers paired with a refused (so still old, broader) drop-in is worse than aborting. The late check in `install_backend()` stays as a second guard. With no `visudo` binary the early check is skipped without a message and the late one warns, as above.
 
 ---
 
@@ -1022,7 +1037,7 @@ www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_update
 KERNEL=="smd11", ACTION=="add", RUN+="/usr/lib/qmanager/qmanager_smd11_udev.sh"
 ```
 
-**Purpose:** `/dev/smd11` defaults to `crw------- root:root` on boot. `www-data` (member of the `dialout` group) needs read/write access to run AT commands via `atcli_smd11`. This rule fires on every kernel `add` event for `smd11` and runs the helper which sets `chmod 660` + `chown root:dialout`.
+**Purpose:** `/dev/smd11` defaults to `crw------- root:root` on boot. `www-data` (member of the `dialout` group) needs read/write access to run AT commands via `qcmd`. This rule fires on every kernel `add` event for `smd11` and runs the helper which sets `chmod 660` + `chown root:dialout`.
 
 **Why no `SUBSYSTEM==` filter:** The subsystem name for `smd11` is `glinkpkt` on RM520N-GL (sysfs path: `/sys/class/glinkpkt/smd11`) but differs on PRAIRE-derived platforms (RG502Q/RM502Q). `KERNEL=="smd11"` is already highly specific to Qualcomm SMD naming convention. Omitting `SUBSYSTEM==` makes the rule portable across platforms without verification.
 
@@ -1104,7 +1119,7 @@ For request/response schemas, see `API-REFERENCE.md`.
 | `at_cmd/cell_scan_status.sh` | GET | Poll cell scan progress and results (**non-destructive**: it no longer deletes the error file on read, so the result check must stay above the error check — see [reference/cell-scanner.md](reference/cell-scanner.md)) |
 | `at_cmd/fetch_data.sh` | GET | Return current poller status cache (`qmanager_status.json`) |
 | `at_cmd/fetch_events.sh` | GET | Return recent events as JSON array |
-| `at_cmd/fetch_ping_history.sh` | GET | Return ping history data for latency chart |
+| `at_cmd/fetch_ping_history.sh` | GET | Return ping history data for latency chart; optional `?last=N` returns only the newest N rows |
 | `at_cmd/fetch_signal_history.sh` | GET | Return signal history data for RSRP/SINR chart |
 | `at_cmd/neighbour_scan_start.sh` | POST | Takes the **same** `/tmp/qmanager_scan.lock` as the sweep, then spawns `qmanager_neighbour_scanner`; same four responses |
 | `at_cmd/neighbour_scan_status.sh` | GET | Poll neighbour scan progress and results (**non-destructive**) |
@@ -1133,9 +1148,9 @@ For request/response schemas, see `API-REFERENCE.md`.
 | `cellular/mbn.sh` | GET/POST | Read or select MBN profile |
 | `cellular/network_priority.sh` | GET/POST | Read or set network mode priority (`AT+QNWPREFCFG`) |
 | `cellular/settings.sh` | GET/POST | Combined cellular settings (network search mode, etc.) |
-| `cellular/sms.sh` | GET/POST/DELETE | SMS center: list, read, send, delete messages via `sms_tool` |
+| `cellular/sms.sh` | GET/POST/DELETE | SMS center: list, read, send, delete messages via `qsms` |
 
-`cellular/sms.sh` uses the same `/tmp/qmanager_at.lock` lock as `qcmd` and `sms_alerts.sh` to prevent concurrent `/dev/smd11` access.
+On the RM520N-GL `cellular/sms.sh` takes no AT lock for SMS: `qsms` uses QMI WMS. Its only AT command is the CPMS routing write through `qcmd`, which takes `/run/qmanager_at/at.lock` for that one command. See [sms.md](reference/sms.md#no-at-lock).
 
 #### `device/` (1 script)
 
@@ -1162,7 +1177,7 @@ For request/response schemas, see `API-REFERENCE.md`.
 | Script | Method | Description |
 |--------|--------|-------------|
 | `network/custom_dns.sh` | GET/POST | Read or write dnsmasq upstream DNS override via sentinel block in `/etc/data/dnsmasq.conf`. See `docs/reference/custom-dns.md` |
-| `network/data_used.sh` | GET | Return `.data_used` block from poller status cache with stale flag; polled at 2 Hz by `useDataUsed` |
+| `network/data_used.sh` | GET | Return `.data_used` block from poller status cache with stale flag. No UI caller since T6.2: the dashboard reads `.data_used` from `fetch_data.sh` |
 | `network/data_used_reset.sh` | POST | Write reset flag consumed by poller on next tick; counter drops to ~0 within 4–5 s |
 | `network/ethernet.sh` | GET/POST | Read RTL8125B link state (sysfs + `ethtool`) and apply speed limit via `qmanager_ethernet_apply` root helper; uses `ethtool_helper.sh` |
 | `network/ip_passthrough.sh` | GET/POST | Read or configure IP passthrough (`AT+QMAP`, `AT+QCFG="usbnet"`) |
@@ -1230,8 +1245,7 @@ Cleared on every reboot (tmpfs). Files pre-created by `qmanager_setup` are marke
 
 | Path | Owner | Created by | Description |
 |------|-------|------------|-------------|
-| `/tmp/qmanager_at.lock` (S) | www-data | qmanager_setup | Shared flock file for `/dev/smd11` serialization |
-| `/tmp/qmanager_at.pid` (S) | www-data | qmanager_setup | AT command PID tracking |
+| `/tmp/qmanager_at.pid` (S) | www-data | qmanager_setup | No longer seeded or used since the shell `qcmd` was retired (the broker's PID is `/var/run/qmanager/atd.pid`); an upgraded device may keep a stale copy until reboot |
 | `/tmp/qmanager.log` (S) | root | qmanager_setup | Main QManager log (all components) |
 | `/tmp/qmanager_status.json` | root | qmanager_poller | Main modem status cache; polled by frontend |
 | `/tmp/qmanager_ping.json` | root | qmanager_ping | Current ping state (available, latency, streaks) |
@@ -1278,13 +1292,12 @@ Cleared on every reboot (tmpfs). Files pre-created by `qmanager_setup` are marke
 | `/tmp/qmanager_update.pid` | root | qmanager_update | Update worker PID |
 | `/tmp/qmanager_update.log` | root | qmanager_update | Update worker log |
 | `/tmp/qmanager_install.log` | root | qmanager_update | Step-streaming install log (polled by worker) |
-| `/tmp/qmanager_staged.tar.gz` | root | qmanager_update (download mode) | Staged update tarball |
-| `/tmp/qmanager_staged_version` | root | qmanager_update (download mode) | Staged version string |
+| `/tmp/qmanager_stage/` | root, `0711` | qmanager_update | Private OTA work dir, recreated each run: `qmanager.tar.gz`, `version` and `sha256` (staged download), `download.tar.gz`, `qmanager_install/` (extracted installer) |
 | `/tmp/qmanager_tailscale_install.json` | root | qmanager_tailscale_mgr | Tailscale install progress |
 | `/tmp/qmanager_tailscale_install.log` | root | qmanager_tailscale_mgr | Tailscale install log |
 | `/tmp/qmanager_tailscale_install.pid` | root | qmanager_tailscale_mgr | Tailscale install PID |
 | `/tmp/qmanager_low_power_active` | root | low-power cron | Flag: low-power window active; suppresses events/alerts |
-| `/tmp/qmanager_long_running` | www-data | **qmanager_cell_scanner** | Existence-only maintenance marker: a full `AT+QSCAN` sweep is holding the AT mutex. `qmanager_poller` and `qmanager_watchcat` are **readers** (root), never writers — the poller also expires it after `LONG_FLAG_MAX_AGE` (300s). The neighbour scanner does not raise it. See [reference/cell-scanner.md](reference/cell-scanner.md) |
+| `/tmp/qmanager_long_running` | — | nothing (retired) | Moved to `/run/qmanager_at/long_running` in `qmanager_atd` 0.7.3: root-owned, raised by the broker around long commands, read by `qmanager_poller` and `qmanager_watchcat` through `qm_long_flag_up`. The installer's `stop_services()` removes a leftover `/tmp` copy. See [reference/at-command-transport.md](reference/at-command-transport.md#the-long-command-flag-trust-rule) |
 | `/tmp/qmanager_cc_data.tmp` | root | parse_at.sh | Carrier component parse scratch file |
 | `/tmp/qmanager_ca_parse.tmp` | root | parse_at.sh | CA parse scratch file |
 | `/tmp/qmanager_mtu_reapply.pid` | root | tower_lock_mgr.sh | MTU re-apply watcher PID |
@@ -1315,9 +1328,9 @@ Cleared on every reboot (tmpfs). Files pre-created by `qmanager_setup` are marke
 | `/etc/qmanager/imei_backup.json` | IMEI backup for rejection check restore |
 | `/etc/qmanager/imei_check_pending` | Marker: IMEI restore pending after next boot |
 | `/etc/qmanager/ttl_state` | TTL/HL values (`TTL=N\nHL=N`); absent = no rules |
-| `/etc/firewall.user.mtu` | MTU setting script (sourced by `qmanager_mtu.service`) |
+| `/etc/firewall.user.mtu` | MTU rules (root:root 0644, written by `qmanager_mtu_set`; sourced by `qmanager_mtu_apply` at boot) |
 | `/etc/qmanager/long_commands.list` | List of AT commands treated as long (one per line) |
-| `/etc/qmanager/crash.log` | Reboot log (`<epoch>\|reboot\|<tag>`): watchcat Tier-4 writes `tier4_escalation` (token-bucket source), the `qmanager_crash_log_append` root helper writes `user`; read-only by alert_engine.sh for reboot classification |
+| `/usrdata/qmanager/crash.log` | Reboot log (`<epoch>\|reboot\|<tag>` and `<epoch>\|skip\|<reason>`): watchcat Tier-4 writes `tier4_escalation` (token-bucket source), `qmanager_scheduled_reboot` writes `scheduled` and `skip` lines, the `qmanager_crash_log_append` root helper writes `user`; read-only by alert_engine.sh for reboot classification. **Not in `/etc/qmanager`:** it moved to this root-owned `0755` dir in 2026-10 so `www-data` cannot swap it under a root writer. `qm_crash_log_prepare` (`crash_log.sh`) merges a legacy `/etc/qmanager/crash.log` once, marker `/usrdata/qmanager/.crash_log_migrated` — see [alerts.md](reference/alerts.md#the-user-breadcrumb-root-helper) |
 | `/etc/qmanager/qmanager_sim_failover` | Watchcat Tier-3 SIM-failover record (persistent so it survives a Tier-4 reboot) |
 | `/etc/qmanager/last_iccid` | Last-landed SIM ICCID; written after a swap/revert so the poller's boot swap-detector doesn't false-fire |
 | `/etc/qmanager.env` | Optional environment overrides for the root-run systemd daemons (e.g., `QLOG_LEVEL=DEBUG`). **Outside `/etc/qmanager` on purpose** — `root:root 0644`, never `www-data`-writable. Relocated from `/etc/qmanager/environment` in v0.1.14; see [qmanager-independence.md](reference/qmanager-independence.md) |
@@ -1341,8 +1354,8 @@ Cleared on every reboot (tmpfs). Files pre-created by `qmanager_setup` are marke
 | Path | Description |
 |------|-------------|
 | `/usr/bin/qcmd` | AT command gatekeeper |
-| `/usr/bin/atcli_smd11` | AT CLI binary (Rust, ARMv7 static, ~647KB, do NOT UPX-compress) |
-| `/usr/bin/sms_tool` | SMS send/receive binary (ARMv7) |
+| `/usr/bin/qmanager_atd` | AT/SMS/QMI broker binary; `qcmd` and `qsms` are symlinks to it |
+| `/usr/bin/qsms` | SMS client (symlink to `qmanager_atd`) |
 | `/usr/bin/qmanager_*` | All daemon and utility scripts |
 | `/usr/lib/qmanager/` | All shared library scripts |
 | `/lib/systemd/system/qmanager-*.service` | Systemd unit files |
@@ -1366,12 +1379,12 @@ Cleared on every reboot (tmpfs). Files pre-created by `qmanager_setup` are marke
 
 ## 11. Locking & Concurrency Conventions
 
-### `/tmp/qmanager_at.lock` -- AT Device Serialization
+### `/run/qmanager_at/at.lock` -- AT Device Serialization
 
-All processes that access `/dev/smd11` share this lock. Holders:
-- `qcmd` (for all AT commands from the poller, CGI scripts, and daemons)
-- `sms_tool` invocations in `sms_alerts.sh` (via `_sa_sms_locked()`)
-- `sms_tool` invocations in `cellular/sms.sh` (via `sms_locked()`)
+All processes that access `/dev/smd11` share this lock. It is `root:dialout` 0640 in a `root:dialout` 0750 dir (`/run`, tmpfs, recreated by `qmanager_setup` each boot); only root creates it, and root or the `dialout` group (which `www-data` is in) can lock it. A non-root caller that finds it missing gets `modem_busy`. While the root-only marker `/run/qmanager_at/bridge` exists, the Rust holders also take the legacy `/tmp/qmanager_at.lock` (the OTA/rollback bridge). Full rules: [at-command-transport.md > The AT lock](reference/at-command-transport.md#the-at-lock-and-who-may-hold-it). Holders:
+- `qcmd` (for all AT commands from the poller, CGI scripts, and daemons) — the `qmanager_atd` broker takes the lock around each exchange, or the in-process fallback does when the broker is not running. The Rust lock code (`native/qmanager_atd/src/common/lock.rs`) has the same 100 ms try-loop semantics as the shell pattern below
+- `qmanager_health_check`'s `t_sms_flock` test, which acquires and releases it once with `flock -x -n`
+- `qsms` on its AT backend only (models other than RM520N and RG501Q). On the RM520N-GL and the RG501Q-EU, SMS uses QMI WMS and holds no lock; the SMS path's only AT command is the CPMS write through `qcmd`.
 
 **Lock pattern (BusyBox `flock` lacks `-w`):**
 
@@ -1388,10 +1401,10 @@ flock_wait() {
 }
 
 # Usage with FD 9 (read-only to satisfy fs.protected_regular=1):
-( flock_wait 9 5 || exit 2; atcli_smd11 "$CMD" ) 9<"$LOCK_FILE"
+( flock_wait 9 5 || exit 2; your_locked_work ) 9<"$LOCK_FILE"
 ```
 
-**Why `9<` (read-only FD):** `fs.protected_regular=1` blocks `open()` for write on files owned by other users in sticky `/tmp`. Using `<` (read-only) instead of `<>` (read-write) avoids this restriction while still providing a valid file descriptor for flock.
+**Why `9<` (read-only FD):** `flock()` needs only a read fd, and the lock is mode 0640, so a `dialout` caller such as `www-data` can open it only for reading. Never open it with `>` or `<>`: that needs write access and would try to create it.
 
 ### `/tmp/qmanager_watchcat.lock` -- Maintenance Lock
 
@@ -1448,9 +1461,11 @@ Spawned by `system/update.sh` CGI via `sudo -n /usr/bin/qmanager_update <mode> [
 | Mode | Arguments | Description |
 |------|-----------|-------------|
 | `install` | `<url> <version> [size]` | Download, verify, install, reboot in one step |
-| `download` | `<url> <checksum_url> <version>` | Download and verify only; stage at `/tmp/qmanager_staged.tar.gz` |
-| `install_staged` | (none) | Install a previously downloaded staged tarball |
-| `rollback` | `<url> <version>` | Download and install a prior release; strict URL validation |
+| `download` | `<url> <checksum_url> <version>` | Download and verify only; stage in `/tmp/qmanager_stage/`. `<url>` must be the release for `<version>`; `<checksum_url>` is ignored |
+| `install_staged` | (none) | Install the staged tarball after re-checking its recorded SHA-256 |
+| `rollback` | `<url> <version>` | Download, verify and install a prior release |
+
+Every mode accepts only `<release prefix><tag>/qmanager.tar.gz` and refuses to install without a verified `sha256sum.txt`. See [qmanager-independence.md](reference/qmanager-independence.md#ota-url-pinning-and-sha-256-verification).
 
 #### Status State Machine
 
@@ -1610,8 +1625,6 @@ file scripts/usr/bin/qmanager_setup
 **Publishing a shared `/tmp` file with `mv`.** The project-wide "atomic write" habit is wrong for a `/tmp` file that both UIDs write. `rename(2)` swaps the inode, so the new file is owned by whoever wrote the temp, at their umask — and the other UID is locked out for the rest of the boot, silently. Write through the existing inode (`cat tmp > file`), PID-qualify any scratch name (`${FILE}.tmp.$$`, never a fixed `.tmp`), and make the reader tolerate a torn read since you no longer have atomic publication. Same applies to `rm`-to-reset: truncate with `: >` instead.
 
 **Hardcoding service lists in install/uninstall.** Use filesystem scans instead. `install_rm520n.sh` discovers services by globbing `scripts/etc/systemd/system/qmanager-*.service`. Adding a new service file is sufficient -- no installer edits needed.
-
-**UPX-compressing `atcli_smd11`.** UPX self-modifying code causes segmentation faults on exit for this ARMv7 Rust build. Ship the uncompressed binary (~647KB). The installer must not UPX-compress it.
 
 **Using `kill -0` for cross-user PID checks.** `kill -0 <pid>` fails with EPERM when www-data checks a root daemon's PID. Use `pid_alive()` from `platform.sh` which checks `/proc/$pid` existence instead.
 

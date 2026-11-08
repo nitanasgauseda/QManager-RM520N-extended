@@ -36,8 +36,7 @@
 # safe against a symlink swap).
 #
 # Concurrency is additionally serialized with a BusyBox-safe flock (no `-w`
-# timeout support in BusyBox flock — poll in a loop instead), mirroring the
-# flock_wait() pattern used by qcmd / qmanager_sms_storage / sms_alerts.sh.
+# timeout support in BusyBox flock — poll `flock -x -n` in a loop instead).
 #
 # THREAT MODEL — read this before trusting the "root is the sole writer" line.
 # The root-helper + validation + scoped-write design defends against:
@@ -89,7 +88,18 @@ sim_registry_flock_wait() {
 # _sim_registry_ensure_files — lazy-create the registry + its lock file.
 _sim_registry_ensure_files() {
     mkdir -p "$(dirname "$SIM_REGISTRY_FILE")" 2>/dev/null
-    [ -e "$SIM_REGISTRY_LOCK" ] || : > "$SIM_REGISTRY_LOCK" 2>/dev/null
+    # Root builds the lock in a root-only dir on the same fs, then moves it into the
+    # PARENT dir under the same name: a planted symlink (even to a dir) is replaced, not followed.
+    if [ -L "$SIM_REGISTRY_LOCK" ] || [ ! -e "$SIM_REGISTRY_LOCK" ]; then
+        if [ "$(id -u 2>/dev/null)" = "0" ]; then
+            local _ld _ln="${SIM_REGISTRY_LOCK##*/}"
+            _ld=$(mktemp -d /etc/.qmanager-tmp.XXXXXX 2>/dev/null) || return 0
+            : > "$_ld/$_ln" && chmod 644 "$_ld/$_ln" && mv -f "$_ld/$_ln" "${SIM_REGISTRY_LOCK%/*}/" 2>/dev/null
+            rm -rf "$_ld"
+        else
+            [ -e "$SIM_REGISTRY_LOCK" ] || : > "$SIM_REGISTRY_LOCK" 2>/dev/null
+        fi
+    fi
 }
 
 # _sim_registry_read — print the current registry JSON, defaulting to "{}"

@@ -18,7 +18,7 @@
 | CGI (MTU) | `scripts/www/cgi-bin/quecmanager/network/mtu.sh` |
 | Shared lib | `scripts/usr/lib/qmanager/ttl_state.sh` |
 | Boot units | `scripts/etc/systemd/system/qmanager-ttl.service`, `qmanager-mtu.service` |
-| Root helper (MTU) | `scripts/usr/bin/qmanager_mtu_apply` |
+| Root helpers (MTU) | `scripts/usr/bin/qmanager_mtu_set` (`set <n>` / `disable` / `apply`, via `sudo -n`; the only writer of `/etc/firewall.user.mtu`), `scripts/usr/bin/qmanager_mtu_apply` (boot replay) |
 | Persisted TTL state | `/etc/qmanager/ttl_state` (plain `TTL=`/`HL=` key-value, www-data-writable) |
 | Persisted MTU state | `/etc/firewall.user.mtu` (a list of `ip link set …` commands) |
 | i18n root | `ttlMtu.*` in `public/locales/<loc>/common.json` (62 leaves × 5 locales) |
@@ -39,9 +39,19 @@ iptables  -t mangle -I POSTROUTING -o rmnet+ -j TTL --ttl-set <ttl>
 ip6tables -t mangle -I POSTROUTING -o rmnet+ -j HL  --hl-set  <hl>
 ```
 
-`rmnet+` is a wildcard: the cellular WAN does not live on a fixed `rmnet_dataN`. `ttl_state_apply` **drains before it inserts**, in a bounded 32-pass loop per family — `iptables -D` removes one matching rule per invocation, so a single delete would leave duplicates from a past racy apply or a boot-plus-CGI double-apply, and a duplicate lies to the next `read_live`.
+When HL is non-zero, nine more rules are inserted **above** the HL rule, one per ICMPv6 type whose Hop Limit is fixed by RFC: Neighbor Discovery 133–137 (RS, RA, NS, NA, Redirect) and MLD 130, 131, 132 and 143:
+
+```sh
+ip6tables -t mangle -I POSTROUTING -o rmnet+ -p ipv6-icmp --icmpv6-type <T> -j ACCEPT
+```
+
+RFC 4861 requires Hop Limit 255 on all ND messages, and the carrier drops an RS that leaves with HL 64, so SLAAC and default-gateway discovery fail in IPv6 passthrough. RFC 2710/3810 require Hop Limit 1 on MLD. `ACCEPT` leaves those packets untouched rather than setting a value, so a forwarded packet (HL already decremented) is never stamped with a forged one. Order matters: HL is inserted first and the exemptions after, so they land on top. 134, 137 and 130 are router-sent and should never leave the modem toward the carrier; they are exempted so the list is the RFC's, not a guess about what the modem sends. The type list lives in both `ttl_state.sh` (`_TTL_ND_TYPES`) and `qmanager_fw_apply`; keep them equal. Rule install, idempotent re-apply, HL=0 cleanup and helper refusals verified on the RM520N-GL 2026-11-04; the RS on the wire is not (no IPv6 uplink; GitHub issue 15).
+
+`rmnet+` is a wildcard: the cellular WAN does not live on a fixed `rmnet_dataN`. `ttl_state_apply` **drains before it inserts**, in a bounded 32-pass loop per family (plus a bounded `-D` loop per ND/MLD exemption) — `iptables -D` removes one matching rule per invocation, so a single delete would leave duplicates from a past racy apply or a boot-plus-CGI double-apply, and a duplicate lies to the next `read_live`.
 
 A value of `0` is "remove the rule", not "set TTL to zero" — the insert is skipped entirely.
+
+> ⚠️ WARNING: **From the CGI, these calls go through an allow-list.** As `www-data`, `run_iptables` / `run_ip6tables` forward their argv to the root helper `/usr/bin/qmanager_fw_apply`, which accepts only the exact TTL/HL and ND-exemption shapes above (plus the `-vnL POSTROUTING` read), with `-w 5 -t mangle` in front and, for the TTL/HL shapes, a value of 1–255 (the ND/MLD shapes take no value and only types 130–137 and 143). Change the rule shape in `ttl_state.sh` — another interface, another chain, an extra match — and update `qmanager_fw_apply` with it, or the CGI's apply is refused (`refused: shape`, exit 2). Root callers run iptables directly and do not see the difference.
 
 ### `resolve_wan_interface()` — why the MTU read is not `rmnet_data0`
 
@@ -51,7 +61,7 @@ A value of `0` is "remove the rule", not "set TTL to zero" — the insert is ski
 
 > ℹ️ NOTE: `detect_active_cid()` in `cgi_at.sh` cannot help here. It resolves a PDP **context ID**, and neither `+CGPADDR` nor `+QMAP` carries a Linux interface name — there is no CID→interface mapping anywhere in the codebase, and the `+QMAP` mux id matching `rmnet_dataN` today is coincidence, not a contract.
 
-The `POST` writes one `ip link set <iface> mtu <n>` line per `rmnet_data*` into `/etc/firewall.user.mtu` (temp file + `mv`) and applies them immediately. `{"mtu":"disable"}` removes the file and reverts to the carrier-negotiated value. Accepted range is **576–9000**, validated at the CGI.
+The `POST` runs `qmanager_mtu_set` (via `conn_mtu_set`, `sudo -n` unless already root), which writes one `ip link set <iface> mtu <n>` line per `rmnet_data*` into `/etc/firewall.user.mtu` (per-PID temp in `/etc` + `mv`, root:root 0644) and applies them immediately; a failure returns `mtu_apply_failed` / `mtu_disable_failed`. `{"mtu":"disable"}` removes the file and sets every `rmnet_data*` back to 1500 (the boot value; the network reports no MTU). Accepted range is **576–9000**, validated at the CGI.
 
 ## Page anatomy (re-authored 2026-08-31)
 
@@ -101,7 +111,7 @@ It is also **not sufficient** for what the tile claimed. `qmanager-ttl.service` 
 
 > ℹ️ NOTE: this is *not* the `systemctl is-enabled` trap recorded in project memory. `svc_is_enabled` tests the symlink directly rather than asking systemd, precisely because the wants-symlinks live under `/lib` and systemd-239 does not count them.
 
-> ⚠️ **Open item, not fixed here.** `qmanager-ttl.service` places `ConditionPathExists=` in its **`[Service]`** section. systemd's `Condition*=` directives are `[Unit]`-section options — `qmanager-ethernet.service` puts its own in `[Unit]` for exactly this reason (see [`ethernet.md`](./ethernet.md)). The condition is therefore very likely inert on-device, meaning the unit runs its `ExecStart` on every boot even with no state file, where `ttl_state_read_persisted` returns `0 0` and `ttl_state_apply 0 0` is a drain. Harmless, but it is not what the file says it does. **Not verified on hardware** — settling it needs a boot with no `/etc/qmanager/ttl_state` and a check of `systemctl status qmanager-ttl` for `inactive` (condition honoured) vs `active (exited)` (condition ignored).
+> ℹ️ **Boot-unit conditions live in `[Unit]` (fixed 2026-11-04).** `qmanager-ttl.service` and `qmanager-mtu.service` both had their `Condition*=` lines in `[Service]`, where systemd ignores them; measured on both devices, the units ran every boot with no state file (`ConditionResult=yes`). Both now sit in `[Unit]` and were measured honoured on RM520N-GL (systemd 244) and RG501Q-EU (systemd 239). With no state file the unit is now skipped (`inactive`, `ConditionResult=no`) instead of running a no-op: TTL used to run `ttl_state_apply 0 0`, a drain of rules that do not exist at boot, and `qmanager_mtu_apply` exited 0 on the missing file. A unit that starts nothing is no reason to think TTL or MTU replay is broken.
 
 ### The MTU tile draws no figure without a successful read
 

@@ -13,6 +13,7 @@ cgi_handle_options
 
 WAN_CONF="${QM_WAN_BLOCK_CONF:-/etc/qmanager/wan_block.conf}"
 FW_EVAL="${QM_FW_EVAL:-/usr/lib/qmanager/fw_eval.awk}"
+EU_FW="${QM_EU_FW:-/usr/bin/qmanager_eu_fw}"
 IPT="${QM_IPTABLES:-/usr/sbin/iptables}"
 IP6T="${QM_IP6TABLES:-/usr/sbin/ip6tables}"
 NETSTAT_CMD="${QM_NETSTAT:-netstat -ltun}"
@@ -93,9 +94,9 @@ case "$wan4" in
 esac
 v6_public=false; [ -n "$wan6" ] && v6_public=true
 
-# --- Firewall rules (www-data has sudo for iptables/ip6tables)
-$_SUDO "$IPT" -S > "$work/ipt4" 2>/dev/null || : > "$work/ipt4"
-$_SUDO "$IP6T" -S > "$work/ipt6" 2>/dev/null || : > "$work/ipt6"
+# --- Firewall rules (read through the root helper; raw iptables is not granted to www-data)
+$_SUDO ${_SUDO:+-n} "$EU_FW" dump4 > "$work/ipt4" 2>/dev/null </dev/null || : > "$work/ipt4"
+$_SUDO ${_SUDO:+-n} "$EU_FW" dump6 > "$work/ipt6" 2>/dev/null </dev/null || : > "$work/ipt6"
 fw_ok=true; [ -s "$work/ipt4" ] || fw_ok=false
 
 # --- Listening sockets bound to every address or to the cellular address

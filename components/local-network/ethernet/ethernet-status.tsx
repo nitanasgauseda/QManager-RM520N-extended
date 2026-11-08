@@ -13,7 +13,8 @@ import { staggerContainer, staggerItem } from "@/lib/motion";
 import { LinkStateStrip } from "./link-state-strip";
 import { SpeedLimitCard } from "./speed-limit-card";
 import { RouterWatchCard } from "./router-watch-card";
-import { PAGE_ROOT } from "./shapes";
+import LanConfigCard from "@/components/local-network/lan-config-card";
+import { CARD_GRID, PAGE_ROOT } from "./shapes";
 import type { EthernetStatus } from "./types";
 
 // =============================================================================
@@ -135,9 +136,9 @@ const EthernetStatusComponent = () => {
   }, [fetchStatus]);
 
   // ---------------------------------------------------------------------------
-  // Set link speed limit
+  // Apply link speed limit
   // ---------------------------------------------------------------------------
-  const handleSpeedChange = async (value: string) => {
+  const handleApply = async (value: string): Promise<boolean> => {
     setIsSaving(true);
     savingRef.current = true;
     // Optimistic update so the dropdown shows the requested value during PHY bounce.
@@ -205,7 +206,7 @@ const EthernetStatusComponent = () => {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const data = await resp.json();
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) return false;
 
       if (data.success) {
         // Backend reports how long the PHY link bounce takes. Fall back to
@@ -219,26 +220,29 @@ const EthernetStatusComponent = () => {
 
         // An exhausted poll is not a save: the link never came back at the
         // requested speed, so it toasts the same error as the catch path below.
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) return false;
         if (confirmed) {
           toast.success(t(`${K}.settings.toast_success`));
         } else {
           toast.error(t(`${K}.settings.toast_confirm_error`));
         }
-      } else {
-        toast.error(data.detail || t(`${K}.settings.toast_error`));
+        return confirmed;
       }
+      // Drop the optimistic value: the write did not land.
+      await fetchStatus();
+      toast.error(data.detail || t(`${K}.settings.toast_error`));
+      return false;
     } catch {
       // Network error during POST likely means the PHY bounced mid-request.
       // Confirm silently rather than showing a false-negative error.
-      if (mountedRef.current) {
-        const confirmed = await confirmSpeedChange(value, 8);
-        if (confirmed) {
-          toast.success(t(`${K}.settings.toast_success`));
-        } else {
-          toast.error(t(`${K}.settings.toast_confirm_error`));
-        }
+      if (!mountedRef.current) return false;
+      const confirmed = await confirmSpeedChange(value, 8);
+      if (confirmed) {
+        toast.success(t(`${K}.settings.toast_success`));
+      } else {
+        toast.error(t(`${K}.settings.toast_confirm_error`));
       }
+      return confirmed;
     } finally {
       savingRef.current = false;
       if (mountedRef.current) {
@@ -256,8 +260,6 @@ const EthernetStatusComponent = () => {
   return (
     <motion.div
       className={PAGE_ROOT}
-      aria-live="polite"
-      aria-atomic="false"
       variants={staggerContainer}
       initial="hidden"
       animate="visible"
@@ -288,7 +290,7 @@ const EthernetStatusComponent = () => {
         </div>
       </motion.div>
 
-      <motion.div variants={staggerItem}>
+      <motion.div variants={staggerItem} aria-live="polite" aria-atomic="false">
         <LinkStateStrip
           status={status}
           isLoading={isLoading}
@@ -296,7 +298,7 @@ const EthernetStatusComponent = () => {
         />
       </motion.div>
 
-      <motion.div variants={staggerItem}>
+      <motion.div variants={staggerItem} className={CARD_GRID}>
         <SpeedLimitCard
           // NOT `?? "auto"`. A defaulted value here would render the modem's
           // most common setting as a confirmed selection on a page that has
@@ -307,8 +309,9 @@ const EthernetStatusComponent = () => {
           hasStatus={status !== null}
           pollFailed={pollFailed}
           interfacePresent={status?.interface_present !== false}
-          onSpeedChange={handleSpeedChange}
+          onApply={handleApply}
         />
+        <LanConfigCard />
       </motion.div>
 
       <motion.div variants={staggerItem}>

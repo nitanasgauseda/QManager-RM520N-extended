@@ -6,7 +6,6 @@ const CHECK_ENDPOINT = "/cgi-bin/quecmanager/auth/check.sh";
 const LOGIN_ENDPOINT = "/cgi-bin/quecmanager/auth/login.sh";
 const LOGOUT_ENDPOINT = "/cgi-bin/quecmanager/auth/logout.sh";
 const PASSWORD_ENDPOINT = "/cgi-bin/quecmanager/auth/password.sh";
-const SSH_PASSWORD_ENDPOINT = "/cgi-bin/quecmanager/auth/ssh_password.sh";
 
 // ---------------------------------------------------------------------------
 // Cookie helpers
@@ -116,12 +115,8 @@ export function useLogin() {
           });
         }
       })
-      .catch(() => {
-        // Backend unreachable on a fresh install likely means setup hasn't
-        // completed yet (e.g. lighttpd started before qmanager-setup).
-        // Default to setup_required so onboarding isn't silently skipped.
-        setStatus("setup_required");
-      });
+      // Unreachable backend: stay on the login form; /setup does its own retries.
+      .catch(() => setStatus("ready"));
   }, []);
 
   const login = useCallback(
@@ -185,13 +180,14 @@ export function useLogin() {
   const setup = useCallback(
     async (
       password: string,
-      confirm: string
+      confirm: string,
+      enforceStrong: boolean = true
     ): Promise<{ success: boolean; error?: string }> => {
       try {
         const resp = await fetch(LOGIN_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password, confirm }),
+          body: JSON.stringify({ password, confirm, enforce_strong: enforceStrong }),
         });
         const data = await resp.json();
 
@@ -225,26 +221,26 @@ export function useLogin() {
  */
 export async function setupPassword(
   password: string,
-  confirm: string
-): Promise<{ success: boolean; error?: string }> {
+  confirm: string,
+  enforceStrong: boolean = true
+): Promise<{ success: boolean; error?: string; detail?: string; sshSynced?: boolean }> {
   try {
     const resp = await fetch(LOGIN_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password, confirm }),
+      body: JSON.stringify({ password, confirm, enforce_strong: enforceStrong }),
     });
     const data = await resp.json();
 
     if (data.success) {
-      return { success: true };
+      // Older backends omit ssh_synced; treat only an explicit false as failure.
+      return { success: true, sshSynced: data.ssh_synced !== false };
     }
 
-    return {
-      success: false,
-      error: data.detail || data.error || "Setup failed",
-    };
+    // `error` is the errors.json code, `detail` its English fallback.
+    return { success: false, error: data.error, detail: data.detail };
   } catch {
-    return { success: false, error: "Connection failed" };
+    return { success: false };
   }
 }
 
@@ -263,10 +259,48 @@ export async function logout(): Promise<void> {
   }
 }
 
+/** A failed password call: the backend code, its English detail, and lockout seconds. */
+export interface PasswordCallResult {
+  success: boolean;
+  error?: string;
+  detail?: string;
+  /** Present with `rate_limited`: seconds until the lockout lifts. */
+  retry_after?: number;
+  /** Present with `invalid_password`: wrong guesses left before the lockout. */
+  attempts_remaining?: number;
+}
+
+/**
+ * Check the current web password without changing it (`verify_only`). A wrong
+ * password counts toward the sign-in lockout, so a locked-out caller gets `rate_limited`.
+ */
+export async function verifyPassword(current: string): Promise<PasswordCallResult> {
+  try {
+    const resp = await fetch(PASSWORD_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password: current, verify_only: true }),
+    });
+    const data = await resp.json();
+    if (data.success) return { success: true };
+    return {
+      success: false,
+      error: data.error,
+      detail: data.detail,
+      retry_after: typeof data.retry_after === "number" ? data.retry_after : undefined,
+      attempts_remaining:
+        typeof data.attempts_remaining === "number" ? data.attempts_remaining : undefined,
+    };
+  } catch {
+    return { success: false };
+  }
+}
+
 export async function changePassword(
   current: string,
-  newPassword: string
-): Promise<{ success: boolean; error?: string }> {
+  newPassword: string,
+  enforceStrong: boolean = true
+): Promise<PasswordCallResult> {
   try {
     const resp = await fetch(PASSWORD_ENDPOINT, {
       method: "POST",
@@ -274,6 +308,7 @@ export async function changePassword(
       body: JSON.stringify({
         current_password: current,
         new_password: newPassword,
+        enforce_strong: enforceStrong,
       }),
     });
     const data = await resp.json();
@@ -284,45 +319,16 @@ export async function changePassword(
       return { success: true };
     }
 
+    // `error` is the errors.json code, `detail` its English fallback.
     return {
       success: false,
-      error: data.detail || data.error || "Password change failed",
+      error: data.error,
+      detail: data.detail,
+      retry_after: typeof data.retry_after === "number" ? data.retry_after : undefined,
+      attempts_remaining:
+        typeof data.attempts_remaining === "number" ? data.attempts_remaining : undefined,
     };
   } catch {
-    return { success: false, error: "Connection failed" };
-  }
-}
-
-// ---------------------------------------------------------------------------
-// SSH password management
-// ---------------------------------------------------------------------------
-
-export async function changeSSHPassword(
-  currentPassword: string,
-  newPassword: string,
-  confirmPassword: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const resp = await fetch(SSH_PASSWORD_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        current_password: currentPassword,
-        new_password: newPassword,
-        confirm_password: confirmPassword,
-      }),
-    });
-    const data = await resp.json();
-
-    if (data.success) {
-      return { success: true };
-    }
-
-    return {
-      success: false,
-      error: data.detail || data.error || "SSH password change failed",
-    };
-  } catch {
-    return { success: false, error: "Connection failed" };
+    return { success: false };
   }
 }

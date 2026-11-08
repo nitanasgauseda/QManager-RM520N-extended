@@ -25,7 +25,7 @@ The 2026-08 rebuild is **frontend-only**. Both CGI scripts, the poller, every sy
 | Live strip ("Right now") | `components/cellular/frequency-locking/freq-lock-hero.tsx` |
 | LTE leg card | `components/cellular/frequency-locking/lte-freq-card.tsx` |
 | 5G NR leg card | `components/cellular/frequency-locking/nr-freq-card.tsx` |
-| Apply bar (read-back + Clear all) | `components/cellular/frequency-locking/apply-bar.tsx` |
+| Failure sentence for a lock / unlock write | `components/cellular/frequency-locking/lock-result.ts` (`lockFailureMessage`) |
 | Band-match line under a channel | `components/cellular/frequency-locking/band-match-display.tsx` |
 | Data + actions hook | `hooks/use-frequency-locking.ts` |
 | Types (**unchanged** by this work) | `types/frequency-locking.ts` |
@@ -70,8 +70,6 @@ FrequencyLockingComponent                 ← owns both drafts and every hook
 ├── grid (1 col → 2 at @3xl/main)
 │   ├── LteFreqCard         2 fixed slots, Apply LTE / Clear LTE / Clear fields
 │   └── NrFreqCard          dynamic list ≤32, add row, Apply NR / Clear NR / Clear fields
-└── FreqApplyBar            APPLY_BAR      reconnect disclaimer · MODEM READ-BACK ·
-                                             no-recovery note · Clear all
 ```
 
 The order is an argument read top to bottom: **what the radio is on right now**, then **the two lists you are allowed to keep**, then **one bar owning the cost of applying them**.
@@ -90,7 +88,7 @@ Seeding runs **during render** (`frequency-locking.tsx:112`), React's documented
 
 The design comp put a single Apply in the footer bar whose label changed with whichever leg happened to be dirty. LTE and NR are **two independent AT writes**, gated independently, each costing its own reconnect — so one button that fires one *or* two of them depending on hidden state is precisely the ambiguity the read-back line exists to remove. Per-leg apply also matches Tower Locking next door, which is the page users arrive from.
 
-The bar keeps what it is uniquely good at: the reconnect disclaimer, the standing no-failover risk, the modem's read-back, and **Clear all**.
+**The page-level apply bar is retired (2026-11, 551E v0.1.34 parity).** Each card commits from its own `CardFoot`; the no-failover risk is said in the lock confirmation dialogs (`dialog.no_recovery`). `use-frequency-locking` mutators return `{ ok, error, detail }` and the card toasts the reason through `lockFailureMessage`; the hook's `error` is the status read's failure only. Sections below that name the apply bar, `FreqApplyBar` or `handleClearAll` are historical.
 
 ## The two clocks
 
@@ -101,7 +99,7 @@ The bar keeps what it is uniquely good at: the reconnect disclaimer, the standin
 | **The lock state** — the verdict, both card chips, the apply bar's read-back | `status.sh`, i.e. `AT+QNWCFG` read back from the modem | Fetched **once on mount** and once after each write. Never polled |
 | **Carriers on air** — the strip's right column, "Use current", the serving channel in the read-back | `network.carrier_components[]` from the poller snapshot | Live, ~4s (see [poller cadence](radio-information.md)). Free — a cached JSON file read that never touches the modem |
 
-The lock state is not on an interval because **it costs three AT round-trips on the shared `/tmp/qmanager_at.lock` mutex the poller already contends for** (~0.62s measured end to end). Every poll of `status.sh` would be three more serialized round-trips competing with the status cycle that feeds the entire app. That is a backend cost decision, not a frontend preference.
+The lock state is not on an interval because **it costs three AT round-trips on the shared `/run/qmanager_at/at.lock` mutex the poller already contends for** (~0.62s measured end to end). Every poll of `status.sh` would be three more serialized round-trips competing with the status cycle that feeds the entire app. That is a backend cost decision, not a frontend preference.
 
 So the strip's head carries an explicit `as of HH:MM` chip and a **Refresh** control rather than a "live" badge over the whole strip: only the right half is live.
 
@@ -591,7 +589,7 @@ Both leg cards render `CARD_SHELL` + `CARD_PAD` in **every** branch, so the shel
 - [band-locking.md](band-locking.md) — the looser sibling, the bounded failover watcher, the error-scoping fix this surface still needs, and the "a number in copy is a claim about the device" lesson
 - [carrier-aggregation.md](carrier-aggregation.md) — `carrier_components[]`, the source of the carriers on air and of the ten per-carrier fields that do **not** include SCS
 - [radio-information.md](radio-information.md) — the poller cadence behind the ~4s clock, the serving-cell-only `nr.scs`, and the compiler-backed `react-hooks` bail-on-first-violation behaviour
-- [at-command-transport.md](at-command-transport.md) — the `/tmp/qmanager_at.lock` mutex that makes polling `status.sh` expensive
+- [at-command-transport.md](at-command-transport.md) — the `/run/qmanager_at/at.lock` mutex that makes polling `status.sh` expensive
 - [i18n.md](i18n.md) — the two severity policies over one engine, and why keys are never interpolated on this surface
 - [icon-system.md](icon-system.md) — `/cellular/` is a Material Symbols route; the five new glyphs are in the subset
 - `DESIGN.md` > Named Rules (Fill-Over-Stroke, Filled-Chip, Glyph-Disc, Skeleton-Mirror, Machine-Voice, Radius-Follows-Size, Identity-Chip, One-Scale)

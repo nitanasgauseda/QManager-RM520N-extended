@@ -19,7 +19,8 @@
     "reconnect_modem": "重新連線調變解調器",
     "change_display_name": "變更顯示名稱",
     "change_password": "變更密碼",
-    "toggle_theme": "切換主題"
+    "toggle_theme": "切換主題",
+    "discard": "捨棄"
   },
   "motion": {
     "label": "動畫",
@@ -78,7 +79,10 @@
       "duplex": {
         "label": "雙工模式",
         "caption": "同時收發",
-        "caption_down": "需要作用中鏈路"
+        "caption_down": "需要作用中鏈路",
+        "caption_half": "收發交替進行",
+        "value_full": "全雙工",
+        "value_half": "半雙工"
       },
       "negotiation": {
         "label": "協商模式",
@@ -108,7 +112,51 @@
       "consequence_absent": "此裝置上沒有可設定的乙太網路連接埠。",
       "toast_success": "鏈路速度已更新",
       "toast_error": "設定鏈路速度失敗",
-      "toast_confirm_error": "無法確認新速度。請檢查鏈路。"
+      "toast_confirm_error": "無法確認新速度。請檢查鏈路。",
+      "apply": "套用",
+      "discard": "捨棄"
+    },
+    "lan_config": {
+      "card_title": "LAN 地址",
+      "card_description": "設定路由器的 LAN IP 地址（裝置所用的閘道器）以及本地網路的大小。",
+      "label_gateway": "閘道器 IP 地址",
+      "help_gateway": "路由器在 LAN 上的自身地址。裝置將其用作預設閘道器。",
+      "label_subnet": "子網掩碼",
+      "help_subnet": "以 CIDR 字首形式選擇 LAN 網路的大小。",
+      "action_apply": "套用更改",
+      "confirm_title": "更改 LAN 地址？",
+      "confirm_body": "LAN 將切換為 {{address}}（掩碼 {{netmask}}）。數據機將重新啟動以套用此更改，您當前的連線會中斷。",
+      "confirm_reconnect": "數據機重新啟動期間約 1–2 分鐘無法存取。使用 DHCP 的路由器或裝置會自動重新連線；使用靜態 IP 的裝置則需手動改到新子網。數據機恢復後，此頁面會開啟新地址。",
+      "confirm_action": "套用並重新啟動",
+      "applied_title": "LAN 地址正在更改",
+      "applied_body": "數據機正在重新啟動並切換到 {{address}}，但新地址尚未回應。重新啟動約需 {{seconds}} 秒。如有需要，請重新插拔 LAN 或乙太網路線纜，然後開啟新地址：",
+      "applied_body_auto": "數據機正在重新啟動並切換到 {{address}}，但新地址尚未回應。設定為 DHCP 的路由器應會在約 {{seconds}} 秒內自動重新連線並取得新閘道。若未自動連線，請重新插拔線纜，然後開啟新地址：",
+      "reconnecting_title": "正在重新啟動並切換到新地址…",
+      "reconnecting_auto_note": "數據機正在重新啟動，約需 1–2 分鐘。恢復後此頁面會開啟新地址。",
+      "reconnecting_opening": "正在開啟新地址…",
+      "toast_error_save": "套用 LAN 設定失敗",
+      "error_invalid_ipaddr": "請輸入有效的單播 IPv4 地址（例如 192.168.1.1）。",
+      "error_invalid_host_in_subnet": "這是所選子網的網路地址或廣播地址。請選擇可用的主機地址。",
+      "error_invalid_prefix": "請選擇 /16 到 /30 之間的子網字首。",
+      "errors": {
+        "fetch_failed": "載入 LAN 設定失敗",
+        "save_failed": "儲存 LAN 設定失敗",
+        "parse_failed": "無法讀取儲存回應"
+      },
+      "action_discard": "捨棄",
+      "toast_no_change": "LAN 地址已是該設定",
+      "error_invalid_private": "請使用私有地址：10.x.x.x、172.16–31.x.x 或 192.168.x.x。",
+      "server_errors": {
+        "no_body": "請求到達數據機時為空，請重試",
+        "invalid_ipaddr": "IP 地址無效",
+        "invalid_prefix": "子網字首超出範圍",
+        "invalid_host_in_subnet": "該地址不能用作所選子網中的主機",
+        "lan_read_failed": "無法讀取當前 LAN 設定",
+        "lan_save_failed": "無法儲存 LAN 設定",
+        "invalid_private_address": "地址必須位於私有地址範圍內（10.x、172.16–31.x 或 192.168.x）",
+        "update_in_progress": "正在進行軟體更新，請在更新完成後重試",
+        "lan_busy": "已有另一項 LAN 更改正在套用"
+      }
     },
     "router": {
       "title": "數據機後方的路由器",
@@ -153,6 +201,7 @@
     "switch_aria": "切換語言"
   },
   "login": {
+    "ssh_sync_failed": "QManager 密碼已設定，但 SSH root 密碼未能更新。請在 系統設定 → 裝置存取 中設定。",
     "brand_label": "QManager · Quectel 數據機管理",
     "welcome": "歡迎使用 QManager",
     "password_label": "密碼",
@@ -170,7 +219,8 @@
       "toggle": "無法登入?",
       "intro": "如果您忘記了管理員密碼,有兩種恢復方式:",
       "option_reset": "通過 SSH 連線到裝置並執行 {{command}} 以設定新的管理員密碼。(需要先啟用 SSH 訪問。)",
-      "option_backup": "如果您儲存了 .qmbackup 檔案,請重新刷寫裝置韌體,然後從該檔案中恢復。"
+      "option_backup": "如果您儲存了 .qmbackup 檔案,請重新刷寫裝置韌體,然後從該檔案中恢復。",
+      "option_reset_command": "通過 SSH 連線到裝置並執行 {{command}} 以設定新的管理員密碼。(需要先啟用 SSH 訪問。)"
     },
     "session_expired_title": "工作階段已結束",
     "locked_title": "嘗試次數過多",
@@ -179,7 +229,8 @@
     "attempts_left_one": "密碼錯誤。還剩 {{count}} 次嘗試。",
     "attempts_left_other": "密碼錯誤。還剩 {{count}} 次嘗試。",
     "password_to_manage": "輸入密碼以管理 {{hostname}}。",
-    "password_to_manage_bare": "請輸入密碼。"
+    "password_to_manage_bare": "請輸入密碼。",
+    "locked_countdown": "已鎖定 ({{seconds}})"
   },
   "overview": {
     "title": "數據機概覽",
@@ -318,19 +369,19 @@
       "refresh": "重新整理"
     },
     "strip": {
-      "label": "rmnet 上已生效",
+      "label": "目前已生效",
       "chip_custom": "自訂",
       "chip_default": "電信商預設值",
       "retry": "重試",
       "unavailable_title": "無法讀取 TTL 或 MTU",
-      "unavailable_body": "兩個端點都沒有回應。數據機上未做任何變更。",
+      "unavailable_body": "數據機沒有回應。未做任何變更。",
       "idle_title": "沒有生效的覆寫值",
       "idle_body": "數據機完全依協商結果使用電信商的 TTL 與 MTU。在下方開啟其中一項即可變更。"
     },
     "tiles": {
       "shared": {
         "caption_pending": "仍在讀取",
-        "caption_unread": "此端點沒有回應"
+        "caption_unread": "數據機沒有回應"
       },
       "ttl": {
         "label": "TTL（IPv4）",
@@ -386,7 +437,7 @@
       },
       "mtu_toggle": {
         "label": "覆寫 MTU",
-        "consequence": "關閉後，所有 rmnet_data 介面都會回到電信商協商的數值。"
+        "consequence": "關閉後，行動網路介面會回到預設值 1500。"
       },
       "mtu_value": {
         "label": "MTU 值",
@@ -408,101 +459,15 @@
       "no_value": "請先填寫 TTL 或跳躍限制，再套用。",
       "mtu_range": "MTU 必須介於 {{min}} 到 {{max}} 之間。"
     },
-    "toast_ttl_applied": "已套用 — TTL {{ttl}}，跳躍限制 {{hl}}。",
+    "toast_ttl_applied": "已套用（TTL {{ttl}}，跳躍限制 {{hl}}）。",
     "toast_ttl_cleared": "數據機已回到電信商自己的跳躍數。",
     "toast_ttl_error": "無法套用 TTL 與跳躍限制。",
-    "toast_mtu_applied": "已將所有 rmnet_data 介面的 MTU 設為 {{mtu}}。",
-    "toast_mtu_cleared": "MTU 已回到電信商協商的數值。",
-    "toast_mtu_error": "無法套用 MTU。"
-  },
-  "customDns": {
-    "page": {
-      "title": "自訂 DNS",
-      "description": "選擇數據機要將區域網路查詢轉送到哪一個解析器。用戶端仍向數據機查詢，改變的只有上游。"
-    },
-    "header": {
-      "refresh": "重新整理"
-    },
-    "strip": {
-      "label": "目前轉送至",
-      "state_custom": "您的解析器",
-      "state_carrier": "電信商指派",
-      "state_corrupt": "設定已損毀",
-      "state_unavailable": "未使用",
-      "unavailable_title": "dnsmasq 不在轉送路徑上",
-      "unavailable_body": "DNS 模式為 {{mode}}，區域網路用戶端會直接向電信商解析，本頁面的設定無法改變這一點。",
-      "read_failed_title": "無法讀取 DNS 設定",
-      "read_failed_body": "數據機沒有回應上一次讀取。裝置上未做任何變更 — 請按重新整理再試一次。"
-    },
-    "tiles": {
-      "upstream": {
-        "label_one": "上游 1",
-        "label_two": "上游 2",
-        "caption_attach": "來自上一次附著",
-        "caption_yours": "由您設定",
-        "caption_absent_carrier": "電信商只指派了一個解析器",
-        "caption_absent_custom": "您只設定了一個解析器",
-        "caption_none": "尚未設定任何解析器",
-        "caption_untrusted": "可能與 dnsmasq 實際使用的不一致"
-      },
-      "source": {
-        "label": "來源",
-        "value_custom": "自訂",
-        "value_carrier": "電信商",
-        "value_unknown": "未知",
-        "caption": "dnsmasq，{{mode}} 模式",
-        "caption_implicit": "dnsmasq，代理模式"
-      },
-      "fallback": {
-        "label": "電信商備援",
-        "value_on": "開啟",
-        "value_off": "關閉",
-        "caption_on": "預設行為",
-        "caption_off": "您的解析器失敗時不備援"
-      }
-    },
-    "corrupt": {
-      "title": "dnsmasq.conf 中 QManager 的設定區塊格式異常",
-      "body": "只有開始標記卻沒有結束標記，或反過來。下方的上游清單可能與 dnsmasq 實際使用的不一致。儲存前請透過 SSH 檢查 /etc/data/dnsmasq.conf。"
-    },
-    "unavailable": {
-      "title": "DNS 模式是 {{mode}}，不是 PROXY",
-      "body": "該模式位於 /etc/data/mobileap_cfg.xml，必須在 QManager 之外變更。在它顯示為 PROXY 之前，這裡的儲存不會有任何作用。"
-    },
-    "card": {
-      "title": "上游解析器",
-      "description": "最多四個。dnsmasq 會原地重新載入 — 無需重啟，連線不中斷。",
-      "save": "儲存並套用",
-      "add": "新增解析器",
-      "blocked_unavailable": "dnsmasq 不在轉送路徑上，這樣做不會有任何作用。"
-    },
-    "rows": {
-      "enabled": {
-        "label": "使用我自己的解析器",
-        "consequence": "關閉後，dnsmasq 會回到電信商在上一次附著時指派的解析器。"
-      },
-      "resolver": {
-        "label": "解析器 {{n}}",
-        "consequence": "IPv4 或 IPv6。貼上以逗號分隔的清單可一次填入多列。",
-        "consequence_off": "先開啟自訂解析器才能新增。",
-        "placeholder": "1.1.1.1",
-        "remove": "移除解析器 {{n}}"
-      },
-      "ignore_carrier": {
-        "label": "絕不備援到電信商 DNS",
-        "consequence": "開啟後，當您的解析器無法連通時查詢會直接失敗，而不會外洩給電信商。"
-      }
-    },
-    "delta": {
-      "unsaved": "未儲存"
-    },
-    "errors": {
-      "invalid_address": "不是有效的 IPv4 或 IPv6 位址。",
-      "fix_rows": "儲存前請修正標示的解析器。",
-      "empty_when_enabled": "請新增一個解析器，或關閉自訂解析器。"
-    },
-    "toast_saved": "自訂 DNS 已套用。快取更新期間，區域網路用戶端可能會有短暫停頓。",
-    "toast_error": "無法套用 DNS 變更。"
+    "toast_mtu_applied": "已將 MTU 設為 {{mtu}}。",
+    "toast_mtu_cleared": "MTU 已回到預設值 1500。",
+    "toast_mtu_error": "無法套用 MTU。",
+    "toast_mtu_disable_error": "無法關閉自訂 MTU。",
+    "mtu_load_error": "無法讀取 MTU 設定。",
+    "ttl_load_error": "無法讀取 TTL 設定。"
   },
   "ipPassthrough": {
     "page": {
@@ -570,6 +535,7 @@
       "mode_eth": "乙太網路",
       "mode_usb": "USB",
       "target_automatic": "自動",
+      "target_device": "從區域網路",
       "target_manual": "依 MAC",
       "nat_on": "啟用 NAT",
       "nat_off": "不啟用 NAT",
@@ -596,174 +562,20 @@
       "retry": "重試",
       "card_unread": "數據機尚未回應，在首次讀取完成前沒有可變更的內容。",
       "mac_invalid": "請輸入完整的 MAC 位址，即六組十六進位數字。",
-      "no_changes": "尚未有任何變更。"
-    }
-  },
-  "trafficEngine": {
-    "page": {
-      "title": "流量引擎",
-      "description": "透過內建的繞過引擎，規避電信商 DPI 對影片串流等流量的限速。"
+      "no_changes": "尚未有任何變更。",
+      "device_unpicked": "請先選擇一個已連線的裝置。"
     },
-    "binary_op_failed": "引擎二進位操作失敗",
-    "status": {
-      "running": "執行中",
-      "stopped": "已停止",
-      "restarting": "重新啟動中",
-      "error": "錯誤"
-    },
-    "strip": {
-      "label": "即時狀態",
-      "stale_title": "無回應",
-      "stale_body": "最近一次輪詢沒有回應。下方數值沿用上一次讀取的結果，引擎仍依原狀態運作。",
-      "unavailable_title": "無法讀取引擎狀態",
-      "unavailable_body": "數據機沒有回應。引擎仍依原狀態運作。這是回報失敗，不是服務中斷。"
-    },
-    "tiles": {
-      "engine": {
-        "label": "引擎",
-        "caption_uptime": "已運作 {{uptime}}",
-        "caption_stopped": "未重新導向任何流量",
-        "caption_restarting": "正在套用模式變更",
-        "caption_error": "引擎無法啟動"
-      },
-      "packets": {
-        "label": "已處理",
-        "caption_rate": "{{n}} 封包/秒",
-        "caption_idle": "引擎未執行"
-      },
-      "scope": {
-        "label": "作用範圍",
-        "value_domains": "{{count}} 個網域",
-        "value_all": "全部流量",
-        "value_none": "無",
-        "caption_list": "來自目標清單",
-        "caption_all": "所有 TCP 80/443",
-        "caption_saved": "已儲存 {{count}} 個網域"
-      },
-      "rule": {
-        "label": "重新導向規則",
-        "value_active": "已生效",
-        "value_removed": "已移除",
-        "caption": "tcp 80,443 → 連接埠 989"
-      }
-    },
-    "mode": {
-      "title": "繞過模式",
-      "description": "同一時間只有一種模式占用引擎。切換會重新啟動引擎。",
-      "aria": "繞過模式",
-      "off": "關閉",
-      "off_hint": "不重新導向任何流量。引擎停止，規則被移除。",
-      "video_optimizer": "影片最佳化",
-      "video_optimizer_hint": "僅處理與目標清單相符的連線，子網域同樣相符。",
-      "full_bypass": "全量繞過",
-      "full_bypass_hint": "處理每一條 TCP 80/443 連線。無需目標清單，沒有可設定項目。",
-      "toast_off": "繞過引擎已停止",
-      "toast_video_optimizer": "現由影片最佳化處理流量",
-      "toast_full_bypass": "現由全量繞過處理流量",
-      "toast_error": "無法切換繞過模式"
-    },
-    "takeover": {
-      "title": "切換到{{mode}}？",
-      "description": "切換模式會重新啟動引擎，正在經過引擎的所有連線會短暫中斷。",
-      "confirm": "切換",
-      "cancel": "取消"
-    },
-    "targets": {
-      "title": "最佳化目標",
-      "description": "引擎將進行失步處理的網域。儲存後立即生效，無需重新啟動。",
-      "count": "{{count}} / {{max}}",
-      "count_saved": "已儲存 {{count}} 個",
-      "idle_title": "全量繞過開啟時此清單不生效",
-      "idle_body": "全量繞過會對每一條連線進行失步處理，因此沒有需要比對的清單。您儲存的 {{count}} 個網域會保留，切回影片最佳化後立即重新生效。",
-      "idle_body_empty": "全量繞過會對每一條連線進行失步處理，因此沒有需要比對的清單。您在此新增的內容會在切回影片最佳化後立即生效。"
-    },
-    "hostlist": {
-      "empty": "尚無網域。請新增一個開始使用。",
-      "invalid": "請輸入有效網域（字母、數字、點、連字號）。",
-      "duplicate": "此網域已在清單中。",
-      "limit": "清單最多可容納 300 個網域。",
-      "add": "新增網域",
-      "remove": "移除 {{domain}}",
-      "saved": "網域清單已儲存",
-      "save_failed": "無法儲存網域清單",
-      "too_long": "網域最多 {{max}} 個字元。",
-      "import_action": "從 .txt 檔案匯入目標",
-      "export_action": "將目標匯出為 .txt 檔案",
-      "import_too_large": "檔案太大。請選擇小於 {{limit}} KB 的目標清單。",
-      "import_unreadable": "無法讀取該檔案。",
-      "import_empty": "該檔案中沒有網域",
-      "import_none": "沒有匯入任何網域",
-      "import_added_one": "已匯入 1 個網域",
-      "import_added_other": "已匯入 {{count}} 個網域",
-      "import_invalid_one": "有 1 行不是有效網域。",
-      "import_invalid_other": "有 {{count}} 行不是有效網域。",
-      "import_duplicate_one": "有 1 個已在清單中。",
-      "import_duplicate_other": "有 {{count}} 個已在清單中。",
-      "import_dropped_one": "有 1 個超出 {{max}} 個網域的上限。",
-      "import_dropped_other": "有 {{count}} 個超出 {{max}} 個網域的上限。",
-      "restore_action": "還原原廠目標清單",
-      "restore_title": "還原原廠目標清單？",
-      "restore_body_one": "這會取代你已儲存的 1 個網域。若要保留，請先匯出清單。",
-      "restore_body_other": "這會取代你已儲存的 {{count}} 個網域。若要保留，請先匯出清單。",
-      "restore_body_empty": "目標清單是空的，不會取代你的任何內容。",
-      "restore_body_defaults_one": "原廠清單包含 1 個網域。",
-      "restore_body_defaults_other": "原廠清單包含 {{count}} 個網域。",
-      "restore_confirm": "還原預設值",
-      "restore_cancel": "取消",
-      "restore_done": "已還原原廠目標清單",
-      "restore_failed": "無法還原原廠清單"
-    },
-    "verify": {
-      "title": "繞過效果評估",
-      "description": "測量在目前網路下，繞過 DPI 能否提升被限速的影片 CDN 速度，並與未被限速的參考值對比。測試使用自己的臨時代理，因此不會檢查正在執行的引擎。",
-      "run": "執行測試",
-      "run_again": "重新測試",
-      "idle_heading": "尚未進行測試",
-      "needs_binary_heading": "引擎尚未安裝",
-      "running": "測試中…",
-      "progress": "正在下載同一個檔案兩次：一次直連，一次經由臨時代理，另加一次參考取樣。需要幾分鐘。",
-      "timeout": "測試未在限定時間內完成。",
-      "error": "無法啟動測試",
-      "needs_binary": "請先安裝引擎程式。",
-      "headline_sub": "本次測試中經由繞過的提速倍數",
-      "without": "未繞過",
-      "with": "已繞過",
-      "line_speed": "線路速度",
-      "unit": "Mbps",
-      "source_speedtest": "speedtest.net",
-      "source_cloudflare": "Cloudflare",
-      "throttled": "受限速",
-      "unthrottled": "未受限速",
-      "scope": "此結果反映的是你的網路，而不是正在執行的引擎。引擎狀態請查看上方的即時狀態。",
-      "footnote": "線路速度是參照值：三項都慢代表線路本身慢，而不是被限速。"
-    },
-    "forceTcp": {
-      "title": "QUIC → 強制 TCP",
-      "description": "阻斷 QUIC (UDP 443)，讓 YouTube、Discord 等應用回落到基於 TCP 的 HTTPS，從而套用引擎的繞過。",
-      "independent": "獨立於流量引擎",
-      "label": "將 QUIC 強制走 TCP",
-      "hint": "立即生效。兩種模式下都可用，未啟用任何模式時同樣可用。",
-      "switch_aria": "切換 QUIC 強制走 TCP",
-      "caveat_title": "可能導致播放更慢",
-      "caveat": "可能更慢：如果網路已以全速傳輸 QUIC，強制走 TCP 會增加延遲（以及繞過的額外一跳）。當 QUIC 影片受限速或不可靠時再開啟。",
-      "read_error": "無法讀取 QUIC 規則",
-      "toast_enabled": "已啟用 QUIC 強制 TCP",
-      "toast_disabled": "已停用 QUIC 強制 TCP"
-    },
-    "uninstall": {
-      "button": "解除安裝引擎二進位",
-      "title": "確定解除安裝引擎二進位？",
-      "description": "此動作會停止流量引擎（若正在執行）並移除引擎二進位檔案。確定要繼續嗎？若您改變主意，稍後可重新安裝。",
-      "confirm": "解除安裝",
-      "cancel": "取消"
-    },
-    "onboarding": {
-      "heading": "繞過引擎尚未安裝",
-      "body": "QManager 會下載一個小型引擎程式，並在安裝前以固定的校驗和驗證。安裝完成後會自動啟動。",
-      "installing_heading": "正在安裝繞過引擎",
-      "installing_body": "正在依據發行清單與固定校驗和驗證下載內容。網路正常時約需一分鐘。",
-      "failed_heading": "安裝未能完成",
-      "install": "下載並安裝"
+    "device": {
+      "label": "從已連線清單中選擇目標裝置",
+      "placeholder": "選擇裝置",
+      "scanning": "正在掃描已連線裝置…",
+      "error": "無法載入已連線裝置。",
+      "empty": "找不到已連線裝置。請將裝置連接至調變解調器，然後重新掃描。",
+      "retry": "重試",
+      "rescan": "重新掃描",
+      "rescan_label": "重新掃描已連線裝置",
+      "enter_manually": "手動輸入",
+      "unknown": "未知裝置"
     }
   },
   "networkEvents": {
@@ -937,27 +749,6 @@
         "sub": "由你的機器人私訊傳送。",
         "id_hint_label": "如何找到你的 Discord ID"
       },
-      "telegram": {
-        "title": "Telegram 提醒",
-        "sub": "由你自己的 Telegram 機器人傳送訊息。",
-        "token_label": "機器人權杖",
-        "token_hint": "使用 @BotFather 建立機器人，然後貼上它提供的權杖。",
-        "token_link": "開啟 @BotFather",
-        "token_placeholder": "123456789:AA...",
-        "token_keep": "留空以保留已儲存的權杖",
-        "token_missing": "傳送 Telegram 提醒需要機器人權杖。",
-        "token_error": "機器人權杖的格式為 123456789:AA…，不含空格。",
-        "token_show": "顯示機器人權杖",
-        "token_hide": "隱藏機器人權杖",
-        "chat_label": "聊天 ID",
-        "chat_hint_label": "如何找到你的聊天 ID",
-        "chat_hint": "在機器人聊天中點選「開始」，然後向 @userinfobot 查詢你的 ID。群組 ID 以 -100 開頭；公開頻道可使用其 @名稱。",
-        "chat_missing": "需要填寫聊天 ID。",
-        "chat_error": "請輸入數字聊天 ID 或 @頻道名稱。",
-        "test": "傳送測試訊息",
-        "commands_label": "指令",
-        "commands_hint": "回覆從此聊天傳送的 /status、/signal、/ip、/data 和 /reboot。"
-      },
       "email": {
         "address_error": "請輸入有效的電子郵件地址。",
         "mailer_install": "安裝 msmtp",
@@ -1068,6 +859,27 @@
         "title": "無法載入管道",
         "description": "裝置沒有回應。請稍後再試。",
         "retry": "重試"
+      },
+      "telegram": {
+        "title": "Telegram 提醒",
+        "sub": "由你自己的 Telegram 機器人傳送訊息。",
+        "token_label": "機器人權杖",
+        "token_hint": "使用 @BotFather 建立機器人，然後貼上它提供的權杖。",
+        "token_link": "開啟 @BotFather",
+        "token_placeholder": "123456789:AA...",
+        "token_keep": "留空以保留已儲存的權杖",
+        "token_missing": "傳送 Telegram 提醒需要機器人權杖。",
+        "token_error": "機器人權杖的格式為 123456789:AA…，不含空格。",
+        "token_show": "顯示機器人權杖",
+        "token_hide": "隱藏機器人權杖",
+        "chat_label": "聊天 ID",
+        "chat_hint_label": "如何找到你的聊天 ID",
+        "chat_hint": "在機器人聊天中點選「開始」，然後向 @userinfobot 查詢你的 ID。群組 ID 以 -100 開頭；公開頻道可使用其 @名稱。",
+        "chat_missing": "需要填寫聊天 ID。",
+        "chat_error": "請輸入數字聊天 ID 或 @頻道名稱。",
+        "test": "傳送測試訊息",
+        "commands_label": "指令",
+        "commands_hint": "回覆從此聊天傳送的 /status、/signal、/ip、/data 和 /reboot。"
       }
     },
     "coverage": {
@@ -1180,7 +992,6 @@
     "connection": {
       "title": "連線",
       "description": "此數據機是否加入 tailnet，以及加入後的行為方式。",
-      "version": "v{{version}}",
       "connect": "連線",
       "connecting": "連線中…",
       "disconnect": "中斷連線",
@@ -1204,7 +1015,16 @@
       "sshLocked": "連線 Tailscale 後才能變更此設定。",
       "sshDialogTitle": "開啟 Tailscale SSH？",
       "sshDialogDescription": "tailnet 成員將能依您 Tailscale 管理後台的 ACL 透過 SSH 連線此數據機。請先檢查該政策，確保只有您允許的人能存取此裝置。",
-      "sshConfirm": "開啟 SSH"
+      "sshConfirm": "開啟 SSH",
+      "on": "開",
+      "off": "關",
+      "updating": "更新中…",
+      "updateAvailable": "有可用更新（{{version}}）",
+      "updateDialogTitle": "將 Tailscale 更新到 {{version}}？",
+      "updateDialogDescription": "新版本啟動期間，隧道會重新連線數秒。",
+      "update": "更新",
+      "updateLogTitle": "更新記錄",
+      "version": "v{{version}}"
     },
     "device": {
       "title": "此裝置",
@@ -1217,7 +1037,8 @@
       "magicDns": "MagicDNS",
       "relay": "DERP 中繼",
       "emptyTitle": "尚未加入 tailnet",
-      "emptyDescription": "連線 Tailscale 後，此數據機的位址、DNS 名稱與中繼資訊會顯示在這裡。"
+      "emptyDescription": "連線 Tailscale 後，此數據機的位址、DNS 名稱與中繼資訊會顯示在這裡。",
+      "version": "版本"
     },
     "peers": {
       "title": "網路節點",
@@ -1296,7 +1117,11 @@
       "uninstalled": "Tailscale 已解除安裝",
       "uninstallFailed": "無法解除安裝 Tailscale",
       "copied": "指令已複製",
-      "copyFailed": "無法複製指令"
+      "copyFailed": "無法複製指令",
+      "installed": "Tailscale 已安裝",
+      "installFailed": "Tailscale 安裝未完成",
+      "updated": "Tailscale 已更新到 {{version}}",
+      "updateFailed": "無法更新 Tailscale"
     }
   },
   "watchdog": {
@@ -1317,7 +1142,7 @@
       "cooldownCaption": "{{seconds}} 秒後重新偵測",
       "recoveriesLast": "第 {{tier}} 步，{{ago}}",
       "recoveriesNone": "尚無記錄",
-      "rebootsCaption": "自看門狗啟動起",
+      "rebootsCaption": "過去一小時內",
       "rebootsOff": "重啟步驟已關閉",
       "aria": "看門狗狀態",
       "cooldownStep": "第 {{tier}} 步已執行，{{seconds}} 秒後重新偵測。"
@@ -1366,6 +1191,10 @@
       "disabled": {
         "label": "已停用",
         "blurb": "服務正在執行，但功能已關閉。"
+      },
+      "ssr_hold": {
+        "label": "等待中",
+        "blurb": "基頻正在自行重新啟動，復原作業會等待其恢復。"
       }
     },
     "master": {
@@ -1377,6 +1206,7 @@
       "aria": "恢復階梯",
       "status": {
         "blocked": "需要插槽",
+        "done": "已嘗試",
         "running": "正在執行"
       },
       "tier1": {
@@ -1400,7 +1230,14 @@
         "capLead": "最多",
         "capUnit": "次/小時"
       },
-      "tierAria": "啟用此恢復步驟：{{name}}"
+      "tierAria": "啟用此恢復步驟：{{name}}",
+      "failback": {
+        "name": "切回主要 SIM 卡",
+        "consequence": "定期重試主要 SIM 卡，每次嘗試都會短暫斷線。",
+        "lead": "每",
+        "unit": "分鐘",
+        "intervalLabel": "主要 SIM 卡複查間隔"
+      }
     },
     "detection": {
       "title": "偵測",
@@ -1431,11 +1268,23 @@
         "none": "沒有啟用任何步驟，不會執行任何操作。",
         "invalid": "輸入有效的偵測數值即可預覽時間線。",
         "stopped": "第 3 步沒有插槽，恢復流程將止步於此。"
+      },
+      "ssr": {
+        "label": "基頻重新啟動等待",
+        "unit": "秒",
+        "caption": "先等待模組自行重新啟動完成"
+      },
+      "quality": {
+        "label": "品質觸發",
+        "unit": "次",
+        "caption": "延遲超過 {{ms}} ms 或封包遺失超過 {{pct}}%",
+        "link": "臨界值"
       }
     },
     "activity": {
       "title": "恢復活動",
       "description": "看門狗執行過的操作，最新優先。",
+      "tier4Reboot": "看門狗重新啟動了數據機",
       "type": {
         "recovery": "恢復",
         "failover": "SIM 卡故障轉移"
@@ -1484,7 +1333,10 @@
       "probeInterval": "必須介於 1 到 60 秒之間",
       "cooldown": "必須介於 10 到 300 秒之間",
       "maxReboots": "必須介於 1 到 10 之間",
-      "backupSim": "選擇備用 SIM 卡插槽以啟用故障轉移"
+      "backupSim": "選擇備用 SIM 卡插槽以啟用故障轉移",
+      "ssrGrace": "必須介於 10 到 120 秒之間",
+      "qualityConsecutive": "必須介於 1 到 60 之間",
+      "recheckInterval": "必須介於 5 到 1440 分鐘之間"
     },
     "failover": {
       "title": "目前使用備用 SIM 卡",
@@ -1582,13 +1434,23 @@
       "modem": "這些數值來自裝置，而裝置未回應。",
       "addresses": "位址由同一次請求讀取。"
     },
+    "credits": {
+      "title": "致謝",
+      "description": "QManager 使用了一些外部服務與開放資料，感謝背後的每一位貢獻者。",
+      "roles": {
+        "apn": "電信業者 APN 預設",
+        "logos": "簡訊發送者與監控網站的品牌標誌",
+        "icons": "找不到標誌時使用的網站圖示"
+      }
+    },
     "qmanager": {
       "title": "關於 QManager",
       "note": "你好！我是 Rus。QManager 是 QuecManager 的最新一代，採用比前代更新、更可靠的實作方式——同時仍將進階使用者的技術設定與新手適用的簡化介面結合在一起。特別感謝 iamromulan、clndwhr 與 Wutang Clan！",
       "copyright": "© {{year}} QManager。保留一切權利。",
       "repository": "GitHub 儲存庫",
       "release_notes": "版本資訊",
-      "support": "支持本專案"
+      "support": "支持本專案",
+      "credits": "致謝"
     },
     "firmware": {
       "title": "韌體更新",
@@ -1685,6 +1547,352 @@
     "band": {
       "title": "支持本專案",
       "body": "QManager 是一個業餘維護、完全免費的專案。如果它對你的裝置有幫助，一點小小的支持就能讓它繼續走下去——無論如何都不會有付費牆。"
+    }
+  },
+  "not_found": {
+    "scene_label": "星空下劈啪作響的營火",
+    "title": "冒險者，你好像迷路了",
+    "description": "要回去繼續優化你的連線嗎？",
+    "home": "返回儀表板",
+    "footer": "QManager"
+  },
+  "account": {
+    "photo_invalid": "請選擇圖片檔案。",
+    "photo_updated": "大頭貼已更新。",
+    "change_photo_aria": "更換大頭貼",
+    "name_placeholder": "你的名稱",
+    "name_saved": "顯示名稱已更新。",
+    "name_save_failed": "更新顯示名稱失敗。",
+    "reconnect_description": "這將使調變解調器中斷數秒，然後自動重新連線。",
+    "disconnecting_description": "正在將調變解調器從網路中斷…",
+    "reconnecting_description": "正在將調變解調器重新連線到網路…",
+    "reconnect_action": "重新連線",
+    "reconnect_complete": "調變解調器已重新連線。",
+    "reconnect_failed": "重新連線調變解調器失敗。",
+    "reboot_description": "裝置將重啟，在其重新上線之前所有網路連線都會中斷。",
+    "reboot_sent": "重啟指令已送出，你即將登出…",
+    "reboot_now": "立即重啟"
+  },
+  "pending_reboot": {
+    "title": "重新啟動以完成變更",
+    "reboot_now": "立即重新啟動",
+    "rebooting": "正在重新啟動…",
+    "dismiss": "忽略",
+    "reboot_failed_toast": "無法啟動重新啟動，請重試。",
+    "description": {
+      "config_restore": "還原的 IMEI 變更或 SIM 設定檔將在下次重新啟動後生效。",
+      "imei": "新的 IMEI 將在下次重新啟動後生效。",
+      "mbn": "新的電信業者設定檔會在數據機重新啟動後生效。",
+      "default": "部分變更將在下次重新啟動後生效。"
+    },
+    "dismiss_dialog": {
+      "title": "忽略重新啟動提醒？",
+      "description": "需要重新啟動的變更在數據機重新啟動前不會生效。僅在已重新啟動後才忽略。",
+      "keep": "保留提醒",
+      "confirm": "忽略"
+    }
+  },
+  "reboot_page": {
+    "phase": {
+      "shutting_down": "正在關機…",
+      "restarting": "正在重新啟動服務…",
+      "almost_ready": "即將就緒…",
+      "overtime": "耗時比平常更久…"
+    },
+    "subtitle": {
+      "normal": "裝置很快就會恢復上線",
+      "overtime": "裝置仍在重新啟動"
+    },
+    "timer_aria_one": "剩餘 {{count}} 秒",
+    "timer_aria_other": "剩餘 {{count}} 秒",
+    "timer_overtime_aria": "正在重新連線，耗時比平常更久",
+    "seconds_unit": "秒",
+    "escape": "裝置可能需要人工處理。前往登入"
+  },
+  "change_password": {
+    "title": "變更密碼",
+    "description": "變更密碼後您將被登出。",
+    "current_label": "目前密碼",
+    "new_label": "新密碼",
+    "confirm_label": "確認新密碼",
+    "match": "密碼一致",
+    "mismatch": "密碼不一致",
+    "error_weak": "新密碼至少需要 6 個字元。",
+    "error_weak_strong": "新密碼至少需要 6 個字元，並包含大寫字母、小寫字母和數字。",
+    "error_mismatch": "兩次輸入的新密碼不一致。",
+    "failed_toast": "無法變更密碼，請再試一次。",
+    "cancel": "取消",
+    "submit": "變更密碼",
+    "submitting": "正在變更…"
+  },
+  "password_rules": {
+    "requirements_label": "密碼要求",
+    "rule": {
+      "length": "至少 6 個字元",
+      "uppercase": "大寫字母",
+      "lowercase": "小寫字母",
+      "number": "數字"
+    },
+    "met": "（已符合）",
+    "not_met": "（未符合）",
+    "strong_label": "使用強密碼",
+    "strong_hint_label": "關於強密碼",
+    "strong_hint": "需要包含大寫字母、小寫字母和數字。"
+  },
+  "customDns": {
+    "page": {
+      "title": "自訂 DNS",
+      "description": "選擇數據機要將區域網路查詢轉送到哪一個解析器。用戶端仍向數據機查詢，改變的只有上游。"
+    },
+    "header": {
+      "refresh": "重新整理"
+    },
+    "strip": {
+      "label": "目前轉送至",
+      "state_custom": "您的解析器",
+      "state_carrier": "電信商指派",
+      "state_corrupt": "設定已損毀",
+      "state_unavailable": "未使用",
+      "unavailable_title": "dnsmasq 不在轉送路徑上",
+      "unavailable_body": "DNS 模式為 {{mode}}，區域網路用戶端會直接向電信商解析，本頁面的設定無法改變這一點。",
+      "read_failed_title": "無法讀取 DNS 設定",
+      "read_failed_body": "數據機沒有回應上一次讀取。裝置上未做任何變更 — 請按重新整理再試一次。"
+    },
+    "tiles": {
+      "upstream": {
+        "label_one": "上游 1",
+        "label_two": "上游 2",
+        "caption_attach": "來自上一次附著",
+        "caption_yours": "由您設定",
+        "caption_absent_carrier": "電信商只指派了一個解析器",
+        "caption_absent_custom": "您只設定了一個解析器",
+        "caption_none": "尚未設定任何解析器",
+        "caption_untrusted": "可能與 dnsmasq 實際使用的不一致"
+      },
+      "source": {
+        "label": "來源",
+        "value_custom": "自訂",
+        "value_carrier": "電信商",
+        "value_unknown": "未知",
+        "caption": "dnsmasq，{{mode}} 模式",
+        "caption_implicit": "dnsmasq，代理模式"
+      },
+      "fallback": {
+        "label": "電信商備援",
+        "value_on": "開啟",
+        "value_off": "關閉",
+        "caption_on": "預設行為",
+        "caption_off": "您的解析器失敗時不備援"
+      }
+    },
+    "corrupt": {
+      "title": "dnsmasq.conf 中 QManager 的設定區塊格式異常",
+      "body": "只有開始標記卻沒有結束標記，或反過來。下方的上游清單可能與 dnsmasq 實際使用的不一致。儲存前請透過 SSH 檢查 /etc/data/dnsmasq.conf。"
+    },
+    "unavailable": {
+      "title": "DNS 模式是 {{mode}}，不是 PROXY",
+      "body": "該模式位於 /etc/data/mobileap_cfg.xml，必須在 QManager 之外變更。在它顯示為 PROXY 之前，這裡的儲存不會有任何作用。"
+    },
+    "card": {
+      "title": "上游解析器",
+      "description": "最多四個。dnsmasq 會原地重新載入 — 無需重啟，連線不中斷。",
+      "save": "儲存並套用",
+      "add": "新增解析器",
+      "blocked_unavailable": "dnsmasq 不在轉送路徑上，這樣做不會有任何作用。"
+    },
+    "rows": {
+      "enabled": {
+        "label": "使用我自己的解析器",
+        "consequence": "關閉後，dnsmasq 會回到電信商在上一次附著時指派的解析器。"
+      },
+      "resolver": {
+        "label": "解析器 {{n}}",
+        "consequence": "IPv4 或 IPv6。貼上以逗號分隔的清單可一次填入多列。",
+        "consequence_off": "先開啟自訂解析器才能新增。",
+        "placeholder": "1.1.1.1",
+        "remove": "移除解析器 {{n}}"
+      },
+      "ignore_carrier": {
+        "label": "絕不備援到電信商 DNS",
+        "consequence": "開啟後，當您的解析器無法連通時查詢會直接失敗，而不會外洩給電信商。"
+      }
+    },
+    "delta": {
+      "unsaved": "未儲存"
+    },
+    "errors": {
+      "invalid_address": "不是有效的 IPv4 或 IPv6 位址。",
+      "fix_rows": "儲存前請修正標示的解析器。",
+      "empty_when_enabled": "請新增一個解析器，或關閉自訂解析器。"
+    },
+    "toast_saved": "自訂 DNS 已套用。快取更新期間，區域網路用戶端可能會有短暫停頓。",
+    "toast_error": "無法套用 DNS 變更。"
+  },
+  "trafficEngine": {
+    "page": {
+      "title": "流量引擎",
+      "description": "透過內建的繞過引擎，規避電信商 DPI 對影片串流等流量的限速。"
+    },
+    "binary_op_failed": "引擎二進位操作失敗",
+    "status": {
+      "running": "執行中",
+      "stopped": "已停止",
+      "restarting": "重新啟動中",
+      "error": "錯誤"
+    },
+    "strip": {
+      "label": "即時狀態",
+      "stale_title": "無回應",
+      "stale_body": "最近一次輪詢沒有回應。下方數值沿用上一次讀取的結果，引擎仍依原狀態運作。",
+      "unavailable_title": "無法讀取引擎狀態",
+      "unavailable_body": "數據機沒有回應。引擎仍依原狀態運作。這是回報失敗，不是服務中斷。"
+    },
+    "tiles": {
+      "engine": {
+        "label": "引擎",
+        "caption_uptime": "已運作 {{uptime}}",
+        "caption_stopped": "未重新導向任何流量",
+        "caption_restarting": "正在套用模式變更",
+        "caption_error": "引擎無法啟動"
+      },
+      "packets": {
+        "label": "已處理",
+        "caption_rate": "{{n}} 封包/秒",
+        "caption_idle": "引擎未執行"
+      },
+      "scope": {
+        "label": "作用範圍",
+        "value_domains": "{{count}} 個網域",
+        "value_all": "全部流量",
+        "value_none": "無",
+        "caption_list": "來自目標清單",
+        "caption_all": "所有 TCP 80/443",
+        "caption_saved": "已儲存 {{count}} 個網域"
+      },
+      "rule": {
+        "label": "重新導向規則",
+        "value_active": "已生效",
+        "value_removed": "已移除",
+        "caption": "tcp 80,443 → 連接埠 989"
+      }
+    },
+    "mode": {
+      "title": "繞過模式",
+      "description": "同一時間只有一種模式占用引擎。切換會重新啟動引擎。",
+      "aria": "繞過模式",
+      "off": "關閉",
+      "off_hint": "不重新導向任何流量。引擎停止，規則被移除。",
+      "video_optimizer": "影片最佳化",
+      "video_optimizer_hint": "僅處理與目標清單相符的連線，子網域同樣相符。",
+      "full_bypass": "全量繞過",
+      "full_bypass_hint": "處理每一條 TCP 80/443 連線。無需目標清單，沒有可設定項目。",
+      "toast_off": "繞過引擎已停止",
+      "toast_video_optimizer": "現由影片最佳化處理流量",
+      "toast_full_bypass": "現由全量繞過處理流量",
+      "toast_error": "無法切換繞過模式"
+    },
+    "takeover": {
+      "title": "切換到{{mode}}？",
+      "description": "切換模式會重新啟動引擎，正在經過引擎的所有連線會短暫中斷。",
+      "confirm": "切換",
+      "cancel": "取消"
+    },
+    "targets": {
+      "title": "最佳化目標",
+      "description": "引擎將進行失步處理的網域。儲存後立即生效，無需重新啟動。",
+      "count": "{{count}} / {{max}}",
+      "count_saved": "已儲存 {{count}} 個",
+      "idle_title": "全量繞過開啟時此清單不生效",
+      "idle_body": "全量繞過會對每一條連線進行失步處理，因此沒有需要比對的清單。您儲存的 {{count}} 個網域會保留，切回影片最佳化後立即重新生效。",
+      "idle_body_empty": "全量繞過會對每一條連線進行失步處理，因此沒有需要比對的清單。您在此新增的內容會在切回影片最佳化後立即生效。"
+    },
+    "hostlist": {
+      "empty": "尚無網域。請新增一個開始使用。",
+      "invalid": "請輸入有效網域（字母、數字、點、連字號）。",
+      "duplicate": "此網域已在清單中。",
+      "limit": "清單最多可容納 300 個網域。",
+      "add": "新增網域",
+      "remove": "移除 {{domain}}",
+      "saved": "網域清單已儲存",
+      "save_failed": "無法儲存網域清單",
+      "too_long": "網域最多 {{max}} 個字元。",
+      "import_action": "從 .txt 檔案匯入目標",
+      "export_action": "將目標匯出為 .txt 檔案",
+      "import_too_large": "檔案太大。請選擇小於 {{limit}} KB 的目標清單。",
+      "import_unreadable": "無法讀取該檔案。",
+      "import_empty": "該檔案中沒有網域",
+      "import_none": "沒有匯入任何網域",
+      "import_added_one": "已匯入 1 個網域",
+      "import_added_other": "已匯入 {{count}} 個網域",
+      "import_invalid_one": "有 1 行不是有效網域。",
+      "import_invalid_other": "有 {{count}} 行不是有效網域。",
+      "import_duplicate_one": "有 1 個已在清單中。",
+      "import_duplicate_other": "有 {{count}} 個已在清單中。",
+      "import_dropped_one": "有 1 個超出 {{max}} 個網域的上限。",
+      "import_dropped_other": "有 {{count}} 個超出 {{max}} 個網域的上限。",
+      "restore_action": "還原原廠目標清單",
+      "restore_title": "還原原廠目標清單？",
+      "restore_body_one": "這會取代你已儲存的 1 個網域。若要保留，請先匯出清單。",
+      "restore_body_other": "這會取代你已儲存的 {{count}} 個網域。若要保留，請先匯出清單。",
+      "restore_body_empty": "目標清單是空的，不會取代你的任何內容。",
+      "restore_body_defaults_one": "原廠清單包含 1 個網域。",
+      "restore_body_defaults_other": "原廠清單包含 {{count}} 個網域。",
+      "restore_confirm": "還原預設值",
+      "restore_cancel": "取消",
+      "restore_done": "已還原原廠目標清單",
+      "restore_failed": "無法還原原廠清單"
+    },
+    "verify": {
+      "title": "繞過效果評估",
+      "description": "測量在目前網路下，繞過 DPI 能否提升被限速的影片 CDN 速度，並與未被限速的參考值對比。測試使用自己的臨時代理，因此不會檢查正在執行的引擎。",
+      "run": "執行測試",
+      "run_again": "重新測試",
+      "idle_heading": "尚未進行測試",
+      "needs_binary_heading": "引擎尚未安裝",
+      "running": "測試中…",
+      "progress": "正在下載同一個檔案兩次：一次直連，一次經由臨時代理，另加一次參考取樣。需要幾分鐘。",
+      "timeout": "測試未在限定時間內完成。",
+      "error": "無法啟動測試",
+      "needs_binary": "請先安裝引擎程式。",
+      "headline_sub": "本次測試中經由繞過的提速倍數",
+      "without": "未繞過",
+      "with": "已繞過",
+      "line_speed": "線路速度",
+      "unit": "Mbps",
+      "source_speedtest": "speedtest.net",
+      "source_cloudflare": "Cloudflare",
+      "throttled": "受限速",
+      "unthrottled": "未受限速",
+      "scope": "此結果反映的是你的網路，而不是正在執行的引擎。引擎狀態請查看上方的即時狀態。",
+      "footnote": "線路速度是參照值：三項都慢代表線路本身慢，而不是被限速。"
+    },
+    "forceTcp": {
+      "title": "QUIC → 強制 TCP",
+      "description": "阻斷 QUIC (UDP 443)，讓 YouTube、Discord 等應用回落到基於 TCP 的 HTTPS，從而套用引擎的繞過。",
+      "independent": "獨立於流量引擎",
+      "label": "將 QUIC 強制走 TCP",
+      "hint": "立即生效。兩種模式下都可用，未啟用任何模式時同樣可用。",
+      "switch_aria": "切換 QUIC 強制走 TCP",
+      "caveat_title": "可能導致播放更慢",
+      "caveat": "可能更慢：如果網路已以全速傳輸 QUIC，強制走 TCP 會增加延遲（以及繞過的額外一跳）。當 QUIC 影片受限速或不可靠時再開啟。",
+      "read_error": "無法讀取 QUIC 規則",
+      "toast_enabled": "已啟用 QUIC 強制 TCP",
+      "toast_disabled": "已停用 QUIC 強制 TCP"
+    },
+    "uninstall": {
+      "button": "解除安裝引擎二進位",
+      "title": "確定解除安裝引擎二進位？",
+      "description": "此動作會停止流量引擎（若正在執行）並移除引擎二進位檔案。確定要繼續嗎？若您改變主意，稍後可重新安裝。",
+      "confirm": "解除安裝",
+      "cancel": "取消"
+    },
+    "onboarding": {
+      "heading": "繞過引擎尚未安裝",
+      "body": "QManager 會下載一個小型引擎程式，並在安裝前以固定的校驗和驗證。安裝完成後會自動啟動。",
+      "installing_heading": "正在安裝繞過引擎",
+      "installing_body": "正在依據發行清單與固定校驗和驗證下載內容。網路正常時約需一分鐘。",
+      "failed_heading": "安裝未能完成",
+      "install": "下載並安裝"
     }
   },
   "cellGuard": {

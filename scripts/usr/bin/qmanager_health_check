@@ -12,7 +12,19 @@
 # When done, builds /tmp/qmanager_health_check_<job_id>.tar.gz.
 # =============================================================================
 
+# Pin PATH: sudo passes the caller's PATH to this root helper.
+PATH=/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin; export PATH
+
 set -u
+
+# Web ports from the port file; 80/443 when the lib predates this check (OTA'd independently).
+WEB_HTTP=80
+WEB_HTTPS=443
+if [ -f /usr/lib/qmanager/web_port.sh ] && . /usr/lib/qmanager/web_port.sh 2>/dev/null; then
+    wp_read_file
+    WEB_HTTP=$WP_HTTP
+    WEB_HTTPS=$WP_HTTPS
+fi
 
 # --- Portable `timeout` (BusyBox 1.29 vs 1.31 CLI straddle) -----------------
 # This is a LOCAL COPY of qm_timeout() from scripts/usr/lib/qmanager/platform.sh
@@ -117,7 +129,14 @@ if [ "${1:-}" = "--clear" ]; then
         fi
     fi
     rm -f "$STATUS_FILE" "$STATUS_FILE.tmp" "$LOCK_FILE" "$LOG_FILE"
-    rm -rf /tmp/qmanager_health_check_*/ 2>/dev/null
+    # Job dirs are created by this root helper; skip symlinks and anything not
+    # root-owned (www-data can plant matching names in sticky /tmp).
+    for d in /tmp/qmanager_health_check_*; do
+        [ -L "$d" ] && continue
+        [ -d "$d" ] || continue
+        [ "$(stat -c %u "$d" 2>/dev/null)" = "0" ] || continue
+        rm -rf -- "$d" 2>/dev/null
+    done
     rm -f /tmp/qmanager_health_check_*.tar.gz 2>/dev/null
     echo '{"success":true,"cleared":true}'
     exit 0
@@ -236,9 +255,8 @@ _init_status() {
 # so adding a test only touches one place.
 _test_catalog_pending() {
     jq -n '[
-        {id:"bin.atcli",          category:"binaries", label:"atcli_smd11 binary present",  status:"pending", duration_ms:0, detail:""},
-        {id:"bin.sms_tool",       category:"binaries", label:"sms_tool binary present",     status:"pending", duration_ms:0, detail:""},
-        {id:"bin.qcmd",           category:"binaries", label:"qcmd wrapper present",        status:"pending", duration_ms:0, detail:""},
+        {id:"bin.qsms",           category:"binaries", label:"qsms present",                status:"pending", duration_ms:0, detail:""},
+        {id:"bin.qcmd",           category:"binaries", label:"qcmd link present",           status:"pending", duration_ms:0, detail:""},
         {id:"bin.jq",             category:"binaries", label:"jq present",                  status:"pending", duration_ms:0, detail:""},
         {id:"bin.curl",           category:"binaries", label:"curl present",                status:"pending", duration_ms:0, detail:""},
         {id:"bin.openssl",        category:"binaries", label:"openssl present",             status:"pending", duration_ms:0, detail:""},
@@ -246,12 +264,14 @@ _test_catalog_pending() {
         {id:"bin.tailscale",      category:"binaries", label:"tailscale binary",            status:"pending", duration_ms:0, detail:""},
         {id:"bin.msmtp",          category:"binaries", label:"msmtp binary",                status:"pending", duration_ms:0, detail:""},
         {id:"bin.ttyd",           category:"binaries", label:"ttyd binary",                 status:"pending", duration_ms:0, detail:""},
+        {id:"bin.qmanager_atd",   category:"binaries", label:"qmanager_atd binary present", status:"pending", duration_ms:0, detail:""},
 
         {id:"perm.smd11",         category:"permissions", label:"/dev/smd11 mode 660 root:dialout", status:"pending", duration_ms:0, detail:""},
         {id:"perm.www_dialout",   category:"permissions", label:"www-data is in dialout group",     status:"pending", duration_ms:0, detail:""},
         {id:"perm.qmanager_dir",  category:"permissions", label:"/usrdata/qmanager traversable",    status:"pending", duration_ms:0, detail:""},
         {id:"perm.rootfs_state",  category:"permissions", label:"rootfs read-only by default",      status:"pending", duration_ms:0, detail:""},
         {id:"perm.tmp_writable",  category:"permissions", label:"/tmp writable by www-data",        status:"pending", duration_ms:0, detail:""},
+        {id:"perm.opt_account_links", category:"permissions", label:"Entware account files linked to /etc", status:"pending", duration_ms:0, detail:""},
 
         {id:"at.echo",            category:"at_transport", label:"AT echo (qcmd \"AT\")",           status:"pending", duration_ms:0, detail:""},
         {id:"at.cgmi",            category:"at_transport", label:"AT+CGMI returns manufacturer",    status:"pending", duration_ms:0, detail:""},
@@ -260,7 +280,7 @@ _test_catalog_pending() {
         {id:"at.cfun",            category:"at_transport", label:"AT+CFUN? radio state",            status:"pending", duration_ms:0, detail:""},
         {id:"at.lock_serial",     category:"at_transport", label:"qcmd serializes back-to-back",    status:"pending", duration_ms:0, detail:""},
 
-        {id:"sms.recv_listing",   category:"sms", label:"sms_tool -j recv returns valid JSON", status:"pending", duration_ms:0, detail:""},
+        {id:"sms.list",           category:"sms", label:"qsms list ME answers",                status:"pending", duration_ms:0, detail:""},
         {id:"sms.flock",          category:"sms", label:"flock on shared AT lock works",        status:"pending", duration_ms:0, detail:""},
         {id:"sms.cpin",           category:"sms", label:"AT+CPIN? returns READY",               status:"pending", duration_ms:0, detail:""},
 
@@ -272,17 +292,19 @@ _test_catalog_pending() {
         {id:"svc.setup",          category:"services", label:"qmanager-setup.service",            status:"pending", duration_ms:0, detail:""},
         {id:"svc.lighttpd",       category:"services", label:"lighttpd.service",                  status:"pending", duration_ms:0, detail:""},
         {id:"svc.tailscaled",     category:"services", label:"tailscaled.service (optional)",     status:"pending", duration_ms:0, detail:""},
+        {id:"svc.atd",            category:"services", label:"qmanager-atd.service (broker)",     status:"pending", duration_ms:0, detail:""},
 
         {id:"net.dns",            category:"network", label:"DNS resolves install.speedtest.net", status:"pending", duration_ms:0, detail:""},
         {id:"net.ping",           category:"network", label:"IPv4 reachability (1.1.1.1)",        status:"pending", duration_ms:0, detail:""},
         {id:"net.rmnet",          category:"network", label:"rmnet+ has IP",                      status:"pending", duration_ms:0, detail:""},
-        {id:"net.lighttpd_listen",category:"network", label:"lighttpd listening on 80/443",       status:"pending", duration_ms:0, detail:""},
+        {id:"net.lighttpd_listen",category:"network", label:"lighttpd listening on web ports",   status:"pending", duration_ms:0, detail:""},
         {id:"net.firewall_rules", category:"network", label:"iptables INPUT rules loaded",        status:"pending", duration_ms:0, detail:""},
 
         {id:"cfg.qmanager_dir",   category:"configuration", label:"/etc/qmanager exists",          status:"pending", duration_ms:0, detail:""},
         {id:"cfg.sms_alerts_json",category:"configuration", label:"sms_alerts.json valid",         status:"pending", duration_ms:0, detail:""},
         {id:"cfg.email_alerts_json",category:"configuration", label:"email_alerts.json valid",     status:"pending", duration_ms:0, detail:""},
         {id:"cfg.poller_cache_fresh", category:"configuration", label:"poller cache mtime < 60s",  status:"pending", duration_ms:0, detail:""},
+        {id:"cfg.ui_heartbeat",   category:"configuration", label:"UI heartbeat file owned by www-data", status:"pending", duration_ms:0, detail:""},
         {id:"cfg.cgi_path_opt",   category:"configuration", label:"lighttpd CGI PATH includes /opt/bin", status:"pending", duration_ms:0, detail:""},
         {id:"data_used.fresh",    category:"configuration", label:"data_used.json fresh (mtime < 60s)",  status:"pending", duration_ms:0, detail:""},
 
@@ -297,7 +319,7 @@ _test_catalog_pending() {
 _check_bin() {
     # _check_bin <name> <path> <warn-if-missing?> [version-cmd]
     # version-cmd defaults to "--version". Pass "" to skip version probing
-    # entirely (for binaries like atcli_smd11/sms_tool/qcmd that interpret
+    # entirely (for binaries like qcmd that interpret
     # arbitrary argv as AT commands and hang waiting for a modem reply).
     local name="$1" path="$2" soft="${3:-0}" vflag="${4---version}"
     if [ -x "$path" ]; then
@@ -355,8 +377,7 @@ _check_bin() {
 
 # Modem-side binaries: skip version probe — they pass argv as AT commands
 # and block forever waiting on /dev/smd11. Existence + executable bit only.
-t_bin_atcli()      { _check_bin atcli_smd11 /usr/bin/atcli_smd11 0 ""; }
-t_bin_sms_tool()   { _check_bin sms_tool    /usr/bin/sms_tool    0 ""; }
+t_bin_qsms()       { _check_bin qsms        /usr/bin/qsms        0 ""; }
 t_bin_qcmd()       { _check_bin qcmd        /usr/bin/qcmd        0 ""; }
 t_bin_jq()         { _check_bin jq          /opt/bin/jq          0; }
 t_bin_curl()       { _check_bin curl        /opt/bin/curl        0; }
@@ -386,6 +407,8 @@ t_bin_msmtp() {
     fi
 }
 t_bin_ttyd()       { _check_bin ttyd /usrdata/qmanager/console/ttyd 1; }
+# --version exits without opening /dev/smd11, so the default probe is safe here.
+t_bin_qmanager_atd() { _check_bin qmanager_atd /usr/bin/qmanager_atd 0; }
 
 t_perm_smd11() {
     if [ ! -e /dev/smd11 ]; then echo "fail|/dev/smd11 missing"; return; fi
@@ -474,8 +497,33 @@ t_perm_tmp_writable() {
         echo "fail|uid $self_uid cannot write to /tmp"
     fi
 }
+# Entware's dropbear reads /opt/etc/shadow; without the link SSH password login fails.
+t_perm_opt_account_links() {
+    local f cur bad="" shadow_bad=0
+    if ! awk '$5 == "/opt" { f = 1 } END { exit !f }' /proc/self/mountinfo 2>/dev/null; then
+        echo "skip|/opt is not mounted"
+        return 0
+    fi
+    for f in passwd group shells shadow gshadow; do
+        ls -ld "/opt/etc/$f" >> "$OUTPUT_FILE" 2>&1
+        [ -e "/etc/$f" ] || continue
+        cur=""
+        [ -L "/opt/etc/$f" ] && cur=$(readlink "/opt/etc/$f" 2>/dev/null)
+        if [ "$cur" != "/etc/$f" ]; then
+            bad="$bad $f"
+            [ "$f" = "shadow" ] && shadow_bad=1
+        fi
+    done
+    if [ "$shadow_bad" = "1" ]; then
+        echo "fail|not linked to /etc:$bad (SSH password login fails)"
+    elif [ -n "$bad" ]; then
+        echo "warn|not linked to /etc:$bad"
+    else
+        echo "pass|all linked to /etc"
+    fi
+}
 
-# AT helpers — share serialisation with qcmd via /tmp/qmanager_at.lock.
+# AT helpers — share serialisation with qcmd via /run/qmanager_at/at.lock.
 _qcmd() {
     qcmd "$@" 2>&1
 }
@@ -553,7 +601,7 @@ t_at_cfun() {
 }
 t_at_lock_serial() {
     # Two qcmd calls launched concurrently — qcmd's flock on
-    # /tmp/qmanager_at.lock must serialize them. Under heavy poller load,
+    # /run/qmanager_at/at.lock must serialize them. Under heavy poller load,
     # one or both may legitimately get "modem_busy" because qcmd's 5s
     # flock timeout expired. That's still proof of correct serialization,
     # not a failure. Pass = at least one OK and no unexpected output.
@@ -574,17 +622,19 @@ t_at_lock_serial() {
     fi
 }
 
-t_sms_recv_listing() {
-    # The bundled sms_tool is patched to default to /dev/smd11 and is silent
-    # on smd devices (no tcgetattr/tcsetattr noise) — see dependencies/README.md.
-    # No -d flag or stderr suppression needed.
-    local out; out=$(sms_tool -j recv)
+t_sms_list() {
+    # Counts only: message text must not reach the report. A WMS list never marks messages read.
+    local out; out=$(qsms list ME 2>/dev/null | jq -c '{success, count: ((.msg // []) | length), skipped, error, detail}' 2>/dev/null)
+    [ -n "$out" ] || out='{"success":false,"detail":"no reply from qsms"}'
     echo "$out" >> "$OUTPUT_FILE"
-    if echo "$out" | jq -e . >/dev/null 2>&1; then echo "pass|valid JSON"
-    else echo "fail|invalid JSON or sms_tool error"; fi
+    if [ "$(echo "$out" | jq -r '.success' 2>/dev/null)" = "true" ]; then
+        echo "pass|$(echo "$out" | jq -r '.count') messages in ME"
+    else
+        echo "fail|$(echo "$out" | jq -r '.detail // .error // "no reply"' 2>/dev/null)"
+    fi
 }
 t_sms_flock() {
-    if flock -x -n /tmp/qmanager_at.lock true 2>>"$OUTPUT_FILE"; then
+    if flock -x -n /run/qmanager_at/at.lock true 2>>"$OUTPUT_FILE"; then
         echo "pass|lock acquired and released"
     else
         echo "warn|lock currently held (may be in use)"
@@ -642,6 +692,23 @@ t_svc_console()   { _svc_check qmanager-console.service 1; }
 t_svc_setup()     { _svc_check qmanager-setup.service 1; }
 t_svc_lighttpd()  { _svc_check lighttpd.service 1; }
 t_svc_tailscaled(){ _svc_check tailscaled.service 0; }
+# Broker unit runs where qm_hw_atd_enabled (RM520N, RG501Q); a stopped broker fails there.
+t_svc_atd() {
+    if [ -r /usr/lib/qmanager/hw_profile.sh ]; then . /usr/lib/qmanager/hw_profile.sh 2>/dev/null; fi
+    if ! command -v qm_hw_atd_enabled >/dev/null 2>&1; then
+        echo "warn|cannot determine model"; return
+    fi
+    if ! qm_hw_atd_enabled; then
+        echo "skip|not used on this model"; return
+    fi
+    local active; active=$(systemctl is-active qmanager-atd.service 2>/dev/null || true)
+    echo "unit=qmanager-atd.service active=${active:-unknown}" >> "$OUTPUT_FILE"
+    case "$active" in
+        active)   echo "pass|active" ;;
+        failed|inactive) echo "fail|$active" ;;
+        *)        echo "warn|state=${active:-unknown}" ;;
+    esac
+}
 
 t_net_dns() {
     # Bound the test to 5s — nslookup against unreachable DNS can stall 30s+
@@ -686,13 +753,15 @@ t_net_rmnet() {
 t_net_lighttpd_listen() {
     local out; out=$(ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null)
     echo "$out" >> "$OUTPUT_FILE"
-    local ok=0
-    echo "$out" | grep -qE '[:.](80)\b'  && ok=$((ok+1))
-    echo "$out" | grep -qE '[:.](443)\b' && ok=$((ok+1))
+    local ok=0 p
+    for p in "$WEB_HTTP" "$WEB_HTTPS"; do
+        echo "$out" | awk -v p="$p" '$1 ~ /^tcp/ { n = split($4, a, ":"); if (a[n] == p) f = 1 } END { exit !f }' \
+            && ok=$((ok+1))
+    done
     case "$ok" in
-        2) echo "pass|listening on 80 and 443" ;;
-        1) echo "warn|listening on only one of 80/443" ;;
-        *) echo "fail|not listening on 80 or 443" ;;
+        2) echo "pass|listening on $WEB_HTTP and $WEB_HTTPS" ;;
+        1) echo "warn|listening on only one of $WEB_HTTP/$WEB_HTTPS" ;;
+        *) echo "fail|not listening on $WEB_HTTP or $WEB_HTTPS" ;;
     esac
 }
 t_net_firewall_rules() {
@@ -743,14 +812,25 @@ t_cfg_poller_cache_fresh() {
     if [ ! -f "$f" ]; then echo "fail|missing $f" >> "$OUTPUT_FILE"; echo "fail|missing"; return; fi
     local age; age=$(( $(date +%s) - $(stat -c %Y "$f") ))
     echo "path=$f age=${age}s" >> "$OUTPUT_FILE"
+    jq -r '"poller_tier=\(.device.poller_tier // "unknown") mono=\(.mono // "unknown")"' "$f" >> "$OUTPUT_FILE" 2>&1
     if [ "$age" -lt 60 ]; then echo "pass|age ${age}s"
     elif [ "$age" -lt 300 ]; then echo "warn|age ${age}s (>60s)"
     else echo "fail|age ${age}s (poller may be stalled)"; fi
 }
+# The status CGIs (www-data) rewrite this file in place; in sticky /tmp a file owned by anyone else locks them out.
+t_cfg_ui_heartbeat() {
+    local f=/tmp/qmanager_ui_active
+    if [ ! -e "$f" ] && [ ! -L "$f" ]; then echo "pass|absent (no browser since boot)"; return; fi
+    ls -la "$f" >> "$OUTPUT_FILE"
+    # stat -c %U reads a symlink's own owner, so a planted link must fail first.
+    if [ -L "$f" ]; then echo "fail|is a symlink (poller tiers may be stuck)"; return; fi
+    if [ ! -f "$f" ]; then echo "fail|not a regular file (poller tiers may be stuck)"; return; fi
+    local owner; owner=$(stat -c %U "$f" 2>/dev/null)
+    if [ "$owner" = "www-data" ]; then echo "pass|owned by www-data"
+    else echo "fail|owned by ${owner:-unknown}, not www-data (poller tiers stuck)"; fi
+}
 t_cfg_data_used_fresh() {
-    # The poller writes every tick to RAM and copies it to flash every 5 minutes.
-    local f=/tmp/qmanager_data_used.json
-    [ -f "$f" ] || f=/usrdata/qmanager/data_used.json
+    local f=/usrdata/qmanager/data_used.json
     if [ ! -f "$f" ]; then
         echo "missing $f" >> "$OUTPUT_FILE"
         echo "fail|missing (poller has never run successfully)"
@@ -851,7 +931,7 @@ _collect_system_info() {
 _collect_services() {
     local dir="$1"
     mkdir -p "$dir"
-    local units="qmanager-firewall.service qmanager-poller.service qmanager-console.service qmanager-setup.service lighttpd.service tailscaled.service qmanager-tailscale-watchdog.service"
+    local units="qmanager-firewall.service qmanager-firewall-watch.service qmanager-poller.service qmanager-console.service qmanager-setup.service lighttpd.service tailscaled.service qmanager-tailscale-watchdog.service qmanager-atd.service"
     for u in $units; do
         {
             echo "# systemctl status $u"
@@ -1007,9 +1087,8 @@ _cleanup_stale
 _init_status
 _pause_poller_if_running
 
-_run_test bin.atcli           binaries     "atcli_smd11 binary present"            t_bin_atcli
-_run_test bin.sms_tool        binaries     "sms_tool binary present"               t_bin_sms_tool
-_run_test bin.qcmd            binaries     "qcmd wrapper present"                  t_bin_qcmd
+_run_test bin.qsms            binaries     "qsms present"                          t_bin_qsms
+_run_test bin.qcmd            binaries     "qcmd link present"                     t_bin_qcmd
 _run_test bin.jq              binaries     "jq present"                            t_bin_jq
 _run_test bin.curl            binaries     "curl present"                          t_bin_curl
 _run_test bin.openssl         binaries     "openssl present"                       t_bin_openssl
@@ -1017,12 +1096,14 @@ _run_test bin.speedtest       binaries     "speedtest CLI"                      
 _run_test bin.tailscale       binaries     "tailscale binary"                      t_bin_tailscale
 _run_test bin.msmtp           binaries     "msmtp binary"                          t_bin_msmtp
 _run_test bin.ttyd            binaries     "ttyd binary"                           t_bin_ttyd
+_run_test bin.qmanager_atd    binaries     "qmanager_atd binary present"           t_bin_qmanager_atd
 
 _run_test perm.smd11          permissions  "/dev/smd11 mode 660 root:dialout"      t_perm_smd11
 _run_test perm.www_dialout    permissions  "www-data is in dialout group"          t_perm_www_dialout
 _run_test perm.qmanager_dir   permissions  "/usrdata/qmanager traversable"         t_perm_qmanager_dir
 _run_test perm.rootfs_state   permissions  "rootfs read-only by default"           t_perm_rootfs_state
 _run_test perm.tmp_writable   permissions  "/tmp writable by www-data"             t_perm_tmp_writable
+_run_test perm.opt_account_links permissions "Entware account files linked to /etc" t_perm_opt_account_links
 
 _run_test at.echo             at_transport "AT echo (qcmd \"AT\")"                 t_at_echo
 _run_test at.cgmi             at_transport "AT+CGMI returns manufacturer"          t_at_cgmi
@@ -1031,7 +1112,7 @@ _run_test at.cgsn             at_transport "AT+CGSN returns IMEI"               
 _run_test at.cfun             at_transport "AT+CFUN? radio state"                  t_at_cfun
 _run_test at.lock_serial      at_transport "qcmd serializes back-to-back"          t_at_lock_serial
 
-_run_test sms.recv_listing    sms          "sms_tool -j recv returns valid JSON"   t_sms_recv_listing
+_run_test sms.list            sms          "qsms list ME answers"                  t_sms_list
 _run_test sms.flock           sms          "flock on shared AT lock works"         t_sms_flock
 _run_test sms.cpin            sms          "AT+CPIN? returns READY"                t_sms_cpin
 
@@ -1043,11 +1124,12 @@ _run_test svc.console         services     "qmanager-console.service"           
 _run_test svc.setup           services     "qmanager-setup.service"                t_svc_setup
 _run_test svc.lighttpd        services     "lighttpd.service"                      t_svc_lighttpd
 _run_test svc.tailscaled      services     "tailscaled.service (optional)"         t_svc_tailscaled
+_run_test svc.atd             services     "qmanager-atd.service (broker)"         t_svc_atd
 
 _run_test net.dns             network      "DNS resolves install.speedtest.net"    t_net_dns
 _run_test net.ping            network      "IPv4 reachability (1.1.1.1)"           t_net_ping
 _run_test net.rmnet           network      "rmnet+ has IP"                         t_net_rmnet
-_run_test net.lighttpd_listen network      "lighttpd listening on 80/443"          t_net_lighttpd_listen
+_run_test net.lighttpd_listen network      "lighttpd listening on $WEB_HTTP/$WEB_HTTPS" t_net_lighttpd_listen
 _run_test net.firewall_rules  network      "iptables INPUT rules loaded"           t_net_firewall_rules
 _run_test data_used.divergence_low network "data_used divergence count low"        t_net_data_used_divergence
 
@@ -1055,6 +1137,7 @@ _run_test cfg.qmanager_dir         configuration "/etc/qmanager exists"         
 _run_test cfg.sms_alerts_json      configuration "sms_alerts.json valid"              t_cfg_sms_alerts
 _run_test cfg.email_alerts_json    configuration "email_alerts.json valid"            t_cfg_email_alerts
 _run_test cfg.poller_cache_fresh   configuration "poller cache mtime < 60s"           t_cfg_poller_cache_fresh
+_run_test cfg.ui_heartbeat         configuration "UI heartbeat file owned by www-data" t_cfg_ui_heartbeat
 _run_test cfg.cgi_path_opt         configuration "lighttpd CGI PATH includes /opt/bin" t_cfg_cgi_path_opt
 _run_test data_used.fresh          configuration "data_used.json fresh (mtime < 60s)" t_cfg_data_used_fresh
 

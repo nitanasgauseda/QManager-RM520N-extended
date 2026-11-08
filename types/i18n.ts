@@ -11,7 +11,11 @@ export type Namespace =
   | "sidebar"
   | "dashboard"
   | "cellular"
-  | "system-settings";
+  | "system-settings"
+  | "system-health-check"
+  | "errors"
+  | "onboarding"
+  | "local-network";
 
 export interface LanguageMeta {
   code: LanguageCode;

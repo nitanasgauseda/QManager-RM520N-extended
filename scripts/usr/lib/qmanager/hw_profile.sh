@@ -132,6 +132,15 @@ qm_hw_fw_fingerprint() {
     printf '%s\n' "$fw"
 }
 
+# qm_hw_atd_enabled - 0 iff this is an RM520N* or RG501Q* model, else 1 (unknown, unreadable).
+# Reads the root-owned vendor file via qm_hw_model, never platform.json.
+qm_hw_atd_enabled() {
+    case "$(qm_hw_model)" in
+        RM520N*|RG501Q*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 # --- Tier table --------------------------------------------------------------
 #
 # | Match on Project Name     | Tier         | Installer behavior              |

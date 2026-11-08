@@ -11,9 +11,25 @@
 [ -n "${_PLATFORM_LOADED:-}" ] && return 0
 _PLATFORM_LOADED=1
 
+# Effective uid (what `id -u` prints) = 2nd value on the Uid: line; a builtin
+# read loop saves a fork per request. Falls back to `id -u` if /proc is bare.
+_qm_euid=""
+if [ -r /proc/self/status ]; then
+    while read -r _qm_k _qm_ruid _qm_euid_f _qm_rest; do
+        if [ "$_qm_k" = "Uid:" ]; then
+            _qm_euid="$_qm_euid_f"
+            break
+        fi
+    done < /proc/self/status
+fi
+case "$_qm_euid" in
+    ''|*[!0-9]*) _qm_euid=$(id -u) ;;
+esac
+unset _qm_k _qm_ruid _qm_euid_f _qm_rest
+
 # Detect sudo path — Entware (/opt/bin/sudo) or system (/usr/bin/sudo)
 # When running as root (daemons), sudo is skipped entirely.
-if [ "$(id -u)" -eq 0 ]; then
+if [ "$_qm_euid" -eq 0 ]; then
     _SUDO=""
 elif [ -x /opt/bin/sudo ]; then
     _SUDO="/opt/bin/sudo"
@@ -39,22 +55,40 @@ _svc_unit() {
     printf '%s' "$1" | sed 's/_/-/g'
 }
 
-# Full paths — Entware sudo's secure_path doesn't include /sbin or /usr/sbin
+# Absolute paths — callers' PATH is not trusted, and sudoers grants exact paths.
 _SYSTEMCTL="/bin/systemctl"
+_QM_SVC="/usr/bin/qmanager_svc"
+_QM_FW="/usr/bin/qmanager_fw_apply"
+
+# _svc_ctl <verb> <service> — run a systemctl verb on the mapped unit.
+# Root calls systemctl directly. www-data goes through the qmanager_svc root
+# helper (sudoers grants it, not a systemctl wildcard); tailscaled is the one
+# third-party unit and keeps its exact sudoers line.
+_svc_ctl() {
+    local _verb="$1" _u
+    _u=$(_svc_unit "$2")
+    if [ -z "$_SUDO" ]; then
+        $_SYSTEMCTL "$_verb" "$_u"
+    elif [ "$_u" = "tailscaled" ]; then
+        $_SUDO -n $_SYSTEMCTL "$_verb" "$_u"
+    else
+        $_SUDO -n $_QM_SVC "$_verb" "$_u"
+    fi
+}
 
 # Start a service
 svc_start() {
-    $_SUDO $_SYSTEMCTL start "$(_svc_unit "$1")" 2>/dev/null
+    _svc_ctl start "$1" 2>/dev/null
 }
 
 # Stop a service
 svc_stop() {
-    $_SUDO $_SYSTEMCTL stop "$(_svc_unit "$1")" 2>/dev/null
+    _svc_ctl stop "$1" 2>/dev/null
 }
 
 # Restart a service
 svc_restart() {
-    $_SUDO $_SYSTEMCTL restart "$(_svc_unit "$1")" 2>/dev/null
+    _svc_ctl restart "$1" 2>/dev/null
 }
 
 # Clear a latched start-limit / failed state so a following start or restart is
@@ -62,7 +96,7 @@ svc_restart() {
 # would void the unit's backoff and hold NRestarts at 0, which with journald
 # masked to /dev/null is the only fault signal there is.
 svc_reset_failed() {
-    $_SUDO $_SYSTEMCTL reset-failed "$(_svc_unit "$1")" 2>/dev/null
+    _svc_ctl reset-failed "$1" 2>/dev/null
 }
 
 # Enable a service (start on boot via symlink — SimpleAdmin pattern).
@@ -92,6 +126,22 @@ _svc_ensure_rw() {
     rm -f /usr/.qm_rw_test 2>/dev/null
 }
 
+# _svc_link <enable|disable> <service> — create/remove the /lib boot symlink.
+# Root runs ln/rm directly. www-data uses the qmanager_svc helper; tailscaled
+# keeps its exact ln/rm sudoers lines.
+_svc_link() {
+    local _verb="$1" _u _unit
+    _u=$(_svc_unit "$2")
+    _unit="$_u.service"
+    if [ -n "$_SUDO" ] && [ "$_u" != "tailscaled" ]; then
+        $_SUDO -n $_QM_SVC "$_verb" "$_u"
+    elif [ "$_verb" = "enable" ]; then
+        $_SUDO /bin/ln -sf "$_UNIT_DIR/$_unit" "$_WANTS_DIR/$_unit"
+    else
+        $_SUDO /bin/rm -f "$_WANTS_DIR/$_unit"
+    fi
+}
+
 svc_enable() {
     local unit="$(_svc_unit "$1").service"
     local err
@@ -104,7 +154,7 @@ svc_enable() {
         _svc_ensure_rw
     fi
 
-    err=$($_SUDO /bin/ln -sf "$_UNIT_DIR/$unit" "$_WANTS_DIR/$unit" 2>&1 >/dev/null)
+    err=$(_svc_link enable "$1" 2>&1 >/dev/null)
     [ -n "$err" ] && qlog_warn "svc_enable($1): ln failed: $err"
 
     if [ -L "$_WANTS_DIR/$unit" ]; then
@@ -124,7 +174,7 @@ svc_disable() {
         _svc_ensure_rw
     fi
 
-    err=$($_SUDO /bin/rm -f "$_WANTS_DIR/$unit" 2>&1 >/dev/null)
+    err=$(_svc_link disable "$1" 2>&1 >/dev/null)
     [ -n "$err" ] && qlog_warn "svc_disable($1): rm failed: $err"
 
     if [ ! -L "$_WANTS_DIR/$unit" ]; then
@@ -142,16 +192,25 @@ svc_is_enabled() {
 
 # Check if a service is currently running
 svc_is_running() {
-    $_SUDO $_SYSTEMCTL is-active "$(_svc_unit "$1")" >/dev/null 2>&1
+    _svc_ctl is-active "$1" >/dev/null 2>&1
 }
 
-# Privileged command helpers — add sudo prefix for www-data context
+# Privileged firewall helpers. Root runs iptables directly; www-data forwards
+# the argv to qmanager_fw_apply, which accepts only QManager's own rule shapes.
 run_iptables() {
-    $_SUDO /usr/sbin/iptables "$@"
+    if [ -z "$_SUDO" ]; then
+        /usr/sbin/iptables "$@"
+    else
+        $_SUDO -n $_QM_FW v4 "$@"
+    fi
 }
 
 run_ip6tables() {
-    $_SUDO /usr/sbin/ip6tables "$@"
+    if [ -z "$_SUDO" ]; then
+        /usr/sbin/ip6tables "$@"
+    else
+        $_SUDO -n $_QM_FW v6 "$@"
+    fi
 }
 
 run_reboot() {
@@ -164,6 +223,17 @@ run_reboot() {
 # Usage: pid_alive <pid>
 pid_alive() {
     [ -n "$1" ] && [ -d "/proc/$1" ]
+}
+
+# True only if <pid>'s cmdline contains <name>; guards kill against a reused PID.
+# Usage: pid_is <pid> <name>
+pid_is() {
+    case "$1" in ''|*[!0-9]*) return 1 ;; esac
+    [ -n "$2" ] && [ -r "/proc/$1/cmdline" ] || return 1
+    case "$(tr '\000' ' ' < "/proc/$1/cmdline" 2>/dev/null)" in
+        *"$2"*) return 0 ;;
+    esac
+    return 1
 }
 
 # --- qm_timeout: portable `timeout` wrapper (BusyBox 1.29 vs 1.31 straddle) --
@@ -208,28 +278,37 @@ pid_alive() {
 # that's SUPPOSED to be testing for exactly that non-zero exit.
 _QM_TIMEOUT_BIN=""
 _QM_TIMEOUT_FORM=""   # "positional" (coreutils/BusyBox >=1.30) or "legacy" (-t, BusyBox <1.30)
+_QM_TIMEOUT_PROBED=""
 
-if [ -x /opt/bin/timeout ]; then
-    _qm_probe_rc=0
-    /opt/bin/timeout 1 true >/dev/null 2>&1 || _qm_probe_rc=$?
-    if [ "$_qm_probe_rc" -ne 127 ]; then
-        _QM_TIMEOUT_BIN="/opt/bin/timeout"
-        _QM_TIMEOUT_FORM="positional"
+_qm_timeout_probe() {
+    if [ -x /opt/bin/timeout ]; then
+        _qm_probe_rc=0
+        /opt/bin/timeout 1 true >/dev/null 2>&1 || _qm_probe_rc=$?
+        if [ "$_qm_probe_rc" -ne 127 ]; then
+            _QM_TIMEOUT_BIN="/opt/bin/timeout"
+            _QM_TIMEOUT_FORM="positional"
+        fi
     fi
-fi
 
-if [ -z "$_QM_TIMEOUT_BIN" ] && [ -x /usr/bin/timeout ]; then
-    _qm_probe_rc=0
-    /usr/bin/timeout 1 true >/dev/null 2>&1 || _qm_probe_rc=$?
-    if [ "$_qm_probe_rc" -eq 127 ]; then
-        _QM_TIMEOUT_BIN="/usr/bin/timeout"
-        _QM_TIMEOUT_FORM="legacy"
-    else
-        _QM_TIMEOUT_BIN="/usr/bin/timeout"
-        _QM_TIMEOUT_FORM="positional"
+    if [ -z "$_QM_TIMEOUT_BIN" ] && [ -x /usr/bin/timeout ]; then
+        _qm_probe_rc=0
+        /usr/bin/timeout 1 true >/dev/null 2>&1 || _qm_probe_rc=$?
+        if [ "$_qm_probe_rc" -eq 127 ]; then
+            _QM_TIMEOUT_BIN="/usr/bin/timeout"
+            _QM_TIMEOUT_FORM="legacy"
+        else
+            _QM_TIMEOUT_BIN="/usr/bin/timeout"
+            _QM_TIMEOUT_FORM="positional"
+        fi
     fi
-fi
-unset _qm_probe_rc
+    unset _qm_probe_rc
+    _QM_TIMEOUT_PROBED=1
+}
+
+# Daemons probe now (they call qm_timeout inside $(...), where a lazy probe
+# would be lost with the subshell). lighttpd CGIs (GATEWAY_INTERFACE set)
+# defer to the first qm_timeout call, so requests that never time out skip it.
+[ -n "${GATEWAY_INTERFACE:-}" ] || _qm_timeout_probe
 
 # qm_timeout SECS COMMAND [ARGS...]
 # Callers always write the coreutils (positional) form; this dispatches to
@@ -254,6 +333,7 @@ unset _qm_probe_rc
 # for a warn-only diagnostic caller than misreporting a real timeout as a
 # clean exit.
 qm_timeout() {
+    [ -n "$_QM_TIMEOUT_PROBED" ] || _qm_timeout_probe
     local secs="$1"
     shift
     local rc=0

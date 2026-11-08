@@ -1,5 +1,5 @@
-import type { PingProfileTargets } from "@/hooks/use-ping-profile";
-import type { QualityPreset } from "@/types/modem-status";
+import type { PingProfile, PingProfileTargets } from "@/hooks/use-ping-profile";
+import type { QualityNamedPreset } from "@/types/modem-status";
 
 // Connection Quality: this family's geometry, imported by the loaded views AND
 // their skeletons. Restated here, never imported across families.
@@ -43,6 +43,8 @@ export const PILL_GLYPH = "size-4";
 
 /** The 42px action height every pill button and field shares here. */
 const CONTROL_H = "h-[2.625rem]";
+/** CONTROL_H as a floor, for a row that may wrap; kept literal so Tailwind scans it. */
+const CONTROL_MIN_H = "min-h-[2.625rem]";
 
 // -----------------------------------------------------------------------------
 // Groups and eyebrows
@@ -83,6 +85,14 @@ export type SlotKey = (typeof SLOT_ORDER)[number];
 /** The two hostname legs come first, so the RESOLVER picks the family. */
 export const HOSTNAME_LEGS = 2;
 
+/** Each profile's own cadence in seconds, mirrored from `conn_state_cadence` so a draft previews it. */
+export const PROFILE_INTERVAL_SEC: Record<PingProfile, number> = {
+  sensitive: 1,
+  regular: 2,
+  relaxed: 5,
+  quiet: 10,
+};
+
 /** One leg: a 28px number disc beside its 42px field, the error under the field. */
 export const LEG = {
   ROOT: "flex flex-col gap-1",
@@ -103,15 +113,23 @@ export const FIELD_ERROR = "text-destructive-on-surface pl-10 text-xs leading-re
 // Pill rows, restated from Cellular Information's ROW_SHAPE
 // -----------------------------------------------------------------------------
 
+/** Wraps like the dashboard PillRow: on a phone the value drops under its key instead of cutting it. */
 export const ROW = {
-  ROOT: `flex ${CONTROL_H} min-w-0 items-center justify-between gap-4 rounded-pill bg-surface-container px-4 text-[0.8125rem] leading-5 font-semibold`,
-  KEY: "text-on-surface-variant min-w-0 truncate",
-  VALUE: "flex min-w-0 items-center gap-1.5 whitespace-nowrap tabular-nums",
+  ROOT: `flex ${CONTROL_MIN_H} min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-0.5 rounded-pill bg-surface-container px-4 py-[0.3125rem] text-[0.8125rem] leading-5 font-semibold`,
+  KEY: "text-on-surface-variant min-w-0",
+  VALUE: "ml-auto flex min-w-0 items-center gap-1.5 whitespace-nowrap tabular-nums",
   QUIET: "text-on-surface-variant font-medium",
   LINK: "text-primary-on-surface inline-flex items-center gap-1 rounded-inline font-semibold underline-offset-4 hover:underline",
   LINK_GLYPH: "size-3.5",
   /** The over-limit notch, centred on the 20px line box beside its figure. */
   ALERT: "size-3.5 flex-none",
+} as const;
+
+/** The custom limit field inside a pill row: a compact numeric input plus its unit. */
+export const CUSTOM_FIELD = {
+  WRAP: "ml-auto flex items-center gap-1.5",
+  INPUT: "h-8 w-24 rounded-pill bg-card px-3 text-right text-[0.8125rem] font-semibold tabular-nums",
+  UNIT: "text-on-surface-variant font-medium",
 } as const;
 
 /** The over-limit glyph's ink, by Latency Monitor's own tone. */
@@ -127,6 +145,7 @@ export const ALERT_INK = {
 /**
  * The preset table from `cq_preset_latency` / `cq_preset_loss` in
  * `scripts/usr/lib/qmanager/conn_state.sh`: latency flags above the cut, loss AT it.
+ * `custom` is not here: it takes the user's number with `CUSTOM_DEBOUNCE`.
  */
 export const PRESET_LIMIT = {
   latency: {
@@ -141,8 +160,20 @@ export const PRESET_LIMIT = {
   },
 } satisfies Record<
   "latency" | "loss",
-  Record<QualityPreset, { limit: number; debounce: number }>
+  Record<QualityNamedPreset, { limit: number; debounce: number }>
 >;
+
+/** Polls a custom limit must hold for, as `cq_preset_latency custom` sets it. */
+export const CUSTOM_DEBOUNCE = 3;
+
+/**
+ * The CGI's accepted custom range. Loss starts at 1: the shell compares loss with
+ * `-ge`, so a 0 % cut would flag a link with no loss at all.
+ */
+export const CUSTOM_RANGE = {
+  latency: { min: 1, max: 10000 },
+  loss: { min: 1, max: 100 },
+} as const;
 
 /** Eyebrow left, the preset pill right; below 32rem the Select wraps to its own line. */
 export const METRIC_HEAD =

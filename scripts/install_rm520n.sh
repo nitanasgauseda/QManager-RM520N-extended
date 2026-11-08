@@ -16,8 +16,7 @@
 #     www/cgi-bin/          — CGI API endpoints
 #     usrdata/qmanager/     — lighttpd config
 #   dependencies/           — Bundled binaries and packages
-#     atcli_smd11           — ARM binary (AT command transport via /dev/smd11)
-#     sms_tool              — ARM binary (SMS send/recv/delete via /dev/smd11)
+#     qmanager_atd          — ARM binary (AT/SMS/QMI broker; qcmd and qsms link to it)
 #     jq.ipk                — JSON processor (Entware package)
 #     dropbear_*.ipk        — SSH server (Entware package)
 #   install_rm520n.sh       — This script
@@ -118,6 +117,7 @@ WATCHCAT_LOCK="/tmp/qmanager_watchcat.lock"
 # Status of early SSH bootstrap; set by setup_ssh_early(), read by print_summary().
 # Values: installed | skipped_ota | skipped_existing | failed_install | failed_start | failed_password | not_run
 SSH_BOOTSTRAP_STATUS="not_run"
+SSH_BOOTSTRAP_PASSWORD=""  # printed once by print_summary; never logged
 
 # Install log (qmanager_update tails this for step progress)
 LOG_FILE="/tmp/qmanager_install.log"
@@ -413,6 +413,26 @@ dl_get() {
     return "$rc"
 }
 
+# sha256_ok <file> <expected_hex> — 0 only if sha256sum exists and matches.
+sha256_ok() {
+    local actual
+    command -v sha256sum >/dev/null 2>&1 || return 1
+    actual=$(sha256sum "$1" 2>/dev/null | awk '{ print $1 }')
+    [ -n "$actual" ] && [ "$actual" = "$2" ]
+}
+
+# dl_get_pinned <url> <dest> <sha256> [max_time] — dl_get, then remove dest
+# and fail unless its SHA-256 matches. Used for fixed-version third-party files.
+dl_get_pinned() {
+    dl_get "$1" "$2" "${4:-}" || return 1
+    if ! sha256_ok "$2" "$3"; then
+        warn "SHA-256 mismatch (or no sha256sum) for $1 — discarding download"
+        rm -f "$2"
+        return 1
+    fi
+    return 0
+}
+
 # --- Pre-flight Checks -------------------------------------------------------
 
 preflight() {
@@ -440,6 +460,10 @@ preflight() {
 
     if [ "$DO_FORCE" = "1" ]; then
         warn "--force: skipping modem firmware detection"
+        # --force skips the model arms below; still note the community tier.
+        if grep -q "^Project Name:[[:space:]]*RG501Q" /etc/quectel-project-version 2>/dev/null; then
+            info "Detected: RG501Q-EU — community-supported model"
+        fi
     else
         if [ -f /etc/quectel-project-version ]; then
             local ver project_name
@@ -462,7 +486,7 @@ preflight() {
                     # only, deliberately no prompt: this arm exists so the
                     # RG501Q stops falling through to the `*` arm's
                     # "unrecognized device / proceed anyway?" question.
-                    info "Detected: RG501Q-EU ($ver)"
+                    info "Detected: RG501Q-EU ($ver) — community-supported model"
                     ;;
                 "")
                     warn "Cannot parse device model from firmware version — proceeding anyway"
@@ -519,6 +543,23 @@ preflight() {
         die "Backend scripts not found at $SRC_SCRIPTS"
     fi
 
+    # The shipped sudoers drop-in must parse BEFORE anything is stopped or
+    # installed: new helpers paired with the old (broader) grants is worse than
+    # an early abort. The late check in install_backend stays as a second guard.
+    if [ "$DO_BACKEND" = "1" ] && [ -f "$SRC_SCRIPTS/etc/sudoers.d/qmanager" ]; then
+        local _pf_visudo="" _pf_c
+        for _pf_c in /opt/sbin/visudo /opt/bin/visudo /usr/sbin/visudo /usr/bin/visudo; do
+            [ -x "$_pf_c" ] && { _pf_visudo="$_pf_c"; break; }
+        done
+        [ -z "$_pf_visudo" ] && _pf_visudo=$(command -v visudo 2>/dev/null) || true
+        if [ -n "$_pf_visudo" ]; then
+            if ! "$_pf_visudo" -c -f "$SRC_SCRIPTS/etc/sudoers.d/qmanager" >/dev/null 2>&1; then
+                "$_pf_visudo" -c -f "$SRC_SCRIPTS/etc/sudoers.d/qmanager" 2>&1 | head -5 || true
+                die "Shipped sudoers drop-in failed visudo syntax check — aborting before any change"
+            fi
+        fi
+    fi
+
     mark_version_pending
 
     # Write the advisory hardware profile. The PLACEMENT here is load-bearing on
@@ -565,10 +606,30 @@ preflight() {
     info "Pre-flight checks passed"
 }
 
+# Mask-only LAN fix (/22 -> /24) for factory configs; applies on next reboot.
+# Sourced from the staging tree; advisory, so every failure returns 0.
+normalize_lan_subnet() {
+    local lan_lib="$SRC_SCRIPTS/usr/lib/qmanager/lan_subnet.sh"
+    if [ ! -f "$lan_lib" ] || ! . "$lan_lib"; then
+        warn "LAN subnet library unavailable — skipping (it is advisory)"
+        return 0
+    fi
+    if ! command -v qm_lan_subnet_normalize >/dev/null 2>&1; then
+        warn "LAN subnet function missing — skipping (it is advisory)"
+        return 0
+    fi
+    if qm_lan_subnet_normalize /etc/data/mobileap_cfg.xml; then
+        info "LAN subnet check done (takes effect on next reboot if changed)"
+    else
+        warn "LAN subnet normalization failed — config left untouched"
+    fi
+    return 0
+}
+
 # --- Remove Conflicts --------------------------------------------------------
 
 # Removes packages that must not coexist with QManager (e.g. socat-at-bridge
-# which holds /dev/smd11 open, blocking atcli_smd11).
+# which holds /dev/smd11 open, blocking qcmd).
 # Runs even with --skip-packages so conflicts are cleared on every update.
 remove_conflicts() {
     # Skip silently if Entware isn't available yet (fresh install, pre-bootstrap)
@@ -593,23 +654,6 @@ remove_conflicts() {
     done
 }
 
-# --- Neutralize Entware lighttpd ---------------------------------------------
-
-# Disables Entware's S80lighttpd init script so it can never win the boot-time
-# race for port 80 against QManager's own lighttpd.service. rc.unslung starts
-# S80lighttpd via `pidof lighttpd` — a process-NAME check, not a port check —
-# so on some boots Entware's instance binds port 80 first, in an empty docroot
-# with no TLS, before QManager's unit gets there. Confirmed live on an
-# RG501Q-EU: identical on-disk config won on one boot by 1.18s and lost
-# outright on an earlier boot the same day. rc.unslung selects scripts with
-# `find /opt/etc/init.d/ -perm '-u+x' -name 'S*'` — no allowlist, no
-# .disabled convention — so clearing the executable bit is a valid, sufficient
-# disable.
-#
-# Must never die() or return non-zero: failure here only degrades to today's
-# pre-existing intermittent behavior, it must not abort an install. Must be
-# idempotent — safe on every install and every OTA, including when the file
-# is already non-executable or absent.
 # install_speed_conf — gzip + caching for the web UI, only if the modules exist and lighttpd -tt accepts
 # the result; a config lighttpd cannot load would take the whole UI down.
 install_speed_conf() {
@@ -634,6 +678,23 @@ install_speed_conf() {
     fi
 }
 
+# --- Neutralize Entware lighttpd ---------------------------------------------
+
+# Disables Entware's S80lighttpd init script so it can never win the boot-time
+# race for port 80 against QManager's own lighttpd.service. rc.unslung starts
+# S80lighttpd via `pidof lighttpd` — a process-NAME check, not a port check —
+# so on some boots Entware's instance binds port 80 first, in an empty docroot
+# with no TLS, before QManager's unit gets there. Confirmed live on an
+# RG501Q-EU: identical on-disk config won on one boot by 1.18s and lost
+# outright on an earlier boot the same day. rc.unslung selects scripts with
+# `find /opt/etc/init.d/ -perm '-u+x' -name 'S*'` — no allowlist, no
+# .disabled convention — so clearing the executable bit is a valid, sufficient
+# disable.
+#
+# Must never die() or return non-zero: failure here only degrades to today's
+# pre-existing intermittent behavior, it must not abort an install. Must be
+# idempotent — safe on every install and every OTA, including when the file
+# is already non-executable or absent.
 neutralize_entware_lighttpd() {
     local _s80="/opt/etc/init.d/S80lighttpd"
 
@@ -700,6 +761,73 @@ harden_entware_unit_modes() {
     # daemon-reload is needed — changing a file's mode does not make systemd
     # re-parse the unit, and the chmod is safe on an already-loaded active one.
     sync 2>/dev/null || true
+
+    return 0
+}
+
+# --- Harden world-writable package/firmware files ---------------------------
+
+# opkg and stock firmware leave root-owned files at 0666 (install shell umask
+# is 0000), so www-data could rewrite opkg state, dbus config or the timezone
+# tables root reads. Numeric 0644 is idempotent; each path is guarded because
+# the RG501Q-EU may lack some. Runs after install_dependencies so a later opkg
+# run cannot undo it, and on OTA too. Must never die() or return non-zero.
+harden_world_writable_modes() {
+    local _f
+
+    for _f in /opt/etc/opkg.conf               /opt/lib/opkg/status               /lib/systemd/system/dbus.service.d/dbus.conf               /bin/timezone21.bin               /bin/iana_tzdb; do
+        [ -f "$_f" ] || continue
+        chmod 0644 "$_f" 2>/dev/null             || warn "Could not chmod 0644 $_f — it may remain world-writable"
+    done
+
+    # info/ holds hundreds of *.list files; -perm -0002 matches world-writable
+    # in both BusyBox and GNU find. Only files, never the directory.
+    if [ -d /opt/lib/opkg/info ]; then
+        find /opt/lib/opkg/info -type f -perm -0002 -exec chmod 0644 {} + 2>/dev/null || true
+    fi
+
+    # Only root uses /opt/tmp.
+    if [ -d /opt/tmp ] && [ -w /opt/tmp ]; then
+        chmod 0755 /opt/tmp 2>/dev/null || true
+    fi
+
+    sync 2>/dev/null || true
+    return 0
+}
+
+# --- Link Entware's account files to /etc ------------------------------------
+
+# Entware's dropbear reads /opt/etc/shadow; the bootstrap skips any file absent
+# at that moment, so re-link on every install and OTA. Must never return non-zero.
+ensure_entware_account_links() {
+    local _f _cur
+
+    # Only the bind-mounted /usrdata/opt; never write into a rootfs /opt.
+    if ! awk '$5 == "/opt" { f = 1 } END { exit !f }' /proc/self/mountinfo 2>/dev/null \
+        || [ ! -d /opt/etc ]; then
+        info "/opt not mounted — Entware account links left unchanged"
+        return 0
+    fi
+
+    for _f in passwd group shells shadow gshadow; do
+        [ -e "/etc/$_f" ] || continue
+        if [ -L "/opt/etc/$_f" ]; then
+            _cur=$(readlink "/opt/etc/$_f" 2>/dev/null) || _cur=""
+            [ "$_cur" = "/etc/$_f" ] && continue
+            # -n: replace a link to a directory instead of writing inside it.
+            if ln -sfn "/etc/$_f" "/opt/etc/$_f" 2>/dev/null; then
+                warn "Replaced /opt/etc/$_f (pointed to '$_cur') with a link to /etc/$_f"
+            else
+                warn "Could not relink /opt/etc/$_f"
+            fi
+        elif [ -e "/opt/etc/$_f" ]; then
+            warn "/opt/etc/$_f is not a link to /etc/$_f — left as is"
+        elif ln -s "/etc/$_f" "/opt/etc/$_f" 2>/dev/null; then
+            info "Linked /opt/etc/$_f to /etc/$_f"
+        else
+            warn "Could not link /opt/etc/$_f"
+        fi
+    done
 
     return 0
 }
@@ -793,6 +921,20 @@ ensure_usrdata_wait_unit() {
     return 0
 }
 
+# opkg update with its error kept: rc as opkg's, first error line in OPKG_UPDATE_ERR,
+# full output in the install log (failure only).
+qm_opkg_update() {
+    local _out
+    OPKG_UPDATE_ERR=""
+    if _out=$("$OPKG" update 2>&1); then
+        return 0
+    fi
+    _log_raw "opkg update failed: $(printf '%s' "$_out" | tr -d '\r' | tr '\n' ' ' | cut -c1-600)"
+    OPKG_UPDATE_ERR=$(printf '%s\n' "$_out" | tr -d '\r' | grep -E 'Failed|returned|Cannot' | head -n1 | sed 's/^[ *]*//' | cut -c1-200) || true
+    [ -n "$OPKG_UPDATE_ERR" ] || OPKG_UPDATE_ERR="no error text"
+    return 1
+}
+
 # --- Ensure Zoneinfo Packages -------------------------------------------------
 
 # Installs the zoneinfo-all Entware package (full IANA tzdata) into
@@ -820,7 +962,7 @@ ensure_zoneinfo_packages() {
     fi
 
     info "Installing timezone data ($ZONEINFO_PACKAGE)..."
-    if "$OPKG" update >/dev/null 2>&1 && "$OPKG" install "$ZONEINFO_PACKAGE" >/dev/null 2>&1; then
+    if qm_opkg_update && "$OPKG" install "$ZONEINFO_PACKAGE" >/dev/null 2>&1; then
         info "$ZONEINFO_PACKAGE installed"
     else
         warn "Failed to install $ZONEINFO_PACKAGE (offline?) — timezone apply will fail until this succeeds"
@@ -830,53 +972,96 @@ ensure_zoneinfo_packages() {
 
 # --- Install Bundled Binaries -------------------------------------------------
 
-# Copies the first-party binaries bundled in dependencies/ (atcli_smd11,
-# sms_tool, qmanager_discord) into $BIN_DIR.
+# Copies the first-party binaries bundled in dependencies/ (qmanager_atd + its
+# qsms link, qmanager_discord) into $BIN_DIR; install_backend() links qcmd to it.
 #
 # Runs UNCONDITIONALLY, even with --skip-packages (mirrors remove_conflicts()
 # and ensure_zoneinfo_packages() above in main()): OTA upgrades invoke this
 # installer with --skip-packages, which gates install_dependencies(). These
 # binaries are app payload, not Entware opkg packages — unlike the one-time
 # package installs that legitimately stay skippable, they ship a new revision
-# with every QManager release and MUST be refreshed on every upgrade. This was
-# the root cause of the SMS OTA-upgrade bug: devices that OTA'd to v0.1.13 kept
-# the OLD unpatched sms_tool (compiled default /dev/ttyUSB0) because the copy
-# was gated behind install_dependencies(), while v0.1.13's CGI calls sms_tool
-# without -d /dev/smd11, relying on the new patched binary's smd11 default.
+# with every QManager release and MUST be refreshed on every upgrade.
 #
 # Each binary is skipped via `cmp -s` if the bundled copy is byte-identical to
 # what's already installed, avoiding a needless UBIFS rewrite on every OTA.
+_atd_on() {
+    command -v qm_hw_atd_enabled >/dev/null 2>&1 && qm_hw_atd_enabled
+}
+
+# 0 only for a definite model without the broker; unknown model or no hw_profile.sh = 1.
+_atd_definitely_off() {
+    command -v qm_hw_model >/dev/null 2>&1 || return 1
+    case "$(qm_hw_model 2>/dev/null)" in
+        ""|unknown|RM520N*|RG501Q*) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
+# AT lock dir 0750 + lock 0640, root:dialout: only root writes there, so nothing can be
+# planted in it (it is not sticky; /tmp's symlink protection does not apply). Never truncates.
+# Marker = bridge: new qcmd/qsms also flock a trusted legacy /tmp lock (old code holds only that).
+ensure_at_lock() {
+    local d=/run/qmanager_at st
+    if [ -L "$d" ] || { [ -e "$d" ] && [ ! -d "$d" ]; }; then
+        rm -rf "$d" || warn "Could not remove stray $d"
+    fi
+    if [ ! -d "$d" ]; then
+        mkdir "$d" || { warn "Could not create $d"; return 0; }
+    fi
+    chown root:dialout "$d" || warn "chown $d failed"
+    chmod 0750 "$d" || warn "chmod $d failed"
+    if [ ! -e "$d/at.lock" ]; then
+        : > "$d/at.lock" || warn "Could not create $d/at.lock"
+    fi
+    chown root:dialout "$d/at.lock" || warn "chown $d/at.lock failed"
+    chmod 0640 "$d/at.lock" || warn "chmod $d/at.lock failed"
+    # Trusted legacy = regular file, owner root/www-data, one link.
+    st=$(stat -c '%u %h %F' /tmp/qmanager_at.lock 2>/dev/null) || st=""
+    case "$st" in
+        "0 1 regular"*|"33 1 regular"*)
+            : > "$d/bridge" || warn "Could not create $d/bridge"
+            chown root:root "$d/bridge" || warn "chown $d/bridge failed"
+            chmod 0644 "$d/bridge" || warn "chmod $d/bridge failed"
+            ;;
+    esac
+    return 0
+}
+
 install_bundled_binaries() {
     step "Installing bundled binaries"
 
-    # --- atcli_smd11 (AT command transport — direct /dev/smd11 access) --------
-    if [ -f "$SRC_DEPS/atcli_smd11" ]; then
-        if [ -x "$BIN_DIR/atcli_smd11" ] && cmp -s "$SRC_DEPS/atcli_smd11" "$BIN_DIR/atcli_smd11"; then
-            info "atcli_smd11 already current"
+    # Before the binary swap, regardless of DO_BACKEND/DO_START: in-process qcmd needs the dir.
+    ensure_at_lock
+
+    # --- qmanager_atd (AT/SMS/QMI broker) + qsms link --------------------------
+    # Binary ships on every model; the unit only where qm_hw_atd_enabled (RM520N, RG501Q).
+    if [ -f "$SRC_DEPS/qmanager_atd" ]; then
+        if [ -x "$BIN_DIR/qmanager_atd" ] && cmp -s "$SRC_DEPS/qmanager_atd" "$BIN_DIR/qmanager_atd"; then
+            info "qmanager_atd already current"
         else
-            install_file "$SRC_DEPS/atcli_smd11" "$BIN_DIR/atcli_smd11" 755 \
-                || die "Failed to install atcli_smd11"
-            info "atcli_smd11 installed to $BIN_DIR/atcli_smd11"
+            install_file "$SRC_DEPS/qmanager_atd" "$BIN_DIR/qmanager_atd" 755 \
+                || die "Failed to install qmanager_atd"
+            info "qmanager_atd installed to $BIN_DIR/qmanager_atd"
         fi
-    elif [ -x "$BIN_DIR/atcli_smd11" ]; then
-        info "atcli_smd11 already installed"
+    elif [ -x "$BIN_DIR/qmanager_atd" ]; then
+        info "qmanager_atd already installed"
     else
-        die "atcli_smd11 not found in $SRC_DEPS and not installed on device"
+        die "qmanager_atd not found in $SRC_DEPS and not installed on device"
     fi
 
-    # --- sms_tool (SMS send/recv/delete — handles multi-part reassembly) ------
-    if [ -f "$SRC_DEPS/sms_tool" ]; then
-        if [ -x "$BIN_DIR/sms_tool" ] && cmp -s "$SRC_DEPS/sms_tool" "$BIN_DIR/sms_tool"; then
-            info "sms_tool already current"
-        else
-            install_file "$SRC_DEPS/sms_tool" "$BIN_DIR/sms_tool" 755 \
-                || die "Failed to install sms_tool"
-            info "sms_tool installed to $BIN_DIR/sms_tool"
-        fi
-    elif [ -x "$BIN_DIR/sms_tool" ]; then
-        info "sms_tool already installed"
+    if [ -d "$BIN_DIR/qsms" ] && [ ! -L "$BIN_DIR/qsms" ]; then
+        warn "$BIN_DIR/qsms is a directory — not creating the qsms link"
     else
-        warn "sms_tool not found — SMS features will not work"
+        ln -sf qmanager_atd "$BIN_DIR/qsms" || warn "Failed to link $BIN_DIR/qsms"
+    fi
+
+    # Remove the unit only on a definite no-broker model, never when the model is unknown.
+    if _atd_definitely_off; then
+        rm -f "$WANTS_DIR/qmanager-atd.service" "$SYSTEMD_DIR/qmanager-atd.service" \
+            || warn "Could not remove qmanager-atd.service"
+        info "qmanager-atd not used on this model ($(qm_hw_model 2>/dev/null || echo unknown))"
+    elif [ "$DO_BACKEND" = "1" ] && ! _atd_on; then
+        warn "Model unknown — qmanager-atd unit left as is, qcmd runs AT in-process"
     fi
 
     # --- qmanager_discord (optional Discord bot binary) -----------------------
@@ -956,6 +1141,8 @@ install_bundled_binaries() {
 install_speedtest_cli() {
     local speedtest_dir="/usrdata/root/bin"
     local speedtest_url="https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-linux-armhf.tgz"
+    # Pinned: SHA-256 of the 1.2.0 armhf tarball. Update with the URL.
+    local speedtest_sha256="e45fcdebbd8a185553535533dd032d6b10bc8c64eee4139b1147b9c09835d08d"
 
     # /usrdata must already be its own mount before we create anything under
     # it, or the dir (and binary) land on whatever filesystem backs the path
@@ -996,8 +1183,9 @@ install_speedtest_cli() {
 
     # 120s bound: a hung TCP connection on a marginal cellular link must not
     # stall an OTA indefinitely now that this runs on every upgrade.
-    if ! dl_get "$speedtest_url" /tmp/speedtest.tgz 120 2>/dev/null; then
-        warn "speedtest CLI download failed (optional — requires internet)"
+    rm -f /tmp/speedtest.tgz
+    if ! dl_get_pinned "$speedtest_url" /tmp/speedtest.tgz "$speedtest_sha256" 120 2>/dev/null; then
+        warn "speedtest CLI download failed or did not verify (optional — requires internet)"
         return 0
     fi
 
@@ -1103,7 +1291,7 @@ install_dependencies() {
         info "www-data added to dialout via /etc/group fallback"
     fi
 
-    # Bundled first-party binaries (atcli_smd11, sms_tool, qmanager_discord) are
+    # Bundled first-party binaries (qmanager_discord, qmanager_atd) are
     # installed unconditionally by install_bundled_binaries(), called earlier in
     # main() — NOT here — so they refresh on OTA even with --skip-packages.
 
@@ -1205,7 +1393,11 @@ SHIMEOF
         unset LD_PRELOAD
 
         ENTWARE_ARCH="armv7sf-k3.2"
-        ENTWARE_URL="http://bin.entware.net/${ENTWARE_ARCH}/installer"
+        ENTWARE_PATH="bin.entware.net/${ENTWARE_ARCH}/installer"
+        # Pinned SHA-256 of the installer files (opkg d038e5b6). The hash, not
+        # the transport, is what makes them safe; update both if Entware rebuilds.
+        ENTWARE_OPKG_SHA256="82d693e3c928def1cbf584a1130f37fd51bcb3338e57d4af327e342a5f19ee3a"
+        ENTWARE_CONF_SHA256="bca7307a5d323911be95875037dfa83f0e0720a7c88a59ddc233b080495c6b5f"
 
         # Rename factory opkg if present (conflicts with Entware opkg)
         if command -v opkg >/dev/null 2>&1; then
@@ -1266,12 +1458,14 @@ SVCEOF
         for folder in bin sbin etc lib/opkg tmp var/lock; do
             mkdir -p "/opt/$folder"
         done
-        chmod 777 /opt/tmp
+        chmod 0755 /opt/tmp
 
-        # Download opkg binary and config. ENTWARE_URL is plain HTTP, so any
-        # downloader works here — including a TLS-less BusyBox wget.
-        dl_get "$ENTWARE_URL/opkg" /opt/bin/opkg \
-            || die "Failed to download opkg from $ENTWARE_URL"
+        # Download opkg binary and config: https first, then plain http for a
+        # BusyBox wget, which fails the TLS handshake with this mirror.
+        # Both are checked against the pinned SHA-256.
+        dl_get_pinned "https://$ENTWARE_PATH/opkg" /opt/bin/opkg "$ENTWARE_OPKG_SHA256" \
+            || dl_get_pinned "http://$ENTWARE_PATH/opkg" /opt/bin/opkg "$ENTWARE_OPKG_SHA256" \
+            || die "Failed to download a verified opkg from $ENTWARE_PATH"
         # wget (unlike curl -f) writes HTTP error pages to the output file on a
         # 4xx/5xx. Verify the download is a real ELF binary before trusting it:
         # the first 4 bytes of every ELF file are 0x7F 'E' 'L' 'F', so the
@@ -1282,8 +1476,9 @@ SVCEOF
             die "Downloaded opkg is not a valid binary (server error or bad mirror?)"
         fi
         chmod 755 /opt/bin/opkg
-        dl_get "$ENTWARE_URL/opkg.conf" /opt/etc/opkg.conf \
-            || die "Failed to download opkg.conf from $ENTWARE_URL"
+        dl_get_pinned "https://$ENTWARE_PATH/opkg.conf" /opt/etc/opkg.conf "$ENTWARE_CONF_SHA256" \
+            || dl_get_pinned "http://$ENTWARE_PATH/opkg.conf" /opt/etc/opkg.conf "$ENTWARE_CONF_SHA256" \
+            || { rm -f /opt/bin/opkg; die "Failed to download a verified opkg.conf from $ENTWARE_PATH"; }
         info "Downloaded opkg package manager"
 
         # Install base Entware. Both failure paths remove the just-downloaded
@@ -1293,8 +1488,8 @@ SVCEOF
         # only safe here because it runs after the opt.mount start above,
         # where /opt is guaranteed to be the bind-mounted /usrdata/opt and
         # never the rootfs.
-        /opt/bin/opkg update >/dev/null 2>&1 \
-            || { rm -f /opt/bin/opkg; die "Package list download failed — no usable wget for opkg, or check connectivity"; }
+        qm_opkg_update \
+            || { rm -f /opt/bin/opkg; die "Package list download failed (opkg: $OPKG_UPDATE_ERR) — check connectivity, or opkg has no usable wget"; }
         /opt/bin/opkg install entware-opt >/dev/null 2>&1 \
             || { rm -f /opt/bin/opkg; die "Failed to install entware-opt base package"; }
         info "Entware base installed"
@@ -1326,10 +1521,10 @@ SVCEOF
     # --- Entware packages (requires opkg to be available) ---------------------
     _opkg_ready=0
     if [ -x "$OPKG" ]; then
-        if "$OPKG" update >/dev/null 2>&1; then
+        if qm_opkg_update; then
             _opkg_ready=1
         else
-            warn "Package list download failed — no usable wget for opkg, or check connectivity"
+            warn "Package list download failed (opkg: $OPKG_UPDATE_ERR) — check connectivity, or opkg has no usable wget"
             warn "Skipping Entware package installs (lighttpd, sudo, jq, etc.)"
             warn "Re-run the installer with internet to complete package setup"
         fi
@@ -1490,6 +1685,11 @@ stop_services() {
     killall -9 qmanager_watchcat 2>/dev/null || true
     touch "$WATCHCAT_LOCK"  # re-touch after SIGKILL as defense in depth
 
+    # Old v0.1.14-v0.1.18 sms_forward never exited on TERM (90 s stop timeout -> failed).
+    # Queue the stop first so Restart=on-failure can't respawn it; KILL takes the whole cgroup.
+    systemctl --no-block stop qmanager-sms-forward 2>/dev/null || true
+    systemctl kill -s KILL qmanager-sms-forward 2>/dev/null || true
+
     # Stop socat-at-bridge services if present from previous installations
     # (idempotent — systemctl stop is a no-op for inactive/missing units)
     systemctl stop socat-smd11 socat-smd11-to-ttyIN socat-smd11-from-ttyIN 2>/dev/null || true
@@ -1497,12 +1697,15 @@ stop_services() {
         rm -f "$WANTS_DIR/${svc}.service"
     done
 
-    # Collect all qmanager-* units (excluding watchcat — already stopped above)
+    # Collect all qmanager-* units (excluding watchcat — already stopped above).
+    # The firewall stays up so 22/80/443 are never open on the WAN mid-OTA;
+    # start_services reloads it in place.
     _units=""
     for unit in "$SYSTEMD_DIR"/qmanager-*.service; do
         [ -f "$unit" ] || continue
         svc=$(basename "$unit" .service)
         [ "$svc" = "qmanager-watchcat" ] && continue
+        [ "$svc" = "qmanager-firewall" ] && continue
         _units="$_units $svc"
     done
     # Single batched stop — systemd processes these in parallel internally
@@ -1532,6 +1735,10 @@ stop_services() {
         esac
         killall -9 "$proc" 2>/dev/null || true
     done
+
+    # Clear failed state left by the kills (named units only); drop the pre-/run long flag.
+    systemctl reset-failed $_units qmanager-watchcat 2>/dev/null || true
+    rm -f /tmp/qmanager_long_running
 
     info "All services stopped"
 }
@@ -1733,6 +1940,11 @@ install_backend() {
         info "$bin_count daemons/utilities installed to $BIN_DIR"
     fi
 
+    # qcmd is the broker client (argv[0] link) on every model; it runs AT in-process without the daemon.
+    local qtmp="$BIN_DIR/qcmd.qm_install.$$"
+    ln -sf qmanager_atd "$qtmp" && mv -f "$qtmp" "$BIN_DIR/qcmd" \
+        || die "Failed to link $BIN_DIR/qcmd"
+
     # --- CGI endpoints ---
     if [ -d "$SRC_SCRIPTS/www/cgi-bin/quecmanager" ]; then
         install_tree "$SRC_SCRIPTS/www/cgi-bin/quecmanager" "$CGI_DIR"
@@ -1772,6 +1984,12 @@ install_backend() {
         # Copy service files to /lib/systemd/system/ (persistent on RM520N-GL)
         for f in "$SRC_SCRIPTS/etc/systemd/system"/qmanager*.service; do
             [ -f "$f" ] || continue
+            # qmanager-atd.service only where qm_hw_atd_enabled (see install_bundled_binaries).
+            if [ "$(basename "$f")" = "qmanager-atd.service" ]; then
+                if ! _atd_on; then
+                    continue
+                fi
+            fi
             install_file "$f" "$SYSTEMD_DIR/$(basename "$f")" 644 \
                 || die "Failed to install $(basename "$f")"
         done
@@ -1927,6 +2145,14 @@ install_backend() {
         install_file "$SRC_SCRIPTS/usrdata/qmanager/lighttpd.conf" "$LIGHTTPD_CONF" 644 \
             || die "Failed to install lighttpd.conf"
         info "lighttpd config installed"
+        # The shipped conf is 80/443; carry a saved custom port into it. Fail-soft: never die after stop_services.
+        local _wp_out=""
+        if [ -x "$BIN_DIR/qmanager_web_port" ] \
+           && _wp_out=$("$BIN_DIR/qmanager_web_port" render 2>/dev/null); then
+            info "Web port: ${_wp_out:-unknown}"
+        else
+            warn "Could not render the web port into lighttpd.conf; lighttpd renders it at its next start"
+        fi
     fi
 
     # --- TLS certificates ---
@@ -3441,6 +3667,12 @@ cleanup_legacy_scripts() {
 
     local removed=0
 
+    # qcmd_test was the atcli smoke test; retired with the qcmd cut-over.
+    if [ -f "$BIN_DIR/qcmd_test" ]; then
+        rm -f "$BIN_DIR/qcmd_test" || warn "Could not remove $BIN_DIR/qcmd_test"
+        removed=$(( removed + 1 ))
+    fi
+
     # /usr/bin/qmanager_* — remove if not in source (scripts/usr/bin/) AND not bundled in dependencies/
     for installed in "$BIN_DIR"/qmanager_*; do
         [ -f "$installed" ] || continue
@@ -3712,6 +3944,11 @@ enable_services() {
         # gate here beyond skipping the boot-symlink for the .service itself.
         [ "$svc" = "qmanager-scenario-schedule" ] && continue
 
+        # The broker is boot-linked only where qcmd is its client (RM520N, RG501Q).
+        if [ "$svc" = "qmanager-atd" ] && ! _atd_on; then
+            continue
+        fi
+
         # qmanager-scheduled-reboot.service / qmanager-tower-schedule-apply.service /
         # qmanager-tower-schedule-clear.service are the same shape: no
         # [Install] section, started only by their runtime-armed .timer
@@ -3868,12 +4105,23 @@ start_services() {
         info "Set /dev/smd11 permissions for dialout group"
     fi
 
-    # Start firewall before lighttpd (protects web UI before accepting connections)
-    systemctl start qmanager-firewall 2>/dev/null || true
+    # Firewall before lighttpd. reload-or-restart, not start: the unit is kept
+    # running across OTA, so `start` would be a no-op and skip the new rules.
+    systemctl reload-or-restart qmanager-firewall 2>/dev/null || true
+    systemctl start qmanager-firewall-watch 2>/dev/null || warn "Could not start qmanager-firewall-watch"
 
-    # Restart lighttpd to pick up new config
-    systemctl restart lighttpd 2>/dev/null || warn "Could not restart lighttpd"
-    info "lighttpd restarted with QManager config"
+    # qmanager_update reboots after us, so defer; the cgroup arm covers an older updater running
+    # inside lighttpd. The conf is tested after the services start (end of this function).
+    local lighttpd_deferred=0
+    if [ "${QM_DEFER_LIGHTTPD_RESTART:-}" = "1" ] \
+       || grep -q 'lighttpd\.service' /proc/self/cgroup 2>/dev/null; then
+        lighttpd_deferred=1
+        info "lighttpd restart deferred to the reboot"
+    elif systemctl restart lighttpd 2>/dev/null; then
+        info "lighttpd restarted with QManager config"
+    else
+        warn "Could not restart lighttpd"
+    fi
 
     # Run setup oneshot (creates lock files, session dirs, permissions).
     #
@@ -3895,9 +4143,18 @@ start_services() {
     #
     # Safe to restart mid-install: qmanager_setup is idempotent by design, and
     # chown/chmod mutate the existing inode in place rather than replacing it,
-    # so a flock held on /tmp/qmanager_at.lock (tied to the open file
+    # so a flock held on /run/qmanager_at/at.lock (tied to the open file
     # description, not the mode bits) and any open fd both survive untouched.
     systemctl restart qmanager-setup 2>/dev/null || true
+
+    # Broker after setup (it needs the lock file), before the poller. StartLimitBurst
+    # counts start attempts, so repeated installs reset it first.
+    local atd_on=0
+    if [ -f "$SYSTEMD_DIR/qmanager-atd.service" ] && [ -x "$BIN_DIR/qmanager_atd" ] && _atd_on; then
+        atd_on=1
+        systemctl reset-failed qmanager-atd 2>/dev/null || true
+        systemctl start qmanager-atd 2>/dev/null || warn "Could not start qmanager-atd (qcmd runs in-process)"
+    fi
 
     # Start always-on services with verification
     for svc in qmanager-cfun-fix qmanager-ping qmanager-sites qmanager-poller qmanager-ttl qmanager-mtu qmanager-imei-check; do
@@ -3944,11 +4201,21 @@ start_services() {
     if [ ! -x /usrdata/qmanager/console/ttyd ]; then
         info "Downloading ttyd for web console..."
         /usr/bin/qmanager_console_mgr install 2>/dev/null || warn "ttyd download failed — web console unavailable"
+    elif [ -L "$SYSTEMD_DIR/multi-user.target.wants/qmanager-console.service" ]; then
+        # stop_services stopped it; restart so an update's console gate applies now.
+        # --no-block: After=lighttpd, whose restart hangs if an older updater runs in its cgroup.
+        systemctl --no-block start qmanager-console 2>/dev/null || warn "Could not start qmanager-console"
     fi
 
     # Verify critical services
     local svc_errors=0
-    for svc in qmanager-firewall lighttpd qmanager-setup qmanager-ping qmanager-poller; do
+    local verify_svcs="qmanager-firewall qmanager-firewall-watch lighttpd qmanager-setup qmanager-ping qmanager-poller"
+    if [ "$atd_on" = "1" ]; then
+        verify_svcs="$verify_svcs qmanager-atd"
+    fi
+    for svc in $verify_svcs; do
+        # Deferred restart: the old lighttpd is still serving this OTA's status page.
+        [ "$svc" = "lighttpd" ] && [ "$lighttpd_deferred" = "1" ] && continue
         if systemctl is-active "$svc" >/dev/null 2>&1; then
             info "$svc is running"
         else
@@ -3957,10 +4224,10 @@ start_services() {
         fi
     done
 
-    # Verify AT device access
-    if [ -x "$BIN_DIR/atcli_smd11" ] && [ -e /dev/smd11 ]; then
-        if qm_timeout 3 "$BIN_DIR/atcli_smd11" "AT" >/dev/null 2>&1; then
-            info "AT device responds (atcli_smd11 → /dev/smd11)"
+    # Verify AT device access through qcmd (the broker may hold /dev/smd11)
+    if [ -x "$BIN_DIR/qcmd" ] && [ -e /dev/smd11 ]; then
+        if qm_timeout 8 "$BIN_DIR/qcmd" "AT" >/dev/null 2>&1; then
+            info "AT device responds (qcmd → /dev/smd11)"
         else
             warn "AT device not responding — modem may not be ready yet"
         fi
@@ -3968,6 +4235,13 @@ start_services() {
 
     if [ "$svc_errors" -gt 0 ]; then
         warn "$svc_errors service(s) failed to start"
+    fi
+
+    # Deferred restart: fail the install (no reboot) rather than reboot into a broken web server.
+    if [ "$lighttpd_deferred" = "1" ]; then
+        /opt/sbin/lighttpd -tt -f /usrdata/qmanager/lighttpd.conf >/dev/null 2>&1 \
+            || die "lighttpd config test failed — not rebooting into a broken web server"
+        info "lighttpd config test passed"
     fi
 }
 
@@ -4016,8 +4290,37 @@ at_stack_check() {
     else
         warn "at_stack_check: no OK from ATI after 3 attempts"
         warn "  Troubleshooting: check /dev/smd11 permissions (should be root:dialout 660)"
-        warn "  and verify atcli_smd11 is executable: $BIN_DIR/atcli_smd11"
+        warn "  and verify qcmd links to qmanager_atd: ls -l $BIN_DIR/qcmd"
     fi
+}
+
+# --- Retire Legacy AT Binaries ---------------------------------------------
+
+# Removes sms_tool and atcli_smd11 (retired in T5.1 S6), each only once its
+# replacement answers; a failed gate keeps the file. Rollback reinstalls both.
+retire_legacy_at_binaries() {
+    local f rc
+    for f in sms_tool atcli_smd11; do
+        [ -e "$BIN_DIR/$f" ] || continue
+        rc=0
+        # Each gate ends in `|| rc=$?` so a failure cannot trip set -e.
+        case "$f" in
+            sms_tool)    qm_timeout 8 "$BIN_DIR/qsms" status >/dev/null 2>&1 || rc=$? ;;
+            atcli_smd11) { [ "$(readlink "$BIN_DIR/qcmd" 2>/dev/null)" = "qmanager_atd" ] \
+                             && qm_timeout 8 "$BIN_DIR/qcmd" AT >/dev/null 2>&1; } || rc=$? ;;
+        esac
+        if [ "$rc" -ne 0 ]; then
+            info "Kept $BIN_DIR/$f (its replacement did not answer)"
+            continue
+        fi
+        mount -o remount,rw / 2>/dev/null || true
+        if rm -f "$BIN_DIR/$f" && [ ! -e "$BIN_DIR/$f" ]; then
+            info "Removed retired $BIN_DIR/$f"
+        else
+            warn "Could not remove retired $BIN_DIR/$f"
+        fi
+    done
+    return 0
 }
 
 # --- Dropbear unit body (single source of truth) ------------------------------
@@ -4329,8 +4632,8 @@ _verify_rc_unslung_unit() {
 # Runs once, right after install_dependencies (so Entware/dropbear are available)
 # and before the rest of the install. On fresh installs with no existing SSH,
 # installs dropbear, writes a systemd unit, starts it, and sets root's password
-# to "qmanager" so the user can SSH in immediately. Web-UI onboarding overwrites
-# this temporary password later.
+# to a random per-install value (shown once in the summary) so the user can SSH
+# in immediately. Web-UI onboarding overwrites this temporary password later.
 #
 # Skips entirely on OTA upgrades (VERSION file present) or when port 22 is
 # already in use by another SSH server.
@@ -4407,7 +4710,15 @@ setup_ssh_early() {
     ln -sf "$SYSTEMD_DIR/dropbear.service" "$WANTS_DIR/dropbear.service"
     systemctl daemon-reload 2>/dev/null || true
 
-    # 5. Start dropbear and verify it's active.
+    # 5. Block SSH on the cellular WAN before dropbear listens. The installed
+    #    firewall service does not exist yet on a fresh install, so run the
+    #    shipped script; start_services re-applies it via the service later.
+    if [ -f "$SRC_SCRIPTS/usr/bin/qmanager_firewall" ]; then
+        sh "$SRC_SCRIPTS/usr/bin/qmanager_firewall" start 2>/dev/null \
+            || warn "Early firewall apply failed — SSH is open on the WAN until services start"
+    fi
+
+    # 6. Start dropbear and verify it's active.
     systemctl start dropbear 2>/dev/null || true
     # Poll rather than `sleep 1`: RestartSec=2s means a single transient failure
     # (a late /opt) now takes longer to recover than one second, and the old
@@ -4425,48 +4736,45 @@ setup_ssh_early() {
     fi
     info "dropbear started on port 22"
 
-    # 6. Set root's password to "qmanager" inline. The qmanager_set_ssh_password
-    #    helper isn't installed at this point in the install (backend hasn't run),
-    #    so we replicate its core logic here. Onboarding will overwrite the
-    #    password on first web login.
-    local _password="qmanager"
-    local _salt _hash _escaped_hash
-    _salt=$(head -c 4 /dev/urandom | od -An -tx1 | tr -d ' \n')
-    _hash=$(printf '%s\n' "$_password" | openssl passwd -1 -salt "$_salt" -stdin 2>/dev/null)
-
-    if [ -z "$_hash" ]; then
-        warn "openssl passwd failed — root password not set"
+    # 7. Set root's password to a random per-install value through the shipped
+    #    helper (not installed yet). Never pass it to info()/warn(): the install
+    #    log is world-readable. print_summary shows it once on the console.
+    local _password _result
+    _password=$(head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    if [ ${#_password} -ne 16 ]; then
+        warn "Could not generate a random password — root password not set"
         SSH_BOOTSTRAP_STATUS="failed_password"
         return 0
     fi
 
-    if [ ! -f /etc/shadow ]; then
-        warn "/etc/shadow not found — root password not set"
+    _result=$(printf '%s\n' "$_password" | sh "$SRC_SCRIPTS/usr/bin/qmanager_set_ssh_password" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        warn "Root password not set: $_result"
         SSH_BOOTSTRAP_STATUS="failed_password"
         return 0
     fi
 
-    mount -o remount,rw / 2>/dev/null || true
-
-    # Escape sed-special chars in the hash. Using | as the sed delimiter so /
-    # in the hash isn't a problem; only &, \, and | need escaping.
-    _escaped_hash=$(printf '%s' "$_hash" | sed 's/[&\\|]/\\&/g')
-
-    # Match locked (root:!:...), passwordless (root::...), or any-existing-hash forms.
-    if ! sed -i "s|^root:[^:]*:|root:${_escaped_hash}:|" /etc/shadow 2>/dev/null; then
-        warn "Failed to update /etc/shadow"
-        SSH_BOOTSTRAP_STATUS="failed_password"
-        return 0
-    fi
-    sync
-
+    SSH_BOOTSTRAP_PASSWORD="$_password"
     SSH_BOOTSTRAP_STATUS="installed"
-    info "Root password set to 'qmanager' (will be replaced on web onboarding)"
+    info "Root password set to a random temporary value (shown in the summary)"
 }
 
 # --- Summary -----------------------------------------------------------------
 
 print_summary() {
+    # Gateway from the modem's LAN config; qm_lan_read is sourced by normalize_lan_subnet.
+    local lan_ip="" lan_rest=""
+    if command -v qm_lan_read >/dev/null 2>&1; then
+        lan_rest=$(qm_lan_read 2>/dev/null) && lan_ip=${lan_rest%% *}
+    fi
+    case "$lan_ip" in ""|*[!0-9.]*) lan_ip="192.168.225.1" ;; esac
+    # The saved HTTPS port, omitted when it is the default 443.
+    local web_host="$lan_ip"
+    if [ -f "$LIB_DIR/web_port.sh" ] && . "$LIB_DIR/web_port.sh" 2>/dev/null; then
+        wp_read_file
+        [ "$WP_HTTPS" = "443" ] || web_host="$lan_ip:$WP_HTTPS"
+    fi
+
     printf "\n"
     printf "  ══════════════════════════════════════════\n"
     printf "  ${GREEN}${BOLD}  QManager — Installation Complete${NC}\n"
@@ -4483,12 +4791,16 @@ print_summary() {
     printf "  ${DIM}Log:       ${NC}%s\n" "$LOG_FILE"
 
     printf "\n"
-    printf "  Open in browser:  ${BOLD}https://192.168.225.1${NC}\n"
-    printf "  Web console:      ${BOLD}https://192.168.225.1/console${NC}\n"
+    printf "  Open in browser:  ${BOLD}https://%s${NC}\n" "$web_host"
+    printf "  Web console:      ${BOLD}https://%s/console${NC}\n" "$web_host"
+    if grep -q "^Project Name:[[:space:]]*RG501Q" /etc/quectel-project-version 2>/dev/null; then
+        printf "  ${DIM}Model:            RG501Q-EU — community-supported model${NC}\n"
+    fi
 
     case "$SSH_BOOTSTRAP_STATUS" in
         installed)
-            printf "  SSH:              ${BOLD}ssh root@192.168.225.1${NC} ${DIM}(temp password: qmanager — replaced on web onboarding)${NC}\n"
+            printf "  SSH:              ${BOLD}ssh root@%s${NC}\n" "$lan_ip"
+            printf "  SSH password:     ${BOLD}%s${NC} ${DIM}(temporary — shown once, replaced on web onboarding)${NC}\n" "$SSH_BOOTSTRAP_PASSWORD"
             ;;
         failed_install|failed_start|failed_password)
             printf "  ${YELLOW}SSH bootstrap failed${NC} (${SSH_BOOTSTRAP_STATUS}). Re-run installer or set up dropbear manually.\n"
@@ -4545,6 +4857,9 @@ main() {
     # Watchcat lock cleanup on any exit — prevents Tier-4 reboot if installer aborts
     trap 'rm -f "$WATCHCAT_LOCK"' EXIT INT TERM
 
+    # The install shell inherits umask 0000, so opkg/heredoc files landed 0666.
+    umask 022
+
     log_init
 
     printf "\n"
@@ -4564,7 +4879,7 @@ main() {
     preflight
 
     # remove_conflicts runs even with --skip-packages (e.g. socat-at-bridge
-    # must be gone before atcli_smd11 can open /dev/smd11)
+    # must be gone before qcmd can open /dev/smd11)
     remove_conflicts
 
     # ensure_zoneinfo_packages runs even with --skip-packages — OTA upgrades
@@ -4597,12 +4912,16 @@ main() {
     # after install_dependencies so the units already exist by the time it
     # chmods them on a fresh install.
     harden_entware_unit_modes
+    harden_world_writable_modes
 
     # F11 — same unconditional placement and OTA-reach reason. Must run after
     # install_dependencies, which is where opt.mount is first written on a
     # fresh install, and before setup_ssh_early so /opt's ordering is settled
     # before anything reasons about the SSH unit.
     ensure_usrdata_wait_unit
+
+    # Unconditional so OTA repairs a missing /opt/etc/shadow; before SSH setup.
+    ensure_entware_account_links
 
     # SSH bootstrap runs after install_dependencies so Entware + bundled
     # dropbear .ipk are available, and before stop_services so it never has
@@ -4620,6 +4939,9 @@ main() {
     # stop_services so a broken rc.unslung ordering is fixed even on a run
     # that never reaches install_dependencies.
     ensure_rc_unslung_unit_ordering
+
+    # One-time LAN mask fix (/22 -> /24); runs on fresh install and OTA alike.
+    normalize_lan_subnet || warn "LAN subnet normalization skipped"
 
     stop_services
 
@@ -4651,14 +4973,15 @@ main() {
 
     [ "$DO_START" = "1" ] && health_check
     [ "$DO_START" = "1" ] && at_stack_check
+    [ "$DO_START" = "1" ] && { retire_legacy_at_binaries || true; }
 
     print_summary
 
     finalize_version
 
     # Staging-dir cleanup is intentionally NOT done here. On the OTA path the
-    # worker (qmanager_update) cd's into /tmp/qmanager_install before invoking
-    # us and owns the `rm -rf /tmp/qmanager_install` afterward. If the installer
+    # worker (qmanager_update) cd's into /tmp/qmanager_stage/qmanager_install
+    # before invoking us and owns removing /tmp/qmanager_stage afterward. If the installer
     # deleted it here it would (a) race that owner and (b) yank the CWD out from
     # under whoever is sitting inside it — the OTA worker, or a human who ran
     # `cd /tmp/qmanager_install && sh install_rm520n.sh` — producing

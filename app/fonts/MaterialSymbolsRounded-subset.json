@@ -40,8 +40,10 @@
     "favorite",
     "fingerprint",
     "first_page",
+    "forward",
     "graphic_eq",
     "help",
+    "history",
     "home",
     "info",
     "layers",
@@ -52,6 +54,7 @@
     "lock",
     "lock_clock",
     "lock_open",
+    "mark_email_read",
     "mark_email_unread",
     "memory",
     "monitor",
@@ -119,6 +122,6 @@
     "wifi_tethering_off",
     "work"
   ],
-  "bytes": 42772,
-  "sha256": "e042a449bcb1c99520025e4c8cdabfabe47550f0d7157624689fb2654ba39d4a"
+  "bytes": 44316,
+  "sha256": "a8bfc4adef277a985e43342f0a74eec9c3c29a4838e08a0a413aa1b94f80792f"
 }

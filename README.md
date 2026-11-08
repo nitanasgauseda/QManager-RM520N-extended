@@ -74,7 +74,7 @@
 ### Reliability & Monitoring
 - **Connection Watchdog** — 4-tier auto-recovery: AT+COPS deregister/reregister -> CFUN toggle -> SIM failover -> full reboot (with token bucket rate limiting)
 - **Email Alerts** — Downtime notifications via Gmail SMTP (msmtp), sent on recovery with duration details
-- **SMS Alerts** — Downtime and recovery notifications delivered over the cellular control channel via `sms_tool`; reaches you even while the data link is offline. Registration-guarded retry with dedup collapse, threshold-based suppression of transient blips, bounded failure logging
+- **SMS Alerts** — Downtime and recovery notifications delivered over the cellular control channel via `qsms` (QMI WMS); reaches you even while the data link is offline. Registration-guarded retry with dedup collapse, threshold-based suppression of transient blips, bounded failure logging
 - **Low Power Mode** — Scheduled CFUN power-down windows via cron
 - **Software Updates** — In-app OTA update checking, download, verification, installation, and rollback
 - **System Logs** — Centralized log viewer with search
@@ -109,7 +109,7 @@ curl -fsSL -o /tmp/qmanager-installer.sh \
   bash /tmp/qmanager-installer.sh
 ```
 
-The interactive installer fetches the latest release, verifies the SHA-256 checksum, bootstraps Entware (if needed), installs lighttpd, deploys the QManager frontend and backend, configures systemd services, and optionally sets up SSH (dropbear). Bundled dependencies (`atcli_smd11`, `sms_tool`, `jq`, `dropbear`) are installed automatically. The SSH root password is automatically set to match the web UI password during first-time onboarding. A reboot is triggered after installation.
+The interactive installer fetches the latest release, verifies the SHA-256 checksum, bootstraps Entware (if needed), installs lighttpd, deploys the QManager frontend and backend, configures systemd services, and optionally sets up SSH (dropbear). Bundled dependencies (`qmanager_atd`, `jq`, `dropbear`) are installed automatically. The SSH root password is automatically set to match the web UI password during first-time onboarding. A reboot is triggered after installation.
 
 > **If `curl` isn't available on your modem** (common on x5x/x6x firmwares like RM502, RM520, RM521), install it through Entware first, then call it by absolute path so the BusyBox shell's default `PATH` doesn't trip you up:
 >
@@ -178,7 +178,7 @@ This removes the stored password hash (`/etc/qmanager/auth.json`) and the active
 
 ## Additional Dependencies
 
-- **Bundled with installer:** `atcli_smd11` (Rust reimplementation from [1alessandro1/atcli_rust](https://github.com/1alessandro1/atcli_rust), static ARMv7, AT command transport via `/dev/smd11`, works across RM502/RM520/RM521/RM551), `sms_tool` (ARM binary, SMS send/recv/delete with multi-part reassembly), `jq` (Entware package), `dropbear` (SSH server)
+- **Bundled with installer:** `qmanager_atd` (QManager's own Rust AT/SMS broker, static ARMv7; `qcmd` and `qsms` are links to it), `jq` (Entware package), `dropbear` (SSH server)
 - **Downloaded during install:** `speedtest` (Ookla Speedtest CLI, ARMv7 armhf — downloaded from `install.speedtest.net`)
 - **Installed from Entware:** `lighttpd` + `lighttpd-mod-openssl`, `sudo`, `coreutils-timeout`
 - **Optional:** `msmtp` (email alerts) -- can be installed from within the app
@@ -193,7 +193,7 @@ This removes the stored password hash (`/etc/qmanager/auth.json`) and the active
 | **Styling** | Tailwind CSS v4, OKLCH colors, Rethink Sans + JetBrains Mono |
 | **Components** | shadcn/ui (42+ components), Recharts, React Hook Form + Zod |
 | **Backend** | Shell scripts (Bash), CGI endpoints via lighttpd |
-| **AT Commands** | `qcmd` wrapper with `atcli_smd11` on `/dev/smd11` (direct, no socat) |
+| **AT Commands** | `qcmd` → `qmanager_atd` (Rust broker) on `/dev/smd11` (direct, no socat); SMS via `qsms` |
 | **Init System** | systemd (`.service` units in `/lib/systemd/system/`) |
 | **Package Manager** | Bun (development), Entware opkg (device) |
 
@@ -202,7 +202,7 @@ This removes the stored password hash (`/etc/qmanager/auth.json`) and the active
 ## Architecture
 
 ```
-Browser --- authFetch() --- lighttpd --- CGI Scripts --- qcmd --- atcli_smd11 --- /dev/smd11 --- Modem
+Browser --- authFetch() --- lighttpd --- CGI Scripts --- qcmd --- qmanager_atd --- /dev/smd11 --- Modem
                 |                  |                       |
                 |          Shell Libraries (12)      flock serialization
                 |
@@ -219,7 +219,7 @@ The frontend is a statically-exported Next.js app served by lighttpd from `/usrd
 - **Poller daemon** queries the modem via AT commands every 2-30s (3 tiers) and writes a JSON cache file
 - **CGI endpoints** (63 scripts) read the cache for GET requests, execute AT commands for POST requests
 - **React hooks** (31 custom hooks) poll the CGI layer and provide loading/error/staleness states
-- **AT transport** uses `atcli_smd11` on `/dev/smd11` directly (no socat PTY bridge needed)
+- **AT transport** uses `qcmd`, a link to the `qmanager_atd` broker, on `/dev/smd11` directly (no socat PTY bridge needed)
 
 **Platform Details:**
 
@@ -305,8 +305,7 @@ QManager/
 │   ├── install_rm520n.sh       # Device installation script
 │   └── uninstall_rm520n.sh     # Clean removal script
 ├── dependencies/               # Bundled ARM binaries and packages
-│   ├── atcli_smd11             # ARM binary (AT command transport via /dev/smd11)
-│   ├── sms_tool                # ARM binary (SMS send/recv/delete)
+│   ├── qmanager_atd            # ARM binary (AT/SMS broker; qcmd and qsms link to it)
 │   ├── jq.ipk                  # JSON processor
 │   └── dropbear_*.ipk          # SSH server
 ├── docs/                       # Documentation

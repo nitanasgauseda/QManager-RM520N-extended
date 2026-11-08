@@ -7,8 +7,8 @@
 #       sensitive/regular/relaxed/quiet; preserved from the file when omitted)
 #       and an OPTIONAL interval_sec (1-60), merging them into
 #       /etc/qmanager/ping_profile.json, then pokes the daemon's reload flag at
-#       /tmp/qmanager_ping_reload. A changed profile with no interval_sec drops
-#       the stored interval_sec override so the new profile's cadence applies.
+#       /tmp/qmanager_ping_reload. A stored interval_sec (the cadence the Watchdog
+#       page owns) survives a profile change and shadows the profile's cadence.
 #
 # --- The four slots, and why they validate differently -----------------------
 # The probe chain walks four legs in a fixed order and short-circuits on the
@@ -39,13 +39,13 @@
 LIB_DIR="${QM_LIB_DIR:-/usr/lib/qmanager}"
 . "$LIB_DIR/cgi_base.sh"
 . "$LIB_DIR/conn_state.sh"
+. "$LIB_DIR/monitoring_validate.sh"
 
 qlog_init "cgi_ping_profile"
 cgi_headers
 cgi_handle_options
 
 CONFIG="${PING_PROFILE_CONFIG:-/etc/qmanager/ping_profile.json}"
-RELOAD_FLAG="${PING_PROFILE_RELOAD_FLAG:-/tmp/qmanager_ping_reload}"
 
 DEFAULT_HOST_1="cloudflare.com"
 DEFAULT_HOST_2="google.com"
@@ -87,9 +87,18 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     # Effective cadence, same resolution as the daemon (override, else profile table).
     conn_state_cadence "$CONFIG"
 
+    # The stored override (the Watchdog's cadence), or null when the profile's own applies.
+    # Same rule as qmanager_ping and conn_state_cadence: digits only (a numeric or "4"-style string), at least 1.
+    interval_override=$(jq -r '(try .interval_sec catch null) | if type == "number" or type == "string" then tostring else "" end' "$CONFIG" 2>/dev/null </dev/null) || interval_override=""
+    case "$interval_override" in
+        ''|*[!0-9]*|0*) interval_override=null ;;
+    esac
+    [ "${#interval_override}" -le 5 ] || interval_override=null
+
     jq -n \
         --arg profile "$profile" \
         --argjson interval_sec "$CQ_CFG_INTERVAL_SEC" \
+        --argjson interval_override "$interval_override" \
         --argjson fail_secs "$CQ_CFG_FAIL_SECS" \
         --argjson recover_secs "$CQ_CFG_RECOVER_SECS" \
         --arg target_host_1 "$host_1" \
@@ -99,6 +108,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         '{success: true, settings: {
             profile: $profile,
             interval_sec: $interval_sec,
+            interval_override: $interval_override,
             fail_secs: $fail_secs,
             recover_secs: $recover_secs,
             target_host_1: $target_host_1,
@@ -109,112 +119,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     exit 0
 fi
 
-# Validate an ICMP probe slot server-side. Two families:
-#
-#   host          a hostname: charset [0-9A-Za-z.-], plus label sanity (no
-#                 leading/trailing hyphen or dot on the name or on any label,
-#                 no empty label).
-#   ipv4_literal  a dotted quad: charset [0-9.], exactly four octets, each
-#                 1-3 digits and <= 255.
-#
-# Common rules for both: trimmed, non-empty, length <= 128, no interior
-# whitespace, free of shell/HTML metacharacters. No scheme is prepended.
-# Echoes the trimmed value on success; prints an error naming the slot and
-# returns 1 on failure.
-validate_target() {
-    local label="$1"
-    local raw="$2"
-    local family="$3"
-
-    local host
-    host=$(printf '%s' "$raw" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-
-    if [ -z "$host" ]; then
-        echo "${label} cannot be empty"
-        return 1
-    fi
-
-    if [ ${#host} -gt 128 ]; then
-        echo "${label} exceeds 128 characters"
-        return 1
-    fi
-
-    # No interior whitespace (space or tab).
-    case "$host" in
-        *" "*|*"	"*)
-            echo "${label} must not contain whitespace"
-            return 1
-            ;;
-    esac
-
-    # Reject shell/HTML metacharacters: ` $ ( ) ; | < > " \
-    case "$host" in
-        *'`'*|*'$'*|*'('*|*')'*|*';'*|*'|'*|*'<'*|*'>'*|*'"'*|*'\'*)
-            echo "${label} contains disallowed characters"
-            return 1
-            ;;
-    esac
-
-    case "$family" in
-        host)
-            case "$host" in
-                *[!0-9A-Za-z.-]*)
-                    echo "${label} is not a valid hostname"
-                    return 1
-                    ;;
-            esac
-            # Label sanity. A leading or trailing hyphen, a hyphen adjacent to
-            # a dot, an empty label (".."), or a leading/trailing dot are all
-            # names no resolver will ever answer for.
-            case "$host" in
-                -*|*-|.*|*.|*..*|*-.*|*.-*)
-                    echo "${label} is not a valid hostname"
-                    return 1
-                    ;;
-            esac
-            ;;
-        ipv4_literal)
-            case "$host" in
-                *[!0-9.]*)
-                    echo "${label} must be an IPv4 literal (a hostname is not accepted in this slot)"
-                    return 1
-                    ;;
-            esac
-            # Exactly four octets, each 1-3 digits and no greater than 255.
-            local _rest _oct _n
-            _rest="$host"
-            _n=0
-            while [ -n "$_rest" ]; do
-                case "$_rest" in
-                    *.*) _oct="${_rest%%.*}"; _rest="${_rest#*.}" ;;
-                    *)   _oct="$_rest";      _rest="" ;;
-                esac
-                _n=$((_n + 1))
-                case "$_oct" in
-                    ''|*[!0-9]*)
-                        echo "${label} is not a valid IPv4 literal"
-                        return 1
-                        ;;
-                esac
-                if [ ${#_oct} -gt 3 ] || [ "$_oct" -gt 255 ]; then
-                    echo "${label} is not a valid IPv4 literal"
-                    return 1
-                fi
-            done
-            if [ "$_n" -ne 4 ]; then
-                echo "${label} is not a valid IPv4 literal"
-                return 1
-            fi
-            ;;
-        *)
-            echo "${label} has an unknown slot family"
-            return 1
-            ;;
-    esac
-
-    printf '%s' "$host"
-    return 0
-}
+# validate_target is mv_validate_target in monitoring_validate.sh (shared with the config restore).
 
 # =============================================================================
 # POST — Save profile selection
@@ -225,6 +130,17 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     ACTION=$(printf '%s' "$POST_DATA" | jq -r '.action // empty' 2>/dev/null)
     if [ -z "$ACTION" ]; then
         cgi_error "missing_action" "action field is required"
+        exit 0
+    fi
+
+    # clear_interval: drop the stored interval_sec (the Watchdog's cadence) so the profile's own applies.
+    if [ "$ACTION" = "clear_interval" ]; then
+        if ! mv_ping_clear_interval; then
+            cgi_error "write_failed" "Failed to clear the stored interval"
+            exit 0
+        fi
+        conn_state_cadence "$CONFIG"
+        jq -n --argjson interval_sec "$CQ_CFG_INTERVAL_SEC" '{success: true, interval_sec: $interval_sec}'
         exit 0
     fi
 
@@ -242,36 +158,21 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     new_profile=$(printf '%s' "$POST_DATA" | jq -r '.profile // empty' 2>/dev/null)
     if [ -z "$new_profile" ]; then
         new_profile=$(jq -r '.profile // "relaxed"' "$CONFIG" 2>/dev/null)
-        case "$new_profile" in
-            sensitive|regular|relaxed|quiet) ;;
-            *) new_profile="relaxed" ;;
-        esac
+        mv_ping_profile_ok "$new_profile" || new_profile="relaxed"
     else
-        case "$new_profile" in
-            sensitive|regular|relaxed|quiet) ;;
-            *)
-                cgi_error "invalid_profile" "profile must be one of: sensitive, regular, relaxed, quiet"
-                exit 0
-                ;;
-        esac
+        if ! mv_ping_profile_ok "$new_profile"; then
+            cgi_error "invalid_profile" "profile must be one of: sensitive, regular, relaxed, quiet"
+            exit 0
+        fi
     fi
 
     # Optional interval_sec override: a JSON integer 1-60 when the key is present.
     new_interval=$(printf '%s' "$POST_DATA" | jq -r \
         'if has("interval_sec") then (.interval_sec | if type == "number" and . == floor then tostring else "invalid" end) else empty end' 2>/dev/null)
-    case "$new_interval" in
-        '') ;;
-        *[!0-9]*)
-            cgi_error "invalid_interval" "interval_sec must be an integer between 1 and 60"
-            exit 0
-            ;;
-        *)
-            if [ "$new_interval" -lt 1 ] || [ "$new_interval" -gt 60 ]; then
-                cgi_error "invalid_interval" "interval_sec must be an integer between 1 and 60"
-                exit 0
-            fi
-            ;;
-    esac
+    if ! mv_ping_interval_ok "$new_interval"; then
+        cgi_error "invalid_interval" "interval_sec must be an integer between 1 and 60"
+        exit 0
+    fi
 
     new_h1_raw=$(printf '%s' "$POST_DATA" | jq -r '.target_host_1 // empty' 2>/dev/null)
     new_h2_raw=$(printf '%s' "$POST_DATA" | jq -r '.target_host_2 // empty' 2>/dev/null)
@@ -279,90 +180,30 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     new_i2_raw=$(printf '%s' "$POST_DATA" | jq -r '.target_ip_2 // empty' 2>/dev/null)
 
     # All four slots are required on every save (kept idempotent + simple).
-    if ! new_h1=$(validate_target "target_host_1" "$new_h1_raw" "host"); then
+    if ! new_h1=$(mv_validate_target "target_host_1" "$new_h1_raw" "host"); then
         cgi_error "invalid_target" "$new_h1"
         exit 0
     fi
-    if ! new_h2=$(validate_target "target_host_2" "$new_h2_raw" "host"); then
+    if ! new_h2=$(mv_validate_target "target_host_2" "$new_h2_raw" "host"); then
         cgi_error "invalid_target" "$new_h2"
         exit 0
     fi
-    if ! new_i1=$(validate_target "target_ip_1" "$new_i1_raw" "ipv4_literal"); then
+    if ! new_i1=$(mv_validate_target "target_ip_1" "$new_i1_raw" "ipv4_literal"); then
         cgi_error "invalid_target" "$new_i1"
         exit 0
     fi
-    if ! new_i2=$(validate_target "target_ip_2" "$new_i2_raw" "ipv4_literal"); then
+    if ! new_i2=$(mv_validate_target "target_ip_2" "$new_i2_raw" "ipv4_literal"); then
         cgi_error "invalid_target" "$new_i2"
         exit 0
     fi
 
-    mkdir -p "$(dirname "$CONFIG")"
-
-    # Atomic key-merge: set the label + targets; cadence keys pass through unless the
-    # interval_sec is posted or the profile changed (which drops the stale interval_sec).
-    existing_json='{}'
-    if [ -f "$CONFIG" ]; then
-        existing_json=$(cat "$CONFIG" 2>/dev/null)
-        # Only reuse the file when it parses AND is an object. The merge below
-        # indexes it, so malformed / empty / whitespace / null / scalar / array
-        # content aborts jq and fails EVERY future save — while GET keeps
-        # serving its own fallback defaults, so the UI looks healthy and the
-        # device is quietly unsavable with no way out from the web console.
-        # `jq -e .` is the wrong predicate here: it tests output TRUTHINESS,
-        # so it passes `5`/`[1,2]` (still unmergeable) and rejects `null`.
-        # `type == "object"` is exactly the question the merge is asking.
-        if ! printf '%s' "$existing_json" | jq -e 'type == "object"' >/dev/null 2>&1; then
-            qlog_warn "Unusable $CONFIG (not a JSON object) — rebuilding from defaults"
-            existing_json='{}'
-        fi
-    fi
-
-    stored_profile=$(printf '%s' "$existing_json" | jq -r '.profile // "relaxed"' 2>/dev/null)
-    case "$stored_profile" in
-        sensitive|regular|relaxed|quiet) ;;
-        *) stored_profile="relaxed" ;;
+    # Atomic key-merge: label + targets are set; a stored interval_sec (the Watchdog's cadence)
+    # survives a profile change and is replaced only when interval_sec is posted.
+    mv_ping_save "$new_profile" "$new_interval" "$new_h1" "$new_h2" "$new_i1" "$new_i2"
+    case $? in
+        1) cgi_error "write_failed" "Failed to generate config JSON"; exit 0 ;;
+        2) cgi_error "write_failed" "Failed to write config file"; exit 0 ;;
     esac
-    drop_interval=false
-    [ "$new_profile" != "$stored_profile" ] && drop_interval=true
-
-    if ! printf '%s' "$existing_json" | jq \
-        --argjson interval "${new_interval:-null}" \
-        --argjson drop_interval "$drop_interval" \
-        --arg profile "$new_profile" \
-        --arg host_1 "$new_h1" \
-        --arg host_2 "$new_h2" \
-        --arg ip_1 "$new_i1" \
-        --arg ip_2 "$new_i2" \
-        '.profile = $profile
-         | .target_host_1 = $host_1
-         | .target_host_2 = $host_2
-         | .target_ip_1 = $ip_1
-         | .target_ip_2 = $ip_2
-         | if $interval != null then .interval_sec = $interval
-           elif $drop_interval then del(.interval_sec)
-           else . end' \
-        > "${CONFIG}.tmp" 2>/dev/null || [ ! -s "${CONFIG}.tmp" ]; then
-        # -s guards the promote: never `mv` a zero-byte temp over a live
-        # config. jq can exit 0 having written nothing if the redirect itself
-        # failed (a full /etc UBIFS is the realistic case on this device).
-        rm -f "${CONFIG}.tmp"
-        cgi_error "write_failed" "Failed to generate config JSON"
-        exit 0
-    fi
-
-    if ! mv "${CONFIG}.tmp" "$CONFIG"; then
-        rm -f "${CONFIG}.tmp"
-        cgi_error "write_failed" "Failed to write config file"
-        exit 0
-    fi
-
-    qlog_info "Ping profile saved: profile=$new_profile interval=${new_interval:-unchanged} chain=$new_h1,$new_h2,$new_i1,$new_i2"
-
-    # Poke daemon to reload at the start of its next cycle.
-    # Failure is non-fatal — daemon still has the old config; user can retry.
-    if ! touch "$RELOAD_FLAG" 2>/dev/null; then
-        qlog_warn "Failed to touch reload flag at $RELOAD_FLAG (daemon may not reload until restart)"
-    fi
 
     cgi_success
     exit 0

@@ -27,12 +27,13 @@ The Alerts subsystem consolidates the three previously-independent notification 
 | Alert wait (one for all channels) | `alert_after_min` in `/etc/qmanager/quality_thresholds.json`, resolved by `cq_alert_after_min` (`/usr/lib/qmanager/conn_state.sh`); default 5 min. Exposed as top-level `alert_after_min` (1–1440) in the CGI's `GET` and `save_settings` — see [CGI contract](#cgi-contract--cgi-binquecmanagermonitoringalertssh) |
 | Channel logs | `/tmp/qmanager_{sms,email,discord}_log.json` (NDJSON, cap 100 each). SMS and Discord seeded `root:root 0666` by `qmanager_setup`; email is root-only and unseeded — see [tmp-file-ownership.md](tmp-file-ownership.md#the-alert-channel-logs) |
 | Link verdict source | `ev_link_state`, set by `detect_data_connection_events` in `events.sh` |
+| Last cleared outage | `/tmp/qmanager_last_outage` (**tmpfs on purpose**), one line `<secs> <end_uptime> <changed\|-> <wan4\|-> <wan6\|->`; published as `connectivity.last_outage_*` — see [Last cleared outage](#last-cleared-outage-tmpqmanager_last_outage) |
 | Secrets store | `/etc/qmanager-secrets/` (`0700 root:root`) — `discord_bot_token`, `email_app_password`, `msmtprc` (each `0600 root:root`) |
 | Secret helper | `/usr/bin/qmanager_secret_set` (sudoers-gated root helper; value on **stdin**) |
 | Test-email helper | `/usr/bin/qmanager_email_send` (sudoers-gated root helper; one verb, `test`) |
 | Reboot ledger | `/etc/qmanager/reboot_history.json` (**persistent**, NDJSON, cap 10) |
 | Boot-id state | `/etc/qmanager/last_boot_id` (**persistent**) |
-| Crash log (read-only here) | `/etc/qmanager/crash.log` (**persistent**, written by watchdog / scheduled-reboot worker / root helper; two line shapes — see [the line contract](#the-crashlog-line-contract)) |
+| Crash log (read-only here) | `/usrdata/qmanager/crash.log` (**persistent**, `root:root 0644` in a root-owned dir; written by watchdog / scheduled-reboot worker / root helper; two line shapes — see [the line contract](#the-crashlog-line-contract)). Path and one-time legacy migration: `scripts/usr/lib/qmanager/crash_log.sh` (`QM_CRASH_LOG`, `qm_crash_log_prepare`) |
 | Legacy redirects | `/monitoring/{email-alerts,sms-alerts,discord-bot}` → `/monitoring/alerts` |
 
 **The model, at a glance:** 3 events × 3 channels, gated by a user routing matrix AND a hardcoded backend capability table.
@@ -53,7 +54,7 @@ Two independent matrices decide whether a `(event, channel)` pair fires. Keeping
 
 ### Capability (physical possibility — hardcoded)
 
-`connection_lost` alerts fire *while the internet is down*. Email (SMTP over the WAN) and Discord (Gateway API over the WAN) physically cannot be delivered in that state, so only SMS — which rides the cellular control channel via `sms_tool`, independent of the data bearer — is capable. Both `connection_restored` and `reboot` fire *after* connectivity is back, so all three channels are capable.
+`connection_lost` alerts fire *while the internet is down*. Email (SMTP over the WAN) and Discord (Gateway API over the WAN) physically cannot be delivered in that state, so only SMS — which rides the cellular control channel via `qsms`, independent of the data bearer — is capable. Both `connection_restored` and `reboot` fire *after* connectivity is back, so all three channels are capable.
 
 This lives in `alert_engine.sh`:
 
@@ -256,7 +257,7 @@ The `bot_token` / `app_password` JSON-key redaction patterns are still in `_reda
 
 `qmanager_poller` sources `alert_engine.sh` at startup (non-fatal — a broken alert channel must never crash the poller; missing lib stubs out `check_alerts`/`alert_engine_init` to no-ops). It calls:
 
-- **`alert_engine_init`** — once, at poller startup. Resets in-memory state, runs the boot-id reboot check (below), then `_ae_load_all_config` (routing, each channel's config, the wait).
+- **`alert_engine_init`** — once, at poller startup. Resets in-memory state, reloads the [last cleared outage](#last-cleared-outage-tmpqmanager_last_outage) and takes a forced WAN address read, runs the boot-id reboot check (below), then `_ae_load_all_config` (routing, each channel's config, the wait).
 - **`check_alerts`** — once per poll cycle, after the connectivity verdict for that cycle is known.
 
 > ⚠️ WARNING: **Config is not trusted until `jq` exists.** `/usr/bin/jq` is a symlink into `/opt`, which mounts ~30 s into boot (RM520N-GL), and every config read before that silently returns defaults. `_ae_load_all_config` therefore checks `command -v jq` first; without it, it sets `_ae_cfg_pending=1`, logs one `config load deferred` warning, and returns 1. `check_alerts` retries it at the top of every cycle and **skips the whole cycle** while it still fails, so the engine never dispatches against default routing or a default wait. The init log line carries `cfg_pending=` for this reason.
@@ -271,8 +272,9 @@ The poller calls `detect_data_connection_events` immediately before `check_alert
 4. **Read the monotonic clock.** `int($1)` from `/proc/uptime`. If unreadable, skip the cycle.
 5. **Follow the detector:**
    - `""` (stale/unknown) → do nothing; a running outage timer keeps running.
-   - `down` and not already down → start tracking: record `_ae_down_start = now_up`, reset the SMS `connection_lost` latch, re-resolve the wait.
-   - `up` and currently down → recovery: run `_ae_handle_restore`, clear the timer.
+   - `down` and not already down → start tracking: record `_ae_down_start = now_up`, reset the SMS `connection_lost` latch, remember the pre-outage WAN addresses (`_ae_outage_begin`), re-resolve the wait.
+   - `up` and currently down → recovery: run `_ae_handle_restore` (which also records the cleared outage, `_ae_outage_record`), clear the timer.
+   - Not down and `ev_link_state` is `up` → refresh the last-seen WAN addresses (`_ae_wan_seen_refresh`, throttled to one read per 30 s).
 6. **While down:** send `connection_lost` once the outage reaches the wait (once per outage, latched by `_ae_lost_sent_sms`).
 7. **Late reboot delivery:** if a reboot was detected at startup but the device came back already connected (never observed "down" by this engine — e.g. a clean user reboot with a fast reconnect), deliver the reboot alert once, here.
 
@@ -288,6 +290,38 @@ Measured on RM520N-GL `61368cd2` (`/tmp` copies, faked clock, dispatch stubbed):
 
 Durations in message text are formatted from the monotonic elapsed seconds (`_ae_format_duration` → e.g. `"1h 4m 12s"`).
 
+### Last cleared outage (`/tmp/qmanager_last_outage`)
+
+**Short version:** every time an outage clears, the engine remembers how long it lasted, when it ended, and whether the device came back on a different WAN IP. The poller publishes that as `connectivity.last_outage_*` for the dashboard's "Last outage" row (field list: [connection-quality.md → The poller](connection-quality.md#the-poller--turning-probes-into-stats)). It sends nothing and does not affect dispatch.
+
+| Edge | What is recorded | Function |
+|------|------------------|----------|
+| Down (`down` and not already down) | The pre-outage WAN IPv4 and IPv6. Each family falls back to its **last-seen** address when the bearer has already lost it by the time the drop is seen | `_ae_outage_begin` |
+| While up | Last-seen WAN addresses, refreshed **at most every 30 s** (`_AE_WAN_SEEN_EVERY`). An empty read never overwrites a known address. Also forced once at `alert_engine_init` | `_ae_wan_seen_refresh` |
+| Restore (`up` while down) | The outage's seconds (the same `elapsed` the restore alerts use), the end uptime (`now_up`), the WAN IPv4/IPv6 held now, and `changed` | `_ae_outage_record` |
+
+`changed` compares the pre-outage and post-outage IPv4. When either IPv4 side is unknown it compares IPv6 instead, and when that is unknown too it stays unset (`-` on disk, `null` in the JSON). An unknown is never reported as "same".
+
+**The WAN read is kernel-only — no AT command, no `qcmd`.** `_ae_wan_read` takes the first `ip -4 route show default` line, extracts its `dev`, and reads that device's first `ip -4 -o addr show dev <dev> scope global` address; the same again with `-6`. It goes through `dev` because on the RM520N-GL the default route carries **no `src`** (live: `default via 10.113.82.153 dev rmnet_data0`), so the route line itself never names the address. A result that is not address-shaped (digits and dots for IPv4, hex and colons for IPv6) is discarded as empty.
+
+**The file.** One line, written `tmp` + `mv` so a reader never sees half of it:
+
+```text
+<secs> <end_uptime> <changed|-> <wan4|-> <wan6|->
+```
+
+Example (illustrative values: a 46 s outage that ended at uptime 81234, same IPv4, no IPv6):
+
+```text
+46 81234 false 192.0.2.10 -
+```
+
+It is **in tmpfs on purpose**. `end_uptime` is a `/proc/uptime` stamp, which is meaningless after a reboot; `/tmp` clears with the same reboot that resets the clock, so the two can never disagree. A poller respawn within one boot reloads it (`_ae_last_outage_load`), so the row survives a crash-restart. The loader validates every field and ignores the whole file on any failure: a non-numeric `secs` or `end_uptime`, a `changed` other than `true`/`false`/`-`, a non-address WAN field, a sixth field, or an `end_uptime` **ahead of** the current uptime.
+
+> ⚠️ WARNING: this rides on `check_alerts`, so it is **skipped whenever `check_alerts` returns early**: while `/tmp/qmanager_low_power_active` exists, while `jq` is not yet mounted (`_ae_cfg_pending`, the first ~30 s of boot on the RM520N-GL), and on a cycle where `/proc/uptime` is unreadable. An outage that starts and clears inside that window is never recorded; one already in progress when the window ends is timed from the first cycle that runs, with the pre-outage address taken from the last-seen fallback.
+
+> ℹ️ NOTE: device scope. The `dev`-not-`src` route shape was measured on the RM520N-GL. The RG501Q-EU is unverified: a default route there with no ` dev ` token, or a bearer with no `scope global` address, reads as unknown rather than wrong.
+
 ---
 
 ## Guardrails
@@ -298,7 +332,7 @@ Durations in message text are formatted from the monotonic elapsed seconds (`_ae
 - **Freeze during low-power windows.** `/tmp/qmanager_low_power_active` suppresses all dispatch, same as the legacy per-channel timers.
 - **Connectivity signal only.** Never latency or packet loss; a degraded link reaches no channel.
 - **Null-safe.** `ev_link_state=""` (stale/unknown ping data) never starts or ends an outage; it only leaves an existing timer running.
-- **Poller-lifetime state.** The outage timer and latches are in-memory only, not persisted across a poller restart — matching the pre-existing per-channel timers this engine replaced.
+- **Poller-lifetime state.** The outage timer and latches are in-memory only, not persisted across a poller restart — matching the pre-existing per-channel timers this engine replaced. The one exception is the *display-only* [last cleared outage](#last-cleared-outage-tmpqmanager_last_outage), which reloads from tmpfs.
 
 ---
 
@@ -341,7 +375,7 @@ The `skip` shape was added in 2026-09 for issue #9. It is a diagnostic breadcrum
 > |--------|---------|--------|
 > | `alert_engine.sh` → `_ae_classify_reboot` | Which cause to report | `grep '\|reboot\|' \| tail -n 1` |
 > | `alert_engine.sh` → `_ae_deliver_reboot` | Coalescing count for the trailing hour | `awk '$2 == "reboot"'` |
-> | `qmanager_watchcat` → `count_recent_reboots()` | The watchdog's own hourly reboot budget | `awk '$2 == "reboot"'` |
+> | `qmanager_watchcat` → `count_recent_reboots()` | The watchdog's own hourly reboot budget | `awk '$2 == "reboot" && $3 == "tier4_escalation"'`, numeric epoch, 1970-clock aware |
 >
 > **Anyone adding a third line shape must update all three.** This is not hypothetical — missing the watchdog reader was a live regression during the issue #9 change: the new `skip` lines were counted as reboots by `count_recent_reboots()`, which tripped the hourly cap and silently disabled the watchdog's Tier-4 recovery rung for an hour. The classifier and the coalescer were correct; the third reader, in a different file, was not.
 
@@ -367,7 +401,11 @@ The cause vocabulary is therefore **`watchdog | user | scheduled | unplanned`**,
 
 > ℹ️ NOTE: The engine reads `crash.log` but never writes it — it only ever `tail`s it. A www-data CGI writing it directly would be a symlink-escalation hole, which is why the `user` breadcrumb goes through a root helper (below).
 >
-> ⚠️ WARNING: `crash.log` is **not** root-owned in practice, whatever older comments claim. Like everything else in `/etc/qmanager` it is flipped back to `www-data:www-data 0644` by `qmanager_setup`'s boot-time `chown -R` (verified live). The root helper's value is **validation and integrity** — fixed path, fixed reason enum, symlink refusal, bounded trim — not exclusivity of write access. Do not build new logic on a "root-owned" premise for this file; if something genuinely must be out of www-data's reach, relocate it outside `/etc/qmanager` (see [Secret storage](#secret-storage-etcqmanager-secrets)).
+> ⚠️ WARNING: **`crash.log` moved to `/usrdata/qmanager/crash.log` (2026-10) and is genuinely root-owned now.** It used to live in `/etc/qmanager`, which `www-data` owns, so `www-data` could replace the file with a symlink between a root writer's check and its write — and `qmanager_setup`'s boot-time `chown -R www-data:www-data /etc/qmanager` handed the file itself back to `www-data` on every boot. `/usrdata/qmanager` is `root:root 0755`, so neither applies. **Never move it back under `/etc/qmanager`, and never point a new writer at the old path.** Every path constant comes from `crash_log.sh` (`QM_CRASH_LOG`); each consumer also hardcodes `/usrdata/qmanager/crash.log` as a fallback for when the lib is missing, so a path change must touch both.
+>
+> **One-time migration.** `qm_crash_log_prepare` (root only; a no-op for any other uid) creates the dir, then — if `/usrdata/qmanager/.crash_log_migrated` is absent and `/etc/qmanager/crash.log` is a regular file — reads the legacy file **as `www-data`** (`sudo -n -u www-data cat`, bounded by a 5 s timeout), keeps only lines matching `^[0-9]+\|[A-Za-z_]+\|[A-Za-z0-9_]+$`, puts them ahead of anything already in the new log, keeps the newest 100, and writes the marker. After that the legacy path is deleted on every call without being read: once the marker exists, anything at the old path could only have been planted by `www-data`. It runs from `qmanager_setup` at boot and at the top of every root writer and of `_ae_classify_reboot`. If the read fails — for example `sudo` is not reachable yet because `/opt` is not mounted at early boot — the legacy file is kept and the next caller retries.
+>
+> Reading as `www-data` matters: a symlink planted at the old path then resolves with `www-data`'s rights, so root never discloses a file `www-data` could not already read. Do not "simplify" it to a root `cat`, and never use `su` for it (the PAM module on this firmware hangs).
 
 ### The `user` breadcrumb root helper
 
@@ -380,8 +418,9 @@ www-data ALL=(root) NOPASSWD: /usr/bin/qmanager_crash_log_append
 It exists solely so a user-initiated reboot leaves a `user` breadcrumb *before* the device goes down (the watchdog's own Tier-4 path writes `tier4_escalation` directly as root and needs no gate). Hardening the `installer-safety-auditor` required:
 
 - **Reason whitelist:** the only accepted argument is the literal string `user`. Anything else is rejected with a JSON error — caller text is never interpolated.
-- **Symlink guard:** a symlinked `crash.log` is removed rather than followed.
-- **Re-asserts `root:root 644` on every call**, not just at creation, because the `chown -R www-data:www-data /etc/qmanager` pass flips it back. Note that this only holds until the next boot chown — see the warning above; treat it as hygiene, not as an ownership guarantee.
+- **Root-owned location:** the log lives in `/usrdata/qmanager`, which `www-data` cannot write, so the path cannot be swapped under the helper. The helper calls `qm_crash_log_prepare` first (dir + one-time migration, see the warning above).
+- **Symlink refusal (defence in depth):** if `crash.log` is somehow a symlink, the helper refuses with `{"success":false,"error":"write_failed","detail":"crash.log is a symlink"}` and exit 1, rather than removing or following it.
+- **Pinned environment:** `PATH` is set to `/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin` and `umask 022`. The sudoers drop-in now sets `secure_path` for `www-data`, but the helper does not rely on it.
 - Trims to the last 20 lines after its own append, matching the watchdog's own convention.
 - **Pre-caps at 200 lines before appending.** The helper's 20-line trim only ever runs when the helper itself is called, and root workers now append directly without going through it — the scheduled-reboot worker writes a `skip` line on every denied fire, which on a device inside the boot-misfire window is once per boot. Both this helper and the worker's own appender therefore trim to the newest 100 lines whenever the file passes 200, so the added write volume cannot grow unbounded on flash. Neither trim is allowed to fail the append: on a failed `tail`/`mv` the temp file is removed and the line is written anyway.
 
@@ -449,7 +488,7 @@ da_is_running() {
 }
 ```
 
-- In the **CGI** context, `cgi_base.sh` sources `platform.sh`, so `svc_is_running` (which uses `sudo systemctl`) is available.
+- In the **CGI** context, `cgi_base.sh` sources `platform.sh`, so `svc_is_running` is available (as `www-data` it runs `sudo -n /usr/bin/qmanager_svc is-active qmanager-discord`; there is no raw `systemctl` grant for QManager units).
 - In the **poller** context, `alert_engine.sh` sources `discord_alerts.sh` but the poller does **not** source `platform.sh` — so `svc_is_running` is undefined and the function falls back to a standalone `pgrep`.
 
 The old `/run/qmanager-discord.pid` check was dead code: `qmanager-discord.service` is `Type=simple` with no `PIDFile=`, so nothing ever created that file — every poller-fired Discord alert silently failed. The `pgrep` fallback is what fixed it. Reverting to a pidfile or making the function depend on `platform.sh` re-breaks poller-driven Discord alerts.
@@ -596,7 +635,7 @@ Header (title, one **Refresh** that reloads both the settings and the log), then
 | File | Role |
 |------|------|
 | `alerts.tsx` | Page shell, bento, the shared Refresh; `isComplete` stops a partial payload before `useAlertsForm` reads it |
-| `coverage-card.tsx` | `AlertsCoverageCard` — three receipt rows (`COVERAGE_ROW`), one per event, listing the channels that will deliver and the ones that will try and fail; one verdict `Badge` in the header (`all` success, `outage` / `partial` warning, `none` destructive) |
+| `coverage-card.tsx` | `AlertsCoverageCard` — three receipt rows (`COVERAGE_ROW`), one per event, listing the channels that will deliver and the ones that will try and fail; one verdict `Badge` in the header (`all` success, `outage` / `partial` warning); `none` shows no chip, because the rows already say nothing is delivered |
 | `alerts-settings-card.tsx` | `AlertsSettingsCard` — the **Wait before alerting** row (`WaitRow`), the channel rail, one channel's panel (Off/On `SegmentedField`, **Sends for** event ticks, then its fields), and one `CardFoot` holding the selected channel's test button, **Discard** (while dirty) and **Save** for all three channels |
 | `channel-field.tsx` | `ChannelPanelHead`, `ChannelField`, `ChannelSecretField`, `ChannelNotice` |
 | `channel-rail.tsx` | `ChannelRail` — the three-pill channel tabs, each with a saved-status dot |
@@ -657,7 +696,7 @@ The Alerts page owns *notification* config only. Several adjacent files are owne
 | `qmanager.conf` `[watchcat]` (`watchcat.*`) | Connection Watchdog (`watchdog.sh`) | Off-limits. Recovery tiers, thresholds, SIM-failover config. |
 | `ping_profile.json` | Connection Quality (all keys; the Watchdog page writes `interval_sec` through `watchdog.sh`) | Off-limits. The connectivity *producer's* config. |
 | `quality_thresholds.json` | Connection Quality (presets, and `alert_after_min`) | **One key only:** `alerts.sh` merge-writes `alert_after_min` through `cq_quality_merge`, never a whole-file write. The presets are off-limits. |
-| `crash.log` | Watchdog (Tier 4) + Scheduled Reboot worker + the `user` root helper | **Read-only** for the engine; written only by root paths. Three writers, two line shapes — see [the line contract](#the-crashlog-line-contract). |
+| `crash.log` (`/usrdata/qmanager/`) | Watchdog (Tier 4) + Scheduled Reboot worker + the `user` root helper | **Read-only** for the engine; written only by root paths, in a root-owned dir. Three writers, two line shapes — see [the line contract](#the-crashlog-line-contract). |
 
 The alert engine *reads* the link verdict indirectly (via `ev_link_state` from `events.sh`, itself derived from `qmanager_ping`) and writes none of these files. Conversely, the watchdog and quality subsystems never touch `alert_routing.json` or the channel configs. An alert can fire without a watchdog recovery, and a recovery can happen without an alert.
 
@@ -679,7 +718,7 @@ Left open on purpose:
 - Scheduled timers — the `scheduled` reboot cause, the `skip` line shape, and the clock-step fire guard that produces it — [scheduled-timers.md](scheduled-timers.md#the-skip-trace-a-denied-fire-leaves-evidence)
 - Connection Quality — the `qmanager_ping` producer and the latency/loss thresholds surface — [connection-quality.md](connection-quality.md)
 - Discord bot internals (daemon lifecycle, DM channel resolution, OAuth) — [discord-bot.md](discord-bot.md)
-- AT command transport (`sms_tool`, `flock` serialization for the SMS channel) — [at-command-transport.md](at-command-transport.md)
+- SMS transport (`qsms` contract and `.detail` error mapping) — [sms.md](sms.md#transport-qsms)
 - QManager independence (email/SMS alert install, msmtp, poller PATH, sudoers) — [qmanager-independence.md](qmanager-independence.md)
 - `/tmp` cross-UID ownership rules (why the SMS and Discord logs are seeded and every writer of `/tmp/qmanager_email_log.json` is root) — [tmp-file-ownership.md](tmp-file-ownership.md#the-alert-channel-logs)
 - Platform architecture, poller, boot sequence — `../rm520n-gl-architecture.md`

@@ -10,6 +10,7 @@ import {
   LoaderIcon,
   LockIcon,
   MinusCircleIcon,
+  PauseCircleIcon,
   PowerOffIcon,
   RefreshCwIcon,
   TriangleAlertIcon,
@@ -59,7 +60,7 @@ export const TIER_CONSEQUENCE_KEY: Record<TierIndex, string> = {
 // -----------------------------------------------------------------------------
 
 /**
- * What the surface knows about the watchdog, in one closed set. The six live
+ * What the surface knows about the watchdog, in one closed set. The seven live
  * members are the daemon's own states; the five synthetic ones cover the cases
  * the daemon cannot report about itself.
  */
@@ -83,7 +84,7 @@ export const GRACE_MS = 60_000;
  * registered SIM, which makes every clock-difference staleness check read
  * "stale" forever. Below this epoch the modem clock is not evidence.
  */
-const CLOCK_PLAUSIBLE_AFTER = 1_600_000_000;
+export const CLOCK_PLAUSIBLE_AFTER = 1_600_000_000;
 
 export interface PhaseInput {
   /** Saved truth, not the draft. The band never reports a half-edited form. */
@@ -118,8 +119,20 @@ export function derivePhase({
     snapshotAt !== null && snapshotAt > CLOCK_PLAUSIBLE_AFTER;
   if (unreachable || (clockUsable && stale) || !watchcat) return "unknown";
 
-  if (watchcat.enabled) return watchcat.state;
+  if (isWatchcatLive(watchcat)) return watchcat.state;
+  // Enabled but its own state has gone quiet: no grace, it WAS reporting.
+  if (watchcat.enabled) return "not_running";
   return pastGrace ? "not_running" : "starting";
+}
+
+/**
+ * The daemon is enabled AND still reporting. A block with no age fields (an
+ * older backend) counts as live: absence of evidence is not staleness.
+ */
+export function isWatchcatLive(watchcat: WatchcatStatus | null): boolean {
+  if (!watchcat?.enabled) return false;
+  const { age_sec: age, stale_after: limit } = watchcat;
+  return !(age != null && limit != null && age > limit);
 }
 
 /** The disc is the only coloured thing in the status card's phase block. */
@@ -133,11 +146,12 @@ export const PHASE_DISC = {
   suspect: "alert",
   recovery: "info",
   cooldown: "info",
+  ssr_hold: "info",
   locked: "neutral",
   disabled: "neutral",
 } satisfies Record<WatchdogPhase, DiscTone>;
 
-/** Eleven phases, eleven distinct glyphs — the containers are 1.03:1 apart. */
+/** Twelve phases, twelve distinct glyphs — the containers are 1.03:1 apart. */
 export const PHASE_GLYPH = {
   off: PowerOffIcon,
   unknown: HelpCircleIcon,
@@ -148,6 +162,7 @@ export const PHASE_GLYPH = {
   suspect: TriangleAlertIcon,
   recovery: RefreshCwIcon,
   cooldown: ClockIcon,
+  ssr_hold: PauseCircleIcon,
   locked: LockIcon,
   disabled: MinusCircleIcon,
 } satisfies Record<WatchdogPhase, LucideIcon>;
@@ -162,6 +177,7 @@ export const PHASE_LABEL_KEY: Record<WatchdogPhase, string> = {
   suspect: "watchdog.phase.suspect.label",
   recovery: "watchdog.phase.recovery.label",
   cooldown: "watchdog.phase.cooldown.label",
+  ssr_hold: "watchdog.phase.ssr_hold.label",
   locked: "watchdog.phase.locked.label",
   disabled: "watchdog.phase.disabled.label",
 };
@@ -176,6 +192,7 @@ export const PHASE_BLURB_KEY: Record<WatchdogPhase, string> = {
   suspect: "watchdog.phase.suspect.blurb",
   recovery: "watchdog.phase.recovery.blurb",
   cooldown: "watchdog.phase.cooldown.blurb",
+  ssr_hold: "watchdog.phase.ssr_hold.blurb",
   locked: "watchdog.phase.locked.blurb",
   disabled: "watchdog.phase.disabled.blurb",
 };
@@ -281,8 +298,7 @@ export function deriveBand({
         key: "reboots",
         eyebrowKey: "watchdog.band.reboots",
         value: reboots === null ? null : `${reboots} / ${cap}`,
-        // `count_recent_reboots` runs at daemon start and inside tier 4 only, so
-        // this is a running total since start, never a rolling hour.
+        // Tier-4 reboots in the rolling hour; the daemon recounts once a minute.
         captionKey: settings.tier4_enabled
           ? "watchdog.band.rebootsCaption"
           : "watchdog.band.rebootsOff",

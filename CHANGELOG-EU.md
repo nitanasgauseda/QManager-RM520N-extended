@@ -1,8 +1,8 @@
 # QManager RM520N — EU edition
 
-Everything this edition adds to or changes in the original **QManager RM520N v0.1.17** by dr-dolomite (https://github.com/dr-dolomite/QManager-RM520N). Base commit: `a8249a3`.
+Everything this edition adds to or changes in the original **QManager RM520N v0.1.18** by dr-dolomite (https://github.com/dr-dolomite/QManager-RM520N). Since v0.1.18-eu.1 the original v0.1.18 is merged in; its own changes are in `RELEASE_NOTES.md`.
 
-Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.tar.gz && cd qmanager_install && sh install_rm520n.sh`.
+Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.tar.gz && cd qmanager_install && sh install_rm520n.sh`, or update from **System Settings → Software Update**.
 
 ## ✨ New Features
 
@@ -37,6 +37,7 @@ Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.
 - **The router keeps its internet after the carrier changes the IP (IP Passthrough).** When the carrier gives the modem a new IPv4 address (after a reboot or a re-dial), the router behind it used to keep the old one and lose the internet until it was restarted. The modem now restarts its Ethernet link 20 seconds after the change, so the router asks for the new address. (At most once per 10 minutes; logged in Network Events.)
 - **Alert when the router behind the modem stops responding.** **Local Network → Ethernet** has a new **Router behind the modem** card: the modem checks every minute that your router answers and alerts you by SMS, email, Telegram or Discord after 3 minutes of silence, and again when it is back. The router is found automatically in IP Passthrough. (Ping, then ARP, on the LAN bridge; a router that still forwards but whose DHCP or DNS crashed is not detected.)
 - **Scan an eSIM QR code.** **Cellular → Settings → eSIM** has a **Scan QR code** button: take a photo of the operator's QR code or pick a screenshot, and the activation code fills in by itself. The picture stays in your browser.
+- **Original v0.1.18 merged in.** Setup wizard, encrypted Config Backup, Device Access, Adaptive Polling, SMS conversations, the new sidebar and redesigned pages, plus its fixes (SSH and LAN devices closed to the mobile network, Web Console sign-in). The EU edition's own **Backup & Restore** page stays beside **Config Backup** for the EU settings. (The web server no longer gets raw iptables, so DNS Privacy and Security Check go through a fixed-verb root helper, `qmanager_eu_fw`.)
 
 ## 🛠️ Improvements
 

@@ -42,6 +42,7 @@ import {
   ROW_GROUP,
   VALUE_NONE,
 } from "./shapes";
+import { failureReason } from "./failure-reason";
 
 // =============================================================================
 // MtuSettingsCard — the second of Band B's two peer write cards
@@ -240,7 +241,8 @@ export function MtuSettingsCard({
           markSaved();
           toast.success(t(`${K}.toast_mtu_cleared`));
         } else {
-          toast.error(cleared.error ?? t(`${K}.toast_mtu_error`));
+          const title = t(`${K}.toast_mtu_disable_error`);
+          toast.error(title, { description: failureReason(title, cleared.error) });
         }
         return;
       }
@@ -253,7 +255,8 @@ export function MtuSettingsCard({
         markSaved();
         toast.success(t(`${K}.toast_mtu_applied`, { mtu: next }));
       } else {
-        toast.error(result.error ?? t(`${K}.toast_mtu_error`));
+        const title = t(`${K}.toast_mtu_error`);
+        toast.error(title, { description: failureReason(title, result.error) });
       }
     },
     [

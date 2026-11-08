@@ -10,8 +10,10 @@ import {
   RotateCwIcon,
   SlidersHorizontalIcon,
   TriangleAlertIcon,
+  WifiOffIcon,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,9 +47,10 @@ import {
 } from "./shapes";
 import { SiteMark } from "./site-mark";
 
-const SITES_RANGES: readonly SitesRange[] = ["1h", "24h", "7d"];
+const SITES_RANGES: readonly SitesRange[] = ["now", "1h", "24h", "7d"];
 
 const RANGE_LABEL_KEY = {
+  now: "latencyMonitor.range.now",
   "1h": "latencyMonitor.range.h1",
   "24h": "latencyMonitor.range.h24",
   "7d": "latencyMonitor.range.d7",
@@ -70,24 +73,30 @@ interface SiteCellProps {
   cuts: Cuts;
   units: UnitLabels;
   checking: boolean;
+  /** "now" data carries no series, so the figure is the live sample itself. */
+  live: boolean;
+  /** The probe link is down, so a failed site is expected and stays quiet. */
+  linkDown: boolean;
 }
 
-function SiteCell({ site, index, cuts, units, checking }: SiteCellProps) {
+function SiteCell({ site, index, cuts, units, checking, live, linkDown }: SiteCellProps) {
   const { t } = useTranslation("dashboard");
-  const avg = siteAverage(site.series);
+  const figure = live ? (site.latest?.ms ?? null) : siteAverage(site.series);
 
   let value: ReactNode;
   if (!site.latest) {
     value = <span className={SITES.QUIET}>{t("latencyMonitor.sites.not_checked")}</span>;
+  } else if (!site.latest.ok && linkDown) {
+    value = <span className={SITES.QUIET}>{t("latencyMonitor.unmeasured")}</span>;
   } else if (!site.latest.ok) {
     value = (
       <span className={SITE_INK.bad}>{t("latencyMonitor.now.no_reply")}</span>
     );
-  } else if (avg === null) {
+  } else if (figure === null) {
     value = <span className={SITES.QUIET}>{t("latencyMonitor.unmeasured")}</span>;
   } else {
     value = (
-      <span className={SITE_INK[latencyTone(avg, cuts)]}>{msText(avg, units)}</span>
+      <span className={SITE_INK[latencyTone(figure, cuts)]}>{msText(figure, units)}</span>
     );
   }
 
@@ -136,13 +145,15 @@ function SitesSkeleton() {
 
 export interface SitesCardProps {
   cuts: Cuts;
+  /** The probe target isn't answering: one note replaces a grid of red failures. */
+  linkDown: boolean;
 }
 
-export function SitesCard({ cuts }: SitesCardProps) {
+export function SitesCard({ cuts, linkDown }: SitesCardProps) {
   const { t } = useTranslation("dashboard");
   const intervalLabel = useIntervalLabel();
-  const [range, setRange] = useState<SitesRange>("1h");
-  const { data, isLoading, error, checkPending, refresh, checkNow, save } =
+  const [range, setRange] = useState<SitesRange>("now");
+  const { data, dataRange, isLoading, error, checkPending, refresh, checkNow, save } =
     useSites(range);
 
   const [turningOn, setTurningOn] = useState(false);
@@ -238,18 +249,30 @@ export function SitesCard({ cuts }: SitesCardProps) {
     );
   } else {
     body = (
-      <div className={SITES.GRID} aria-busy={checking || undefined}>
-        {sites.map((site, i) => (
-          <SiteCell
-            key={site.host}
-            site={site}
-            index={i}
-            cuts={cuts}
-            units={units}
-            checking={checking}
-          />
-        ))}
-      </div>
+      <>
+        {linkDown ? (
+          <div role="status">
+            <Badge variant="info" className="max-w-full whitespace-normal">
+              <WifiOffIcon className="size-3" />
+              {t("latencyMonitor.sites.link_down")}
+            </Badge>
+          </div>
+        ) : null}
+        <div className={SITES.GRID} aria-busy={checking || undefined}>
+          {sites.map((site, i) => (
+            <SiteCell
+              key={site.host}
+              site={site}
+              index={i}
+              cuts={cuts}
+              units={units}
+              checking={checking}
+              live={dataRange === "now"}
+              linkDown={linkDown}
+            />
+          ))}
+        </div>
+      </>
     );
   }
 

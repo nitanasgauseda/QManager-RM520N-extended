@@ -8,6 +8,18 @@
 # Install location: /usr/bin/qmanager_setup
 # =============================================================================
 
+# AT lock in root-only /run: dir 0750 + lock 0640, root:dialout (the CGIs' group; flock
+# needs only a read fd). Only root writes there. An existing lock is never truncated.
+if { [ -e /run/qmanager_at ] || [ -L /run/qmanager_at ]; } && { [ -L /run/qmanager_at ] || [ ! -d /run/qmanager_at ]; }; then
+    rm -rf /run/qmanager_at
+fi
+[ -d /run/qmanager_at ] || mkdir /run/qmanager_at
+chown root:dialout /run/qmanager_at
+chmod 0750 /run/qmanager_at
+[ -e /run/qmanager_at/at.lock ] || : > /run/qmanager_at/at.lock
+chown root:dialout /run/qmanager_at/at.lock
+chmod 0640 /run/qmanager_at/at.lock
+
 # Remount root filesystem read-write if needed (RM520N-GL boots read-only)
 if ! touch /usr/.qm_rw_test 2>/dev/null; then
     mount -o remount,rw / 2>/dev/null
@@ -57,7 +69,6 @@ fi
 # Shared /tmp files — pre-created with correct ownership for fs.protected_regular=1.
 # CRITICAL: RM520N-GL's sticky /tmp + protected_regular blocks O_CREAT and open-for-write
 # unless file_owner==caller OR dir_owner==caller (root owns /tmp).
-# Must match paths in /usr/bin/qcmd: LOCK_FILE and PID_FILE
 #
 # Strategy: files written by BOTH root (poller) and www-data (CGI) must be root-owned
 # with mode 666. Files written by www-data only are www-data-owned.
@@ -69,12 +80,7 @@ fi
 # is no CAP_ override for this check — so root is locked out at ANY mode. The
 # asymmetry is the whole reason this block exists; do not "simplify" it by
 # giving everything to www-data.
-
-# www-data-owned: opened READ-ONLY by root (qcmd holds the flock via `9<`), so
-# root never needs write access and protected_regular never engages.
-touch /tmp/qmanager_at.lock /tmp/qmanager_at.pid
-chown www-data:www-data /tmp/qmanager_at.lock /tmp/qmanager_at.pid
-chmod 666 /tmp/qmanager_at.lock /tmp/qmanager_at.pid
+# (The AT lock is not seeded here any more: it lives in /run/qmanager_at above.)
 
 # Shared root-owned files — both root (poller/daemons) and www-data (CGI) write.
 # If www-data owned these, root would be blocked by fs.protected_regular=1.
@@ -187,6 +193,15 @@ if [ -f /usr/lib/qmanager/hw_profile.sh ]; then
 fi
 
 chown -R www-data:www-data /etc/qmanager
+
+# Reboot-cause log lives in the root-owned /usrdata/qmanager, never in the
+# www-data-owned /etc/qmanager (symlink-swap hole). Ensure the dir and move any
+# legacy /etc/qmanager/crash.log across once (read as www-data, see crash_log.sh).
+install -d -o root -g root -m 0755 /usrdata/qmanager
+if [ -f /usr/lib/qmanager/crash_log.sh ]; then
+    . /usr/lib/qmanager/crash_log.sh
+    qm_crash_log_prepare || true
+fi
 
 # Make all qmanager binaries executable
 for f in /usr/bin/qmanager_*; do

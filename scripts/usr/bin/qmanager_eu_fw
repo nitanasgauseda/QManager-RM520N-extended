@@ -1,0 +1,47 @@
+#!/bin/sh
+# qmanager_eu_fw — root helper for the EU edition's firewall reads and DNS Privacy rules.
+# Fixed verbs, no other arguments (sudoers grants the bare path; raw iptables is not granted).
+#   dump4 | dump6   iptables-S / ip6tables-S, read-only (System Settings -> Security)
+#   dns-present     exit 0 when the LAN DNS redirect is in place
+#   dns-apply       guard + redirect + end-to-end check (exit 2 redirect failed, 3 no replies)
+#   dns-remove      redirect and guard off
+
+PATH=/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH
+
+# Under sudo nothing from the caller's environment may pick the binaries or files used.
+if [ -n "${SUDO_USER:-}" ]; then
+    for _v in $(env | sed -n 's/^\(DP_[A-Z0-9_]*\|QM_[A-Z0-9_]*\)=.*/\1/p'); do unset "$_v"; done
+fi
+IPT4="${QM_IPTABLES:-iptables}"
+IPT6="${QM_IP6TABLES:-ip6tables}"
+
+[ "$#" -eq 1 ] || { echo "usage: qmanager_eu_fw dump4|dump6|dns-present|dns-apply|dns-remove" >&2; exit 64; }
+
+case "$1" in
+    dump4) exec "$IPT4" -S ;;
+    dump6) command -v "$IPT6" >/dev/null 2>&1 || exit 0; exec "$IPT6" -S ;;
+    dns-present|dns-apply|dns-remove) ;;
+    *) echo "unknown verb" >&2; exit 64 ;;
+esac
+
+[ -f /usr/lib/qmanager/qlog.sh ] && . /usr/lib/qmanager/qlog.sh 2>/dev/null
+command -v qlog_info >/dev/null 2>&1 || { qlog_init() { :; }; qlog_debug() { :; }; qlog_info() { :; }; qlog_warn() { :; }; qlog_error() { :; }; }
+qlog_init "eu_fw"
+. /usr/lib/qmanager/dns_privacy.sh || exit 9
+
+case "$1" in
+    dns-present) dp_redirect_present ;;
+    dns-apply)
+        dp_legacy_cleanup
+        dp_guard_on
+        dp_redirect_present && exit 0
+        dp_redirect on || exit 2
+        dp_verify_redirect || exit 3
+        ;;
+    dns-remove)
+        dp_redirect off
+        dp_guard_off
+        dp_legacy_cleanup
+        ;;
+esac

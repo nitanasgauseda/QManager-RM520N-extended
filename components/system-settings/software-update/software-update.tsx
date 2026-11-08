@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { DownloadIcon, ServerOffIcon } from "lucide-react";
+import { DownloadIcon, RotateCwIcon, ServerOffIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
@@ -36,6 +36,7 @@ import {
 } from "./derive";
 import {
   CARD_GRID,
+  CARD_GRID_SOLO,
   DIALOG_MOTION,
   ERROR_STATE,
   FOCUS_RING_ON_SURFACE,
@@ -57,11 +58,13 @@ export function SoftwareUpdate(): React.JSX.Element {
     isDownloading,
     error,
     errorKind,
+    isInstallStalled,
     lastChecked,
     checkForUpdates,
     downloadUpdate,
     installStaged,
     installVersion,
+    rebootDevice,
     togglePrerelease,
     saveAutoUpdate,
   } = useSoftwareUpdate();
@@ -77,7 +80,13 @@ export function SoftwareUpdate(): React.JSX.Element {
     isUpdating,
     isDownloading,
   });
-  const failure = resolveFailure(updateInfo, error, errorKind, downloadState);
+  const failure = resolveFailure(
+    updateInfo,
+    error,
+    errorKind,
+    downloadState,
+    view === "installing" && isInstallStalled,
+  );
   const packageSize = resolvePackageSize(updateInfo);
   const packageStaged = isPackageStaged(downloadState, updateInfo);
 
@@ -86,6 +95,7 @@ export function SoftwareUpdate(): React.JSX.Element {
   const [selectedVersion, setSelectedVersion] = React.useState("");
   const [versionDialogOpen, setVersionDialogOpen] = React.useState(false);
   const [installDialogOpen, setInstallDialogOpen] = React.useState(false);
+  const [rebootDialogOpen, setRebootDialogOpen] = React.useState(false);
 
   const running = view === "installing" || view === "rebooting";
   const interrupted = installedState(updateInfo) === "interrupted";
@@ -100,6 +110,12 @@ export function SoftwareUpdate(): React.JSX.Element {
     setInstallDialogOpen(false);
     await installStaged();
   }, [installStaged]);
+
+  // The reboot is the navigation hand-off, so success shows no toast.
+  const handleReboot = React.useCallback(() => {
+    setRebootDialogOpen(false);
+    rebootDevice();
+  }, [rebootDevice]);
 
   const resumeInterrupted = React.useCallback(() => {
     if (!pendingVersion) return;
@@ -162,10 +178,10 @@ export function SoftwareUpdate(): React.JSX.Element {
       />
 
       {view === "loading" ? (
-        <>
+        <div className={CARD_GRID}>
           <AnchorCardSkeleton />
           <NotesCardSkeleton />
-        </>
+        </div>
       ) : view === "unreachable" ? (
         // This branch mounts AFTER the page root settled, so it declares its
         // own directions: a variants-only child that mounts late renders blank.
@@ -199,21 +215,26 @@ export function SoftwareUpdate(): React.JSX.Element {
           initial="hidden"
           animate="visible"
         >
-          <UpdateCard
-            view={view}
-            info={updateInfo}
-            failure={failure}
-            packageStaged={packageStaged}
-            onDownload={() => void handleDownload()}
-            onInstall={() => setInstallDialogOpen(true)}
-          />
+          {/* The anchor and the notes share a row. The wrapper keeps its
+              identity across a run, so the anchor never remounts. */}
+          <div className={running ? CARD_GRID_SOLO : CARD_GRID}>
+            <UpdateCard
+              view={view}
+              info={updateInfo}
+              failure={failure}
+              packageStaged={packageStaged}
+              onDownload={() => void handleDownload()}
+              onInstall={() => setInstallDialogOpen(true)}
+              onReboot={() => setRebootDialogOpen(true)}
+            />
 
-          {/* Download and verify leave the page whole; only a run that is
-              replacing files takes the trailing cards away. */}
+            {/* Download and verify leave the page whole; only a run that is
+                replacing files takes the notes away. */}
+            {!running && <ReleaseNotesCard view={view} info={updateInfo} />}
+          </div>
+
           {!running && (
             <>
-              <ReleaseNotesCard view={view} info={updateInfo} />
-
               <div className={CARD_GRID}>
                 <UpdatePreferencesCard
                   view={view}
@@ -275,6 +296,30 @@ export function SoftwareUpdate(): React.JSX.Element {
             >
               <DownloadIcon className={PILL_GLYPH} aria-hidden="true" />
               {t(`${K}.versions.dialog.confirm_install`)}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* A stalled install is rescued by a manual restart, so it is confirmed. */}
+      <AlertDialog open={rebootDialogOpen} onOpenChange={setRebootDialogOpen}>
+        <AlertDialogContent className={DIALOG_MOTION}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(`${K}.stall_dialog.title`)}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(`${K}.stall_dialog.description`)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className={FOCUS_RING_ON_SURFACE}>
+              {t(`${K}.stall_dialog.cancel`)}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={FOCUS_RING_ON_SURFACE}
+              onClick={handleReboot}
+            >
+              <RotateCwIcon className={PILL_GLYPH} aria-hidden="true" />
+              {t(`${K}.stall_dialog.confirm`)}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

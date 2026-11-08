@@ -36,10 +36,20 @@ LEVEL_DECAY=3600         # quiet seconds after which the ladder level resets to 
 # ---------------------------------------------------------------------------
 # Setup check
 # ---------------------------------------------------------------------------
+# Only a MISSING auth.json means setup. An empty one is a failed write, not a
+# reset: treat it as locked so setup can't be re-run unauthenticated.
+# Recovery is qmanager_reset_password (deletes the file) over SSH.
 is_setup_required() {
-    [ ! -f "$AUTH_CONFIG" ] && return 0
-    [ ! -s "$AUTH_CONFIG" ] && return 0
+    [ ! -e "$AUTH_CONFIG" ] && return 0
     return 1
+}
+
+# qm_password_is_strong <password> — 0 if it holds an uppercase, a lowercase and a digit.
+qm_password_is_strong() {
+    case "$1" in *[A-Z]*) ;; *) return 1 ;; esac
+    case "$1" in *[a-z]*) ;; *) return 1 ;; esac
+    case "$1" in *[0-9]*) ;; *) return 1 ;; esac
+    return 0
 }
 
 # ---------------------------------------------------------------------------
@@ -85,28 +95,80 @@ qm_verify_password() {
     qm_timing_safe_compare "$_computed_hash" "$_stored_hash"
 }
 
+# Atomic: write a 0600 temp file, check it, then mv. Returns 1 and leaves the old
+# auth.json untouched if openssl/jq fail (a truncated file used to reopen setup).
 qm_save_password() {
     _new_salt=$(qm_generate_salt)
     _new_hash=$(qm_hash_password "$1" "$_new_salt")
+    [ "${#_new_salt}" -eq 32 ] && [ "${#_new_hash}" -eq 64 ] || return 1
 
-    jq -n --arg hash "$_new_hash" --arg salt "$_new_salt" \
-        '{"hash":$hash,"salt":$salt,"version":1}' > "$AUTH_CONFIG"
-    chmod 600 "$AUTH_CONFIG"
+    _auth_tmp="${AUTH_CONFIG}.tmp.$$"
+    if ( umask 077; jq -n --arg hash "$_new_hash" --arg salt "$_new_salt" \
+            '{"hash":$hash,"salt":$salt,"version":1}' > "$_auth_tmp" ) 2>/dev/null \
+        && [ "$(jq -r '.hash // empty' "$_auth_tmp" 2>/dev/null)" = "$_new_hash" ] \
+        && mv -f "$_auth_tmp" "$AUTH_CONFIG"; then
+        chmod 600 "$AUTH_CONFIG"
+        return 0
+    fi
+    rm -f "$_auth_tmp"
+    return 1
 }
 
 # ---------------------------------------------------------------------------
 # Cookie helpers
 # ---------------------------------------------------------------------------
 
-# Extract a named cookie value from HTTP_COOKIE
-# Usage: _cookie_val=$(qm_get_cookie "cookie_name")
+# Literal TAB, for the cookie separator test below.
+_QC_TAB='	'
+
+# qm_cookie_var NAME VARNAME — set VARNAME to the named cookie's value, with no
+# subshell. Returns 0 if the cookie is present (value may be empty), 1 if not
+# (VARNAME is then empty). HTTP_COOKIE format: "name1=val1; name2=val2".
+# Same rules as the old awk (RS=";[ TAB]*" FS="="): split on ';' plus any run of
+# spaces/tabs, exact name match on the text before the first '=', value = text
+# up to the next '=', first match wins. Parameter expansion only: no glob, no IFS.
+qm_cookie_var() {
+    _qc_rest="${HTTP_COOKIE-}"
+    _qc_val=""
+    _qc_found=1
+    while :; do
+        case "$_qc_rest" in
+            *\;*)
+                _qc_pair="${_qc_rest%%;*}"
+                _qc_rest="${_qc_rest#*;}"
+                while :; do
+                    case "$_qc_rest" in
+                        " "*|"$_QC_TAB"*) _qc_rest="${_qc_rest#?}" ;;
+                        *) break ;;
+                    esac
+                done
+                _qc_more=1
+                ;;
+            *)
+                _qc_pair="$_qc_rest"
+                _qc_more=0
+                ;;
+        esac
+        _qc_name="${_qc_pair%%=*}"
+        if [ "$_qc_name" = "$1" ]; then
+            if [ "$_qc_name" != "$_qc_pair" ]; then
+                _qc_val="${_qc_pair#*=}"
+                _qc_val="${_qc_val%%=*}"
+            fi
+            _qc_found=0
+            break
+        fi
+        [ "$_qc_more" -eq 1 ] || break
+    done
+    eval "$2=\$_qc_val"
+    return "$_qc_found"
+}
+
+# Print the named cookie value (nothing if absent). Prefer qm_cookie_var: this
+# one forks when called as $(qm_get_cookie ...).
 qm_get_cookie() {
-    _cookie_name="$1"
-    # HTTP_COOKIE format: "name1=val1; name2=val2"
-    printf '%s' "$HTTP_COOKIE" | awk -v name="$_cookie_name" '
-    BEGIN { RS=";[ \t]*"; FS="=" }
-    $1 == name { print $2; exit }
-    '
+    qm_cookie_var "$1" _qc_out && printf '%s' "$_qc_out" && echo
+    return 0
 }
 
 # Emit Set-Cookie headers for both session and indicator cookies
@@ -132,7 +194,11 @@ qm_generate_token() {
 
 # Validate token is safe for use as a filename (hex chars only)
 _is_valid_token() {
-    printf '%s' "$1" | grep -qE '^[0-9a-f]{64}$'
+    [ "${#1}" -eq 64 ] || return 1
+    case "$1" in
+        *[!0-9a-f]*) return 1 ;;
+    esac
+    return 0
 }
 
 # Create a new session. Prints the token to stdout.
@@ -153,12 +219,17 @@ qm_validate_session() {
     _session_file="${SESSIONS_DIR}/${_check_token}"
     [ ! -f "$_session_file" ] && return 1
 
-    _created=$(cat "$_session_file" 2>/dev/null)
+    # read, not $(cat): no fork. `|| [ -n ]` accepts a file with no trailing newline.
+    _created=""
+    IFS= read -r _created 2>/dev/null < "$_session_file" || [ -n "$_created" ] || return 1
     [ -z "$_created" ] && return 1
+
+    case "$_created" in *[!0-9]*) return 1 ;; esac
 
     _now=$(date +%s)
     _age=$(( _now - _created ))
-    [ "$_age" -gt "$SESSION_MAX_AGE" ] && {
+    # Negative age = clock stepped back; refuse rather than extend the session.
+    { [ "$_age" -lt 0 ] || [ "$_age" -gt "$SESSION_MAX_AGE" ]; } && {
         rm -f "$_session_file"
         return 1
     }
@@ -486,6 +557,31 @@ qm_set_ssh_password() {
     fi
 }
 
+# Check a root (SSH) password via the helper's --verify; 0 on match, else 1 with QM_SSH_VERIFY_ERR
+# set to its error code (or verify_unavailable when it gave no usable answer).
+qm_verify_ssh_password() {
+    QM_SSH_VERIFY_ERR="verify_unavailable"
+    [ -z "$1" ] && return 1
+
+    if [ -z "$_PLATFORM_LOADED" ]; then
+        . /usr/lib/qmanager/platform.sh
+    fi
+
+    # Fail closed: a helper without --verify would treat the candidate as a NEW password and set it.
+    grep -q '^# qm-capability: verify$' /usr/bin/qmanager_set_ssh_password 2>/dev/null || return 1
+
+    _vsp_out=$(printf '%s\n' "$1" | $_SUDO /usr/bin/qmanager_set_ssh_password --verify 2>/dev/null)
+    _vsp_rc=$?
+    [ "$_vsp_rc" -eq 0 ] && return 0
+
+    _vsp_err=$(printf '%s' "$_vsp_out" | jq -r '.error // empty' 2>/dev/null)
+    case "$_vsp_err" in
+        invalid_password|no_password_set|hash_tool_missing|root_hash_unsupported)
+            QM_SSH_VERIFY_ERR="$_vsp_err" ;;
+    esac
+    return 1
+}
+
 # ---------------------------------------------------------------------------
 # Auth enforcement — called by cgi_base.sh on every request
 # ---------------------------------------------------------------------------
@@ -516,7 +612,7 @@ require_auth() {
     [ "$REQUEST_METHOD" = "OPTIONS" ] && return 0
 
     # Read session token from cookie
-    _token=$(qm_get_cookie "$COOKIE_SESSION")
+    qm_cookie_var "$COOKIE_SESSION" _token
     if [ -z "$_token" ] || ! qm_validate_session "$_token"; then
         echo "Status: 401 Unauthorized"
         cgi_headers
@@ -524,3 +620,6 @@ require_auth() {
         exit 0
     fi
 }
+
+# Load-complete marker — must stay the LAST line; cgi_base.sh fails closed without it.
+_CGI_AUTH_COMPLETE=1

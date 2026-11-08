@@ -11,6 +11,7 @@ cgi_headers
 cgi_handle_options
 
 RELOAD_FLAG="/tmp/qmanager_dnsguard_reload"
+EU_FW="${QM_EU_FW:-/usr/bin/qmanager_eu_fw}"
 MOBILEAP_XML="${QM_MOBILEAP_XML:-/etc/data/mobileap_cfg.xml}"
 PROVIDERS="quad9 cloudflare google adguard mullvad nextdns custom"
 
@@ -46,7 +47,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     installed=false; [ -x "$DP_BIN" ] && installed=true
     running=false; svc_is_running qmanager_dnsguard && running=true
     healthy=false; dp_daemon_healthy && healthy=true
-    present=false; dp_redirect_present && present=true
+    present=false; $_SUDO ${_SUDO:+-n} "$EU_FW" dns-present </dev/null >/dev/null 2>&1 && present=true
     rfail=false; [ -f "$DP_FAILED_FLAG" ] && rfail=true
     custom=false; dp_custom_dns_active && custom=true
     mode=$(dns_mode)
@@ -133,24 +134,17 @@ if [ "$want" = "true" ]; then
         cgi_error "daemon_failed" "DNS Privacy did not start; your DNS was left unchanged"
         exit 0
     fi
-    dp_legacy_cleanup
-    dp_guard_on
     rm -f "$DP_FAILED_FLAG" 2>/dev/null
-    if ! dp_redirect_present; then
-        if ! dp_redirect on; then
-            cgi_error "apply_failed" "Saved, but LAN DNS could not be redirected"
-            exit 0
-        fi
-        if ! dp_verify_redirect; then
-            cgi_error "redirect_failed" "Lookups from your network did not reach DNS Privacy, so it was switched back off"
-            exit 0
-        fi
-    fi
+    # iptables needs root: the helper runs guard, redirect and the end-to-end check.
+    $_SUDO ${_SUDO:+-n} "$EU_FW" dns-apply </dev/null >/dev/null 2>&1
+    case $? in
+        0) ;;
+        3) cgi_error "redirect_failed" "Lookups from your network did not reach DNS Privacy, so it was switched back off"; exit 0 ;;
+        *) cgi_error "apply_failed" "Saved, but LAN DNS could not be redirected"; exit 0 ;;
+    esac
 else
     rm -f "$DP_FAILED_FLAG" 2>/dev/null
-    dp_redirect off
-    dp_guard_off
-    dp_legacy_cleanup
+    $_SUDO ${_SUDO:+-n} "$EU_FW" dns-remove </dev/null >/dev/null 2>&1
     svc_stop qmanager_dnsguard
     svc_disable qmanager_dnsguard >/dev/null 2>&1
 fi

@@ -28,7 +28,30 @@ This applies to every reply: findings, diagnoses, reviews, plans, and status upd
 
 ## Change Workflow
 
-Every code-change request runs under the **`qm-orchestrate`** skill (`.claude/skills/qm-orchestrate/SKILL.md`) — invoke it before triaging any change, and also when the user says "resume", "handoff", or "pick up where we left off" (it reads the run ledger in `.orchestra/runs/`). It supersedes the generic brainstorming / writing-plans / verification skills for code changes. **No test harnesses** — a change is proved by running it on the device or loading the page; the user's own tarball run is authoritative. Skip phrases ("just do it" / "skip the plan" / "direct") go straight to an inline edit. Redesign / polish / repolish requests go through the **`qm-redesign-review`** skill (`.claude/skills/qm-redesign-review/SKILL.md`) first — a published Artifact with a measured critique, a working mockup and a change list; it never edits code, and the approved design is then built under `qm-orchestrate`.
+Lean (ported from QManager 2026-10-26): the main session understands, writes and validates; agents are for heavy or parallel work. This replaces the generic brainstorming / writing-plans / verification skills here. **Invoke `superpowers:brainstorming` only when the user asks.** **No test harnesses** — the user's own tarball run is authoritative.
+
+- **Small** (typos, copy, single-file or single-layer fixes outside the risky areas): understand → change → validate.
+- **Large** (cross-layer; the **installer / systemd units / sudoers / `/usrdata` layout / rootfs remount / iptables / OTA / AT path (`qcmd`, `qmanager_atd`, lock files)**; anything that can reboot the modem or cut the connection): understand → **short plan, stop for OK** → build → validate → docs. "Just do it" / "skip the plan" / "direct" drops it to small.
+
+1. **Understand.** Read the code path and its router doc. For every bug fix and large change, look at the live device read-only first: past root causes often differed from the first theory. Broad sweeps go to `qm-scout`.
+2. **Plan (large).** Files, build order, risks, validation, rollback.
+3. **Build** in the main session, bottom-up: backend (poller / CGI / lib / unit) → hook → component. Builder agents only to parallelise independent file sets. Redesign / polish / repolish requests go through the **`qm-redesign-review`** skill first; the approved design is then built here.
+4. **Validate.** Run the real thing (device or page load), then the deterministic gates, then a blind `qm-verifier` pass for logic changes — layers and gates in `docs/reference/change-workflow.md`. After 2 failed rounds, stop and ask.
+5. **Docs** when behaviour, contracts or invariants change: feature doc, router row, `RELEASE_NOTES.md` if user-visible.
+
+Hard rules:
+- **Lifecycle lockstep:** `install_rm520n.sh`, the OTA update path and `uninstall_rm520n.sh` stay in sync (file copy, config seed, unit + wants-symlink, `/tmp` and reload-flag cleanup).
+- **Live-state writes during investigation** need the user's OK first.
+- **Agent briefs are self-contained:** inline paths, schemas, live evidence and relevant canon.
+- **Never auto-merge.** End by reporting branch + git status and asking: merge, keep for PR, or discard.
+
+**Worktrees** for large work or when another session may touch the branch: `EnterWorktree` after plan approval, then confirm its merge-base with `development` (the base has been measured stale). Copy `.env` from the main checkout (confirm `git check-ignore .env`, never commit it); `bun install` + `bunx next typegen` only if a frontend build/`tsc` is needed. Give parallel agents `isolation: "worktree"` only when their file sets overlap.
+
+**"Orchestrate"** = same steps, more delegation: parallel Haiku recon (`qm-scout`) and parallel builders; the main session plans, judges reports with its own reads, holds the approval stop, and still validates.
+
+Agents (`.claude/agents/`, models pinned there — never pass `model`): `qm-scout` (recon), `modem-investigator` (read-only evidence), `cgi-endpoint-builder` / `ui-builder` / `qm-worker` (build), `qm-verifier` / `busybox-portability-checker` / `installer-safety-auditor` (validate), `qm-advocate` (challenge a plan), `docs-writer`.
+
+**Context handoff:** the user-level `context-handoff` hook nudges at ~30% context (hard at 40%). On a `CONTEXT HANDOFF` message, finish the atomic step and run the `context-handoff` skill; an orchestrated task hands off as ORCHESTRATOR. Opt out per checkout with `.claude/handoff.disabled`.
 
 ## Design Context
 
@@ -62,7 +85,7 @@ QManager's reference target is the Quectel RM520N-GL modem, which runs **vanilla
 
 ### Live Device Access
 
-**Two live devices are reachable over SSH, on distinct subnets** — probe them whenever you can verify an architecture claim directly instead of guessing. Credentials are in `.env` (gitignored, local-only). Connect with the POSH-SSH PowerShell module (`New-SSHSession` / `Invoke-SSHCommand`). The devices are the source of truth for platform facts; docs drift.
+**Two live devices are reachable over SSH, on distinct subnets** — probe them whenever you can verify an architecture claim directly instead of guessing. Credentials are in `.env` (gitignored, local-only). Use the **modem bridge** MCP servers (`mcp__modem__*` = RM520N-GL, `mcp__modem-rg501q__*`; `modem_exec` / `modem_read` / `modem_write` / `modem_cgi`, serial-checked on connect — `docs/reference/modem-bridge.md`); Posh-SSH (`New-SSHSession` / `Invoke-SSHCommand`) is the fallback. The devices are the source of truth for platform facts; docs drift.
 
 | Device | `.env` vars | Serial |
 | --- | --- | --- |
@@ -109,7 +132,7 @@ The following features have been **completely removed** from the `dev-rm520` bra
 
 ## Feature Router
 
-**`docs/reference/README.md` is the router**: one row per reference doc, listing the routes, scripts, symbols and config keys that mean a task touches that subsystem. **Before editing anything under `scripts/`, `components/`, `hooks/`, `app/`, `lib/`, `types/` or `public/locales/`, open the router and read the doc for the subsystem you are touching.** The docs hold the invariants and ordering rules that are not visible from the code — a field whose absence means true, a verb that must never be wired, a write that must go through a shared primitive. Read only the matching doc; the rest wastes context. Under `qm-orchestrate` the conductor does this once and puts the paths in each ticket's READ FIRST line.
+**`docs/reference/README.md` is the router**: one row per reference doc, listing the routes, scripts, symbols and config keys that mean a task touches that subsystem. **Before editing anything under `scripts/`, `components/`, `hooks/`, `app/`, `lib/`, `types/` or `public/locales/`, open the router and read the doc for the subsystem you are touching.** The docs hold the invariants and ordering rules that are not visible from the code — a field whose absence means true, a verb that must never be wired, a write that must go through a shared primitive. Read only the matching doc; the rest wastes context. When delegating, read it once and name the paths in the agent's brief.
 
 One doc applies to every handler rather than one subsystem: before writing or changing any save / apply / toggle / delete / install / copy handler, a `toast.*` call, a failure reason shown from a handler, or a transient Saved/Applied chip, read `docs/reference/toast-confirmation.md`.
 

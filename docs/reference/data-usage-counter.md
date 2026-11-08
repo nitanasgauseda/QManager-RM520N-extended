@@ -17,15 +17,21 @@ By convention the kernel layout puts RX bytes at field 2 and TX bytes at field 1
 
 ---
 
+## Schema v6 (T1.1, 2026-10-26)
+
+The kernel prints each `/proc/net/dev` counter as `%8llu`, so once RX bytes reach 8 digits there is no space after `rmnet_ipa0:`. Up to v5 the poller split the whole line on whitespace, so from that point it read **packet counts** (fields shifted by one) and Data Used under-reported. v6 splits after the colon (fork-free bash `read` + `set --`). **v3–v5 → v6 upgrade resets accumulators** (user decision 2026-10-26); without it the first tick after upgrade would add the interface's whole byte total, because the stored `prev_ipa_*` were packet counts.
+
+**Persist cadence:** the poller keeps the counter in memory and writes `data_used.json` (flash) every `DATA_USED_PERSIST_SEC` = 30 s, at once on a user reset or a kernel counter reset, on a backward clock step, and from the TERM/INT trap. Keep it under 60 s: `qmanager_health_check` flags the file stale at 60 s.
+
 ## Schema v5
 
 Schema v5 keeps the v3 storage model and adds an `orientation` field. **v3/v4 → v5 upgrade resets accumulators** because previous totals may have been recorded against an incorrect (probe-derived) orientation. Users see this as a one-time fresh start of the Data Used counter after upgrading to v5.
 
-**`data_used.json` persisted fields (schema v5):**
+**`data_used.json` persisted fields (schema v5; v6 has the same fields):**
 
 | Field | Description |
 |-------|-------------|
-| `schema` | `5` — version guard; v2 and older are discarded; v3/v4 trigger an accumulator reset on upgrade |
+| `schema` | `6` — version guard; v2 and older are discarded; v3–v5 trigger an accumulator reset on upgrade |
 | `accumulated_rx_bytes` | Running total of RX bytes since last reset |
 | `accumulated_tx_bytes` | Running total of TX bytes since last reset |
 | `selected_counter` | Kernel interface name used as source (e.g. `rmnet_ipa0`) |
@@ -39,6 +45,8 @@ Schema v5 keeps the v3 storage model and adds an `orientation` field. **v3/v4 �
 **Removed in v5:** `orientation_state`, `orientation_history_swapped`, and the entire async probe state (`ORIENTATION_*` constants, `start_orientation_probe`, `apply_orientation_result`).
 
 **CGI response:** the `data_used` block in `scripts/www/cgi-bin/quecmanager/network/data_used.sh` output includes `stale: true` when the file mtime is stale, and surfaces `orientation` (rather than v4's `orientation_state`) for diagnostics. `orientation` is surfaced by **passthrough, not by name**: the poller emits it inside the `data_used` object and the CGI forwards that object wholesale (`jq '.data_used // empty'`, then `. + { stale: $stale }`), so the string `orientation` never appears in the CGI — a grep that comes up empty there is not evidence the field is unsurfaced. The legacy v2 fields (`orientation_calibrated`, `orientation_attempts`, `divergence_count`, `mode_transition_count`) remain gone; do not reference them.
+
+> ℹ️ NOTE: since T6.2 (2026-10-28) the dashboard card reads rx/tx from `.data_used` in the shared `useModemStatus` payload (`fetch_data.sh`) and no longer calls `data_used.sh`, which now has no UI caller. Its `stale` flag was never read by the card; a frozen status cache shows as the dashboard's page-level stale notice (`isStale` in `home-component.tsx`). The reset POST is `useDataUsedReset` (`hooks/use-data-used.ts`).
 
 ---
 

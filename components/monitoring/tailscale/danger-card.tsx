@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
+import type { TailscaleActionResult } from "@/hooks/use-tailscale";
+import { rebootNow } from "@/lib/reboot";
+
 import { DANGER } from "./shapes";
 
 // -----------------------------------------------------------------------------
@@ -26,22 +29,27 @@ import { DANGER } from "./shapes";
 
 export function DangerRow({
   isUninstalling,
+  isBusy,
   uninstall,
   onUninstalled,
 }: {
   isUninstalling: boolean;
-  uninstall: () => Promise<boolean>;
+  /** An update holds the install lock; removing the binary under it is refused. */
+  isBusy: boolean;
+  uninstall: () => Promise<TailscaleActionResult>;
   onUninstalled: () => void;
 }) {
   const { t } = useTranslation("common");
 
   const handleUninstall = async () => {
-    const ok = await uninstall();
-    if (ok) {
+    const result = await uninstall();
+    if (result.ok) {
       toast.success(t("tailscale.toast.uninstalled"));
       onUninstalled();
     } else {
-      toast.error(t("tailscale.toast.uninstallFailed"));
+      toast.error(t("tailscale.toast.uninstallFailed"), {
+        description: result.reason || undefined,
+      });
     }
   };
 
@@ -56,7 +64,7 @@ export function DangerRow({
           <Button
             type="button"
             variant="destructive"
-            disabled={isUninstalling}
+            disabled={isUninstalling || isBusy}
             size="action"
           >
             {isUninstalling ? (
@@ -108,17 +116,8 @@ export function RebootDialog({
   const reboot = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsRebooting(true);
-    fetch("/cgi-bin/quecmanager/system/reboot.sh", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "reboot" }),
-      keepalive: true,
-    }).catch(() => {});
-    setTimeout(() => {
-      sessionStorage.setItem("qm_rebooting", "1");
-      document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
-      window.location.href = "/reboot/";
-    }, 2000);
+    // Fire-and-forget POST, then the shared /reboot/ countdown hand-off.
+    rebootNow("tailscale");
   };
 
   return (

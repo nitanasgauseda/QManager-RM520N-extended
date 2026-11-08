@@ -17,7 +17,8 @@ This doc records the invariants that are cheap to break and expensive to notice:
 | Page shell | `components/cellular/cellular-information.tsx` |
 | View model (pure, no React) | `lib/radio-info.ts` |
 | IPv6 / hex helpers (pure) | `lib/ipv6.ts` |
-| Page header + Copy diagnostics | `components/cellular/radio/page-header.tsx` |
+| Page header (title + description, no action) | `components/cellular/radio/page-header.tsx` |
+| Copy diagnostics (icon pill in the Spectrum card header, beside the band-reference toggle) | `components/cellular/radio/copy-diagnostics-button.tsx`, mounted by `active-bands-card.tsx` |
 | Four summary tiles | `components/cellular/radio/summary-tiles.tsx` |
 | Non-registered state screens + tile skeleton | `components/cellular/radio/states.tsx` |
 | Spectrum in use (live cadence, per-carrier rows) | `components/cellular/radio/active-bands-card.tsx` |
@@ -100,7 +101,11 @@ RSSI is emitted **only** for LTE carriers that actually reported it (`buildMetri
 
 The modem reports SINR **twice, in two different units**, and the page was showing the wrong one.
 
-`AT+QENG="servingcell"` reports LTE SINR in dB (field 17 → `lte.sinr`). `AT+QCAINFO` reports the same measurement as a **raw `RSSNR` field** (field 10 → `carrier_components[].sinr`). `parse_at.sh`'s **NR** branch rescales that field and rejects `-32768`; its **LTE** branch (`parse_at.sh:632`) takes it verbatim. One live poll, one cell (B28 / EARFCN 9485 / PCI 407): `lte.sinr` was **8** while `carrier_components[0].sinr` was **251**. RSRP and RSRQ agreed across the two sources to within 1 — only SINR diverged, and 251 sits outside RSSNR's reported range entirely, so it is not a scaled 8 either.
+`AT+QENG="servingcell"` reports LTE SINR as a **raw 0..25 index**, not dB (field 17 of the LTE-only line, field 15 of the EN-DC `"LTE"` line). Since 2026-11-01 `parse_at.sh` converts it with `lte_sinr_db()`: **dB = 2X − 20**, and anything that is not an integer 0..25 publishes `null`. So `lte.sinr` in `/tmp/qmanager_status.json` is dB on −20..30. QENG's NR SINR is unchanged. Measured on RM520N-GL `61368cd2`, 2026-11-01: QENG raw **24** → published **28** dB, against `AT+QSINR` 28–29 and `AT+QCAINFO` 29 on the same cell. The RG501Q-EU is unverified.
+
+> ⚠️ WARNING: do not "fix" the conversion back out because the published number now looks high beside an old capture. Before it, an LTE SINR of 24 printed as 24 dB while QSINR said 28, and a raw 8 (−4 dB, a poor link) printed as a respectable 8 dB.
+
+`AT+QCAINFO` reports the same measurement as an **`RSSNR` field** (field 10 → `carrier_components[].sinr`). `parse_at.sh`'s **NR** branch rescales that field and rejects `-32768`; its **LTE** branch (`parse_at.sh:729`) takes it verbatim. One live poll on 2026-08-16, one cell (B28 / EARFCN 9485 / PCI 407): `lte.sinr` was **8** (the raw QENG index, before the conversion above) while `carrier_components[0].sinr` was **251**. RSRP and RSRQ agreed across the two sources to within 1 — only SINR diverged, and 251 sits outside RSSNR's reported range entirely, so it is not a scaled 8 either.
 
 What made that dangerous was `getSignalQuality()` having **no ceiling**: `value >= thresholds.excellent` scored 251 dB `"excellent"`, so the Spectrum card painted a full green meter and an Excellent chip beside a genuinely poor −115 dBm RSRP. Same latent hole on every metric — a +5 dBm RSRP would have read Excellent too.
 
@@ -372,6 +377,8 @@ The comp's **"Updates every 30s"** cadence chip stays cut. The client polls at 2
 
 ## Copy diagnostics is radio metrics only
 
+The button lives in the Spectrum card header (`active-bands-card.tsx`), not the page header, as an `ExpandButton` icon pill beside the band-reference toggle. It renders even with no carriers, because that is how a no-signal state gets reported; the reference toggle needs a carrier and hides without one.
+
 `buildDiagnosticsText` (`lib/radio-info.ts`) emits a fixed-width text block: a header line, network type and operator, the aggregate, then one line per carrier with role, technology, band, ARFCN/EARFCN, bandwidth and PCI, plus an indented metrics line. Metrics with no value are omitted rather than printed as `null`, and SINR is labelled `SNR` on an NR carrier because that is what the 5G spec calls it.
 
 It **deliberately excludes** IMEI, ICCID, WAN IPv4, WAN IPv6, DNS servers, Cell ID, eNodeB, Sector, TAC and APN.
@@ -450,7 +457,7 @@ The shipped subset is `app/fonts/MaterialSymbolsRounded-subset.{woff2,json}`, cu
 
 Glyphs used on this page: `cell_tower`, `graphic_eq`, `layers`, `alt_route`, `content_copy`, `check`, `schedule`, `visibility`, `visibility_off`, `help`, `warning`, `info`, `radar`, `chevron_right`, `sim_card`, `do_not_disturb_on`, `progress_activity`, and `signal_cellular_off` (the no-service condition screen, `states.tsx`).
 
-The graded `signal_cellular_{1..4}_bar` ladder is **no longer used on this page** — it went with the per-row quality chip. It stays in the subset and the allowlist because `signal-status-card.tsx`, `antenna-statistics/tech-card.tsx`, `band-locking/live-band-hero.tsx`, `cell-scanner/` and `tower-locking/live-strip.tsx` all still own it; do not prune it from the font on this page's account.
+The graded `signal_cellular_{1..4}_bar` ladder is **no longer used on this page** — it went with the per-row quality chip. It stays in the subset and the allowlist because `signal-status-card.tsx`, `antenna-statistics/tech-card.tsx`, `antenna-alignment/` and `cell-scanner/` still own it (Band Locking and Tower Locking stopped using it in the 2026-11 RM551E port); do not prune it from the font on this page's account.
 
 ## Known gaps
 

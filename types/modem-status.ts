@@ -12,6 +12,8 @@
 export interface ModemStatus {
   /** Unix epoch (seconds) — updated every poll cycle */
   timestamp: number;
+  /** Modem uptime (s) when this snapshot was written; absent on older pollers */
+  mono?: number;
   /** Current system state */
   system_state: SystemState;
   /** Whether the modem responded to the last AT command */
@@ -38,14 +40,27 @@ export interface ModemStatus {
   sim_failover: SimFailoverStatus;
   /** SIM swap detection (physical SIM card change at boot) */
   sim_swap: SimSwapStatus;
-  /** Persistent data-usage counter (optional — absent on older firmware or before first poller write) */
-  data_used?: DataUsedBlock;
+  /** Persistent data-usage counter (optional — absent on older firmware or before first poller write). `stale` is added only by data_used.sh. */
+  data_used?: Omit<DataUsedBlock, "stale">;
+  /** System health block (optional — absent on older pollers); only the fields the UI reads are typed here */
+  system_health?: StatusSystemHealth;
   /**
    * SIM readiness snapshot (optional — a device OTA-upgraded from an older
    * poller will not emit this block, so every consumer must tolerate `undefined`
    * rather than assuming a card is present).
    */
   sim?: SimBlock;
+}
+
+/** The slice of `status.json.system_health` read straight from the status payload. */
+export interface StatusSystemHealth {
+  /** /usrdata partition usage from df -P; null when the mount is absent or df fails */
+  storage?: {
+    mount: string;
+    total_kb: number;
+    used_kb: number;
+    available_kb: number;
+  } | null;
 }
 
 /** SIM readiness block published by the poller from AT+CPIN?. */
@@ -171,6 +186,22 @@ export interface NetworkStatus {
   secondary_dns: string;
   /** Per-carrier component details from AT+QCAINFO (PCC + all SCCs) */
   carrier_components: CarrierComponent[];
+  /** QMI WDS runtime settings of the bound data call; null when stale or unavailable */
+  wds?: WdsSettings | null;
+}
+
+/** QMI WDS 0x002D runtime settings; `mtu` is the network-provided PDN MTU. */
+export interface WdsSettings {
+  ip4: string | null;
+  gw4: string | null;
+  mask4: string | null;
+  dns4: string[];
+  mtu: number | null;
+  ip6: string | null;
+  ip6_prefix: number | null;
+  gw6: string | null;
+  dns6: string[];
+  read_mono: number;
 }
 
 /** A single carrier component from AT+QCAINFO (PCC or SCC) */
@@ -232,6 +263,8 @@ export interface LteStatus {
   rssi: number | null;
   /** Timing Advance index (0–1282). Used for cell distance estimation. */
   ta: number | null;
+  /** Where rsrp/rsrq/rssi came from this write: QMI fills cycles without an AT read */
+  source?: "at" | "qmi";
 }
 
 export interface NrStatus {
@@ -302,6 +335,16 @@ export interface DeviceStatus {
   supported_nsa_nr5g_bands: string;
   /** Hardware-supported SA NR5G bands, colon-delimited (boot-only) */
   supported_sa_nr5g_bands: string;
+  /** Poller activity tier: AT reads slow down while no browser is polling; absent on older pollers */
+  poller_tier?: PollerTier;
+  /** Monotonic second of the QMI snapshot; null without the sidecar */
+  qmi_read_mono?: number | null;
+  /** QMI lane state ("up", ...); "" without the sidecar */
+  qmi_state?: string;
+  /** Modem subsystem restarts seen by the QMI lane */
+  qmi_ssr_count?: number | null;
+  /** Monotonic second of the last AT serving-cell read */
+  at_read_mono?: number | null;
 }
 
 /**
@@ -354,7 +397,8 @@ export type ServingMetric = "rsrp" | "rsrq" | "sinr" | "rssi";
  * that grabbed the wrong CSV column.
  *
  * WHY THIS EXISTS. `AT+QCAINFO`'s LTE line reports RSSNR in field 10 as a RAW
- * value, while `AT+QENG="servingcell"` reports the same measurement in dB. The
+ * value, and `AT+QENG="servingcell"` reports a raw 0..25 too (dB = 2X−20, which
+ * `parse_at.sh` now applies; the `lte.sinr` = 8 below predates that). The
  * poller's NR branch rescales and rejects `-32768`; its LTE branch
  * (`parse_at.sh:632`) takes the field verbatim. Live capture, one poll, one
  * cell (B28 / EARFCN 9485 / PCI 407): `lte.sinr` = 8 while
@@ -512,20 +556,25 @@ export function worstSignalQuality(...qualities: SignalQuality[]): SignalQuality
   );
 }
 
-/** User-selectable preset for high_latency / high_packet_loss event thresholds. */
-export type QualityPreset = "standard" | "tolerant" | "very-tolerant";
+/** The three fixed presets for high_latency / high_packet_loss event thresholds. */
+export type QualityNamedPreset = "standard" | "tolerant" | "very-tolerant";
+
+/** User-selectable preset: a named one, or `custom` with the user's own number. */
+export type QualityPreset = QualityNamedPreset | "custom";
 
 /** Display-order list of quality presets. */
 export const QUALITY_PRESETS: readonly QualityPreset[] = [
   "standard",
   "tolerant",
   "very-tolerant",
+  "custom",
 ] as const;
 
-/** Persisted shape of /etc/qmanager/quality_thresholds.json (also the GET response settings field). */
+/** Persisted shape of /etc/qmanager/quality_thresholds.json (also the GET response settings field).
+    `custom_ms` / `custom_pct` are the stored custom numbers; they are read only while the preset is `custom`. */
 export interface QualityThresholdsSettings {
-  latency: { preset: QualityPreset };
-  loss: { preset: QualityPreset };
+  latency: { preset: QualityPreset; custom_ms?: number | null };
+  loss: { preset: QualityPreset; custom_pct?: number | null };
 }
 
 /** The poller's derived connectivity verdict, computed in qmanager_poller from the
@@ -605,6 +654,14 @@ export interface ConnectivityStatus {
   dns_resolver?: string | null;
   /** Alert thresholds the poller applies (Connection Quality settings). Absent on an older poller. */
   thresholds?: { latency_ms: number; loss_pct: number };
+  /** Seconds the last outage cleared this boot lasted. null until one clears. Absent on an older poller. */
+  last_outage_s?: number | null;
+  /** Seconds since it cleared, on the monotonic clock. null alongside last_outage_s. */
+  last_outage_ago_s?: number | null;
+  /** WAN address held when it cleared (IPv4 preferred). null when unknown. */
+  last_outage_wan_ip?: string | null;
+  /** Whether that address differs from the one before the outage. null when either side is unknown. */
+  last_outage_wan_changed?: boolean | null;
 }
 
 // --- Watchcat State (from /tmp/qmanager_watchcat.json via poller) ------------
@@ -614,6 +671,8 @@ export type WatchcatState =
   | "suspect"
   | "recovery"
   | "cooldown"
+  /** Recovery held while the baseband restarts itself (SSR grace). */
+  | "ssr_hold"
   | "locked"
   | "disabled";
 
@@ -627,6 +686,28 @@ export interface WatchcatStatus {
   total_recoveries: number;
   cooldown_remaining: number;
   reboots_this_hour: number;
+  /** Seconds since the watchdog last wrote its state (uptime delta); null when unknown */
+  age_sec?: number | null;
+  /** The watchdog's own staleness limit (s); null when unknown */
+  stale_after?: number | null;
+  /** The ladder is held for a baseband restart (watchdog.sh status only, not the poller). */
+  ssr_hold?: boolean;
+  /** Seconds of SSR grace left while holding. */
+  ssr_hold_remaining?: number;
+  /** Seconds since the last baseband restart sign; null when none this run. */
+  last_ssr_ago?: number | null;
+  /** What started the running ladder; null outside recovery and cooldown. */
+  recovery_reason?: "unreachable" | "quality" | "recheck" | null;
+  /** Over-limit quality checks in a row so far. */
+  quality_breach_count?: number;
+  /** Seconds left in the pause after a quality recovery that did not help. */
+  quality_holdoff_remaining?: number;
+  /** A primary SIM recheck is settling on the primary now. */
+  primary_recheck_active?: boolean;
+  /** Failed rechecks since the last save or boot; the watchdog stops at 3. */
+  primary_recheck_failures?: number;
+  /** Seconds to the next recheck; null when none is pending. */
+  next_recheck_in?: number | null;
 }
 
 export interface SimFailoverStatus {
@@ -1075,4 +1156,17 @@ export function formatUptime(seconds: number): string {
   parts.push(`${minutes}m`);
 
   return parts.join(" ");
+}
+
+/** Poller activity tier (docs/reference/adaptive-polling.md). */
+export type PollerTier = "active" | "idle" | "deep";
+
+/** qmanager.conf .poller, as the adaptive_polling CGI reports it. All times in seconds. */
+export interface AdaptivePollingSettings {
+  /** false pins the poller at full rate. */
+  enabled: boolean;
+  active_grace: number;
+  idle_interval: number;
+  idle_threshold: number;
+  deep_idle_interval: number;
 }
