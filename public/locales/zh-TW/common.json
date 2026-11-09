@@ -879,7 +879,9 @@
         "chat_error": "請輸入數字聊天 ID 或 @頻道名稱。",
         "test": "傳送測試訊息",
         "commands_label": "指令",
-        "commands_hint": "回覆從此聊天傳送的 /status、/signal、/ip、/data 和 /reboot。"
+        "commands_hint": "回覆從此聊天傳送的 /status、/signal、/ip、/data 和 /reboot。",
+        "redact_label": "隱藏個人資料",
+        "redact_hint": "傳送訊息前，IP 位址、細胞 ID 和電話號碼會被替換為 [hidden]。"
       }
     },
     "coverage": {

@@ -886,7 +886,9 @@
         "chat_error": "Enter a numeric chat ID or an @channel name.",
         "test": "Send a test message",
         "commands_label": "Commands",
-        "commands_hint": "Answer /status, /signal, /ip, /data and /reboot sent from this chat."
+        "commands_hint": "Answer /status, /signal, /ip, /data and /reboot sent from this chat.",
+        "redact_label": "Hide personal data",
+        "redact_hint": "IP addresses, cell IDs and phone numbers are replaced with [hidden] before a message is sent."
       }
     },
     "activity": {

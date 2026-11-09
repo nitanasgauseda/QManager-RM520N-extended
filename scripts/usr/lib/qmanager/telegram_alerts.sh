@@ -16,6 +16,7 @@ _TA_MAX_LOG=100
 _ta_enabled="false"
 _ta_chat_id=""
 _ta_token_set="false"
+_ta_redact="false"
 
 # _ta_valid_chat_id <id> — numeric user/group id (groups are negative) or @channel.
 _ta_valid_chat_id() {
@@ -38,7 +39,9 @@ _ta_read_config() {
     _ta_enabled="false"
     _ta_chat_id=""
     _ta_token_set="false"
+    _ta_redact="false"
     [ -f "$_TA_CONFIG" ] || return 1
+    [ "$(jq -r '.redact == true' "$_TA_CONFIG" 2>/dev/null)" = "true" ] && _ta_redact="true"
 
     _ta_enabled=$(jq -r '(.enabled) | if . == null then "false" else tostring end' "$_TA_CONFIG" 2>/dev/null)
     _ta_chat_id=$(jq -r '.chat_id // "" | tostring' "$_TA_CONFIG" 2>/dev/null)
@@ -75,6 +78,18 @@ _ta_log_event() {
     fi
 }
 
+# _ta_redact_text — stdin to stdout with IP addresses, cell/area IDs and long numbers
+# (phone numbers, ICCID, IMSI, IMEI) replaced, so Telegram's servers never hold them.
+_ta_redact_text() {
+    sed -E \
+        -e 's/([0-9A-Fa-f]{1,4}:)+:([0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4})*)?/[hidden]/g' \
+        -e 's/[0-9A-Fa-f]{1,4}(:[0-9A-Fa-f]{1,4}){7}/[hidden]/g' \
+        -e 's/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[hidden]/g' \
+        -e 's/(eNodeB|gNodeB|eNB|gNB|PCI|TAC|LAC|ECI|NCI|CID|[Cc]ell ID|[Cc]ell (LTE|NR|5G|4G)|[Cc]ell)([ :=]+)[0-9][0-9A-Fa-f]*/\1\3[hidden]/g' \
+        -e 's/(it was |-> )[0-9][0-9A-Fa-f]*/\1[hidden]/g' \
+        -e 's/\+?[0-9]{7,}/[hidden]/g'
+}
+
 # telegram_send_raw <chat_id> <text> — 0 sent, 1 API/network failure, 2 no token, 3 no curl.
 # The token goes to curl on stdin (-K -), never argv, which /proc/<pid>/cmdline exposes.
 telegram_send_raw() {
@@ -83,6 +98,7 @@ telegram_send_raw() {
     [ -r "$_TA_TOKEN_FILE" ] || return 2
     token=$(cat "$_TA_TOKEN_FILE" 2>/dev/null)
     [ -n "$token" ] || return 2
+    [ "$_ta_redact" = "true" ] && text=$(printf '%s\n' "$text" | _ta_redact_text)
 
     resp=$(printf 'url = "%s/bot%s/sendMessage"\n' "$_TA_API_BASE" "$token" \
         | curl -sS --max-time 20 -K - \

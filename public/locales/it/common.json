@@ -879,7 +879,9 @@
         "chat_error": "Inserisci un ID chat numerico o un nome @canale.",
         "test": "Invia un messaggio di prova",
         "commands_label": "Comandi",
-        "commands_hint": "Risponde a /status, /signal, /ip, /data e /reboot inviati da questa chat."
+        "commands_hint": "Risponde a /status, /signal, /ip, /data e /reboot inviati da questa chat.",
+        "redact_label": "Nascondi dati personali",
+        "redact_hint": "Indirizzi IP, ID delle celle e numeri di telefono vengono sostituiti con [hidden] prima dell'invio."
       }
     },
     "coverage": {

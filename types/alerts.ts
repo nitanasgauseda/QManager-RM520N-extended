@@ -70,6 +70,8 @@ export interface TelegramChannelState {
   token_set: boolean;
   /** The bot answers /status, /reboot and the other commands from this chat. */
   commands?: boolean;
+  /** IP addresses, cell IDs and long numbers are hidden before a message leaves the modem. */
+  redact?: boolean;
   threshold_minutes: number;
   /** Whether curl, the Telegram transport, is present on the device. */
   curl_installed: boolean;
@@ -162,6 +164,7 @@ export interface AlertsSavePayload {
     enabled: boolean;
     chat_id: string;
     commands: boolean;
+    redact: boolean;
     /** Only sent when the user typed a new bot token. */
     bot_token?: string;
   };

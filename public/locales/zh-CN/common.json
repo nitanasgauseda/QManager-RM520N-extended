@@ -879,7 +879,9 @@
         "chat_error": "请输入数字聊天 ID 或 @频道名称。",
         "test": "发送测试消息",
         "commands_label": "命令",
-        "commands_hint": "回复从此聊天发送的 /status、/signal、/ip、/data 和 /reboot。"
+        "commands_hint": "回复从此聊天发送的 /status、/signal、/ip、/data 和 /reboot。",
+        "redact_label": "隐藏个人数据",
+        "redact_hint": "发送消息前，IP 地址、小区 ID 和电话号码会被替换为 [hidden]。"
       }
     },
     "coverage": {

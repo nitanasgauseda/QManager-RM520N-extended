@@ -879,7 +879,9 @@
         "chat_error": "Masukkan ID chat berupa angka atau nama @kanal.",
         "test": "Kirim pesan uji",
         "commands_label": "Perintah",
-        "commands_hint": "Menjawab /status, /signal, /ip, /data, dan /reboot yang dikirim dari obrolan ini."
+        "commands_hint": "Menjawab /status, /signal, /ip, /data, dan /reboot yang dikirim dari obrolan ini.",
+        "redact_label": "Sembunyikan data pribadi",
+        "redact_hint": "Alamat IP, ID sel, dan nomor telepon diganti dengan [hidden] sebelum pesan dikirim."
       }
     },
     "coverage": {

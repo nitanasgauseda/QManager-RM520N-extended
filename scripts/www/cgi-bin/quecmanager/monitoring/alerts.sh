@@ -196,7 +196,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         enabled: ((.enabled | tostring) == "true"),
         chat: (.chat_id // "" | tostring),
         token_set: (.token_set == true),
-        commands: (.commands == true)
+        commands: (.commands == true),
+        redact: (.redact == true)
     }')
 
     msmtp_installed="false"
@@ -288,6 +289,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                     chat_id: $telegram_chat,
                     token_set: $telegram_token_set,
                     commands: ($telegram.commands // false),
+                    redact: ($telegram.redact // false),
                     threshold_minutes: $wait,
                     curl_installed: $curl_installed,
                     configured: ($telegram_chat != "" and $telegram_token_set)
@@ -358,9 +360,10 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         discord_token_in=$(printf '%s' "$POST_DATA" | jq -r '.discord.bot_token // empty' 2>/dev/null)
 
         # Telegram: a client that predates the channel omits the block; keep what is saved.
-        _tg_prev_enabled="false"; _tg_prev_chat=""; _existing_telegram_token_set="false"; _tg_prev_commands="false"
+        _tg_prev_enabled="false"; _tg_prev_chat=""; _existing_telegram_token_set="false"; _tg_prev_commands="false"; _tg_prev_redact="false"
         if [ -f "$TELEGRAM_CONFIG" ]; then
             _tg_prev_commands=$(jq -r '(.commands == true) | tostring' "$TELEGRAM_CONFIG" 2>/dev/null)
+            _tg_prev_redact=$(jq -r '(.redact == true) | tostring' "$TELEGRAM_CONFIG" 2>/dev/null)
             _tg_prev_enabled=$(jq -r '(.enabled == true) | tostring' "$TELEGRAM_CONFIG" 2>/dev/null)
             _tg_prev_chat=$(jq -r '.chat_id // "" | tostring' "$TELEGRAM_CONFIG" 2>/dev/null)
             [ "$(jq -r '.token_set == true' "$TELEGRAM_CONFIG" 2>/dev/null)" = "true" ] && _existing_telegram_token_set="true"
@@ -370,8 +373,10 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             telegram_chat_in=$(printf '%s' "$POST_DATA" | jq -r '.telegram.chat_id // "" | tostring' 2>/dev/null)
             telegram_token_in=$(printf '%s' "$POST_DATA" | jq -r '.telegram.bot_token // empty' 2>/dev/null)
             telegram_commands_in=$(printf '%s' "$POST_DATA" | jq -r --arg p "$_tg_prev_commands" 'if (.telegram | has("commands")) then (.telegram.commands | tostring) else $p end' 2>/dev/null)
+            telegram_redact_in=$(printf '%s' "$POST_DATA" | jq -r --arg p "$_tg_prev_redact" 'if (.telegram | has("redact")) then (.telegram.redact | tostring) else $p end' 2>/dev/null)
         else
             telegram_commands_in="$_tg_prev_commands"
+            telegram_redact_in="$_tg_prev_redact"
             telegram_enabled_in="$_tg_prev_enabled"
             telegram_chat_in="$_tg_prev_chat"
             telegram_token_in=""
@@ -388,6 +393,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         case "$discord_enabled_in" in true|false) ;; *) cgi_error "invalid_enabled" "discord.enabled must be a boolean"; exit 0 ;; esac
         case "$telegram_enabled_in" in true|false) ;; *) cgi_error "invalid_enabled" "telegram.enabled must be a boolean"; exit 0 ;; esac
         case "$telegram_commands_in" in true|false) ;; *) cgi_error "invalid_enabled" "telegram.commands must be a boolean"; exit 0 ;; esac
+        case "$telegram_redact_in" in true|false) ;; *) cgi_error "invalid_enabled" "telegram.redact must be a boolean"; exit 0 ;; esac
 
         # --- Validate thresholds (1-1440) -------------------------------------
         for _pair in "sms:$sms_threshold_in" "email:$email_threshold_in" "discord:$discord_threshold_in"; do
@@ -558,7 +564,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             --argjson threshold_minutes "$new_wait" \
             --argjson token_set "$_existing_telegram_token_set" \
             --argjson commands "$telegram_commands_in" \
-            '{enabled:$enabled, chat_id:$chat_id, threshold_minutes:$threshold_minutes, token_set:$token_set, commands:$commands}' \
+            --argjson redact "$telegram_redact_in" \
+            '{enabled:$enabled, chat_id:$chat_id, threshold_minutes:$threshold_minutes, token_set:$token_set, commands:$commands, redact:$redact}' \
             > "${TELEGRAM_CONFIG}.tmp"; then
             rm -f "${TELEGRAM_CONFIG}.tmp"
             cgi_error "write_failed" "Failed to write Telegram config"

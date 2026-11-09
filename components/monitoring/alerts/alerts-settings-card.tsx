@@ -656,6 +656,12 @@ function TelegramFields({ form }: { form: AlertsForm }) {
         checked={form.telegramCommands}
         onCheckedChange={form.setTelegramCommands}
       />
+      <ChannelPanelHead
+        title={t("alerts.channels.telegram.redact_label")}
+        description={t("alerts.channels.telegram.redact_hint")}
+        checked={form.telegramRedact}
+        onCheckedChange={form.setTelegramRedact}
+      />
     </>
   );
 }
