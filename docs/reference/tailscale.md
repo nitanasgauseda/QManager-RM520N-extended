@@ -27,6 +27,7 @@ Everything runs as a real `tailscaled` daemon on the modem's own Linux. QManager
 | Latest-version cache | `/tmp/qmanager_tailscale_latest` — `<epoch> <version>`, 6 h |
 | Auth URL spill | `/tmp/qmanager_tailscale_auth_url` |
 | `tailscale up` tracking | `/tmp/qmanager_tailscale_up_output` · `_up_pid` |
+| Installer script | `/run/qmanager_tailscale/install_inner.sh` — root-only directory (0700); run as root by the temporary unit, so never under `/tmp` |
 | Frontend page | `/monitoring/tailscale` (`components/monitoring/tailscale/`) |
 | i18n | `common.json` → `tailscale.*` (149 keys, all five packs) |
 | Version | resolved at install time from `pkgs.tailscale.com/stable/?mode=json` (`TarballsVersion`); `TAILSCALE_ARCH="arm"` in the helper. No pin, no fallback |

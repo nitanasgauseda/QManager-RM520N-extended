@@ -41,7 +41,9 @@ UPDATE_RUN_FILE="/tmp/qmanager_tailscale_update_run"
 INSTALL_PID="/tmp/qmanager_tailscale_install.pid"
 LOG_FILE="/tmp/qmanager_tailscale_install.log"
 
-INNER_SCRIPT="/tmp/qmanager_tailscale_install_inner.sh"
+# Run as root by systemd: kept in root-only /run, never in world-writable /tmp.
+INNER_DIR="/run/qmanager_tailscale"
+INNER_SCRIPT="$INNER_DIR/install_inner.sh"
 TEMP_SERVICE_NAME="qmanager_tailscale_install.service"
 TEMP_SERVICE_FILE="$SYSTEMD_DIR/$TEMP_SERVICE_NAME"
 
@@ -97,7 +99,13 @@ do_install() {
     fi
 
     # Clean up stale temp install artifacts from prior runs.
-    rm -f "$TEMP_SERVICE_FILE" "$INNER_SCRIPT"
+    rm -f "$TEMP_SERVICE_FILE" /tmp/qmanager_tailscale_install_inner.sh
+    rm -rf "$INNER_DIR"
+    if ! mkdir -m 700 "$INNER_DIR" 2>/dev/null || [ -L "$INNER_DIR" ]; then
+        write_status '{"success":false,"status":"error","message":"Could not prepare the installer"}'
+        rm -f "$INSTALL_PID"
+        exit 1
+    fi
     : > "$LOG_FILE"
 
     # --- Write the inner install script -------------------------------------
@@ -497,7 +505,8 @@ do_uninstall() {
           /tmp/qmanager_tailscale_up_pid \
           "$UPDATE_RUN_FILE" \
           "$LOG_FILE" \
-          "$INNER_SCRIPT"
+          /tmp/qmanager_tailscale_install_inner.sh
+    rm -rf "$INNER_DIR"
 
     # Remove QManager-owned SSH intent flag so a reinstall starts off (explicit opt-in).
     rm -f /etc/qmanager/tailscale_ssh
