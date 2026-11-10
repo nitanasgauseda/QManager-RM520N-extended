@@ -50,6 +50,9 @@ Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.
 
 ## 🐛 Fixes
 
+- **Tailscale install script is no longer kept in a shared folder.** The script the installer runs as root now lives where only root can write. (`/run/qmanager_tailscale`, not `/tmp`.)
+- **Less background work on every poll.** Cell Guard, Data Plan, DNS Privacy and the watch checks no longer start helper programs each cycle just to read the time. (8 fewer process starts per cycle.)
+- **More state files are written safely.** The outage log, Cell Guard's learning and SMS lists, the IP Passthrough address and restored settings are written through random temporary names or refuse a planted link.
 - **Uninstalling no longer stops halfway.** The uninstaller stopped at the first firewall chain that did not exist; it now carries on.
 - **Firewall protection comes back after the modem re-dials.** The web page's IPv4 and IPv6 protection and the ports closed in **System Settings → Security Check** are now checked every 2 minutes and put back if the operator connection reset wiped them; before, only stealth and LAN IPv6 rules were. (`qmanager_firewall ensure` checks every QManager hook and rebuilds on any mismatch.)
 - **Stealth mode no longer leaves the modem's own connections hanging.** Hiding from scans now drops only resets that answer outside connection attempts; connections the modem opens itself (Traffic Engine, Tailscale, updates) close normally. (OUTPUT RST drop limited to `--ctdir REPLY`.)

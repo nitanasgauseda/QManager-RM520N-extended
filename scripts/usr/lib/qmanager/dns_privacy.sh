@@ -156,7 +156,7 @@ dp_verify_redirect() {
         { [ "${p:-0}" -lt 3 ] || [ "${q:-0}" -gt "${q0:-0}" ]; } && return 0
     fi
     dp_redirect off
-    : > "$DP_FAILED_FLAG" 2>/dev/null
+    rm -f "$DP_FAILED_FLAG" 2>/dev/null; : > "$DP_FAILED_FLAG" 2>/dev/null
     return 1
 }
 
@@ -164,10 +164,12 @@ dp_verify_redirect() {
 # and by then it must not point at a forwarder that may be off.
 dp_legacy_cleanup() {
     grep -qxF "$DP_BEGIN" "$DP_DNSMASQ_CONF" 2>/dev/null || return 0
-    awk -v b="$DP_BEGIN" -v e="$DP_END" '
+    # The staging name is fixed (sudoers names it), so create it exclusively: noclobber never follows a link.
+    rm -f "$DP_STAGING" 2>/dev/null
+    ( set -C; awk -v b="$DP_BEGIN" -v e="$DP_END" '
         $0 == b { skip = 1; next }
         $0 == e && skip { skip = 0; next }
-        !skip { print }' "$DP_DNSMASQ_CONF" > "$DP_STAGING" 2>/dev/null || { rm -f "$DP_STAGING"; return 1; }
+        !skip { print }' "$DP_DNSMASQ_CONF" > "$DP_STAGING" ) 2>/dev/null || { [ -L "$DP_STAGING" ] || rm -f "$DP_STAGING"; return 1; }
     _dp_priv /bin/mv "$DP_STAGING" "$DP_DNSMASQ_CONF" || { rm -f "$DP_STAGING"; return 1; }
     _dp_priv /bin/chown radio:radio "$DP_DNSMASQ_CONF" 2>/dev/null
     return 0
@@ -214,7 +216,7 @@ dns_privacy_watch() {
                 || { [ "$_dp_pk" -ge 0 ] && [ "$pk" -ge "$_dp_pk" ] && [ "$q" -ge "$_dp_q" ] \
                      && [ $((pk - _dp_pk)) -ge 10 ] && [ "$q" -eq "$_dp_q" ]; }; then
                 dp_redirect off
-                : > "$DP_FAILED_FLAG" 2>/dev/null
+                rm -f "$DP_FAILED_FLAG" 2>/dev/null; : > "$DP_FAILED_FLAG" 2>/dev/null
                 _dp_pk=-1; _dp_q=-1
                 command -v append_event >/dev/null 2>&1 \
                     && append_event "dns_privacy" "LAN lookups did not reach DNS Privacy, so it was switched off; devices use the carrier's DNS" "warning"

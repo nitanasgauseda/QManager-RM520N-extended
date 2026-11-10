@@ -127,7 +127,7 @@ cfg_at_failed() {
 # cfg_write_file <dest> [mode]: stdin -> same-dir temp -> mv.
 cfg_write_file() {
     local dest="$1" mode="${2:-644}" tmp
-    tmp="${dest}.cfgbk.$$"
+    tmp=$(mktemp "${dest}.cfgbk.XXXXXX" 2>/dev/null) || return 1
     cat > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
     chmod "$mode" "$tmp" 2>/dev/null
     mv -f "$tmp" "$dest" 2>/dev/null || { rm -f "$tmp"; return 1; }

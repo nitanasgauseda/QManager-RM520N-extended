@@ -33,6 +33,12 @@ command -v qm_replace >/dev/null 2>&1 || qm_replace() {
     return 1
 }
 
+# qm_append_line <file> <line> — append, but never through a symlink planted in a directory root does not own.
+command -v qm_append_line >/dev/null 2>&1 || qm_append_line() {
+    [ -L "$1" ] && rm -f "$1"
+    printf '%s\n' "$2" >> "$1" 2>/dev/null
+}
+
 _cg_enabled="true"
 _cg_learn_hours=24
 _cg_rayhunter="false"
@@ -75,7 +81,7 @@ _cg_learning() {
     now=$(date +%s)
     [ "$now" -ge "$CG_SANE_EPOCH" ] 2>/dev/null || return 0
     if [ ! -s "$CG_SINCE" ]; then
-        printf '%s' "$now" > "$CG_SINCE" 2>/dev/null
+        printf '%s\n' "$now" | qm_replace "$CG_SINCE"
         return 0
     fi
     since=$(cat "$CG_SINCE" 2>/dev/null)
@@ -396,13 +402,13 @@ _cg_check_sms() {
         [ -n "$pdu" ] || continue
         key=$(printf '%s' "$pdu" | md5sum 2>/dev/null | cut -c1-16)
         grep -qxF "$key" "$CG_SMS_SEEN" 2>/dev/null && continue
-        printf '%s\n' "$key" >> "$CG_SMS_SEEN" 2>/dev/null
+        qm_append_line "$CG_SMS_SEEN" "$key"
         sev=warning
         case "$reasons" in type0*|*sim_download*|*wap_push*) ;; *) sev=info ;; esac
         _cg_sms_finding "Suspicious SMS from ${sender:-an unknown sender}: $(_cg_sms_reason_text "$reasons")" "$sev"
     done < "$list"
     rm -f "$list"
-    if [ -f "$CG_SMS_SEEN" ] && [ "$(wc -l < "$CG_SMS_SEEN")" -gt 300 ]; then
+    if [ -f "$CG_SMS_SEEN" ] && [ ! -L "$CG_SMS_SEEN" ] && [ "$(wc -l < "$CG_SMS_SEEN")" -gt 300 ]; then
         tail -n 200 "$CG_SMS_SEEN" 2>/dev/null | qm_replace "$CG_SMS_SEEN"
     fi
     return 0

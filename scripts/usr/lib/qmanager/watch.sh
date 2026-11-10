@@ -49,6 +49,12 @@ command -v qm_replace >/dev/null 2>&1 || qm_replace() {
     return 1
 }
 
+# qm_append_line <file> <line> — append, but never through a symlink planted in a directory root does not own.
+command -v qm_append_line >/dev/null 2>&1 || qm_append_line() {
+    [ -L "$1" ] && rm -f "$1"
+    printf '%s\n' "$2" >> "$1" 2>/dev/null
+}
+
 _wt_net=""; _wt_month_next=0; _wt_fw_next=0
 
 _wt_up() { local u r; read -r u r < /proc/uptime 2>/dev/null; printf '%s' "${u%%.*}"; }
@@ -247,12 +253,12 @@ _wt_check_outage() {
     _wt_clock_ok || { _wt_net="$conn_internet_available"; return 0; }
     now=$(date +%s)
     if [ "$conn_internet_available" = "false" ]; then
-        printf '%s %s %s\n' "$now" "${lte_enodeb_id:--}" "${network_type:--}" > "$WT_OPEN"
+        printf '%s %s %s\n' "$now" "${lte_enodeb_id:--}" "${network_type:--}" | qm_replace "$WT_OPEN"
     elif [ -s "$WT_OPEN" ]; then
         read -r st enb net < "$WT_OPEN"
         case "$st" in ''|*[!0-9]*) ;; *)
-            [ "$now" -gt "$st" ] && printf '%s %s %s %s\n' "$st" "$now" "${enb:--}" "${net:--}" >> "$WT_OUTAGES"
-            if [ "$(wc -l < "$WT_OUTAGES" 2>/dev/null)" -gt $((WT_OUTAGE_MAX + 200)) ]; then
+            [ "$now" -gt "$st" ] && qm_append_line "$WT_OUTAGES" "$st $now ${enb:--} ${net:--}"
+            if [ ! -L "$WT_OUTAGES" ] && [ "$(wc -l < "$WT_OUTAGES" 2>/dev/null)" -gt $((WT_OUTAGE_MAX + 200)) ]; then
                 tail -n "$WT_OUTAGE_MAX" "$WT_OUTAGES" | qm_replace "$WT_OUTAGES"
             fi
             ;;
@@ -350,12 +356,12 @@ _wt_check_ippt() {
         [ -f "$WT_IPPT_LAST" ] && read -r last < "$WT_IPPT_LAST" 2>/dev/null
         _wt_ippt_ip="$ip"
         [ "$last" = "$ip" ] && return 0
-        printf '%s\n' "$ip" > "$WT_IPPT_LAST" 2>/dev/null
+        printf '%s\n' "$ip" | qm_replace "$WT_IPPT_LAST"
         [ -n "$last" ] || return 0
         _wt_ippt_due=$(($1 + 20))
     elif [ "$ip" != "$_wt_ippt_ip" ]; then
         last="$_wt_ippt_ip"; _wt_ippt_ip="$ip"
-        printf '%s\n' "$ip" > "$WT_IPPT_LAST" 2>/dev/null
+        printf '%s\n' "$ip" | qm_replace "$WT_IPPT_LAST"
         _wt_ippt_due=$(($1 + 20))
     fi
     [ "$_wt_ippt_due" -gt 0 ] && [ "$1" -ge "$_wt_ippt_due" ] || return 0
