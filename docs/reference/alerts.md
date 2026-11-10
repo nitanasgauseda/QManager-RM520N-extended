@@ -722,3 +722,7 @@ Left open on purpose:
 - QManager independence (email/SMS alert install, msmtp, poller PATH, sudoers) — [qmanager-independence.md](qmanager-independence.md)
 - `/tmp` cross-UID ownership rules (why the SMS and Discord logs are seeded and every writer of `/tmp/qmanager_email_log.json` is root) — [tmp-file-ownership.md](tmp-file-ownership.md#the-alert-channel-logs)
 - Platform architecture, poller, boot sequence — `../rm520n-gl-architecture.md`
+
+## Telegram: hide personal data
+
+`telegram_alerts.json` `.redact` (CGI field `telegram.redact`, absent = keep). When true, `telegram_send_raw` pipes every message — alerts, the test message and bot command replies — through `_ta_redact_text`: IPv4/IPv6 addresses, the number after `eNB` / `gNB` / `PCI` / `TAC` / `LAC` / `ECI` / `NCI` / `CID` / `cell`, the number after `it was` and `->`, and any run of 7 or more digits become `[hidden]`. ERE only, so it runs under BusyBox sed.

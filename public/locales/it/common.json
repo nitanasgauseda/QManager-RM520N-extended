@@ -2354,6 +2354,32 @@
       "discard": "Annulla",
       "save": "Salva",
       "toast_saved": "Impostazioni privacy salvate."
+    },
+    "operator": {
+      "title": "Operatore e SIM",
+      "description": "Cosa fa l'operatore al tuo traffico e cosa consente la tua SIM.",
+      "headers_title": "Header di tracciamento aggiunti",
+      "headers": {
+        "idle": "Alcuni operatori aggiungono il tuo numero di telefono o un ID abbonato alle richieste web non cifrate. Esegui il test per verificare il tuo.",
+        "clean": "L'operatore non ha aggiunto nulla a una richiesta web non cifrata.",
+        "identity": "L'operatore aggiunge header che possono identificarti presso i siti che apri senza cifratura.",
+        "proxy": "Il tuo traffico web non cifrato passa attraverso un proxy dell'operatore.",
+        "modified": "Qualcosa tra il modem e internet ha riscritto la richiesta.",
+        "unexpected": "La richiesta è arrivata con header aggiuntivi che non sono header di tracciamento noti."
+      },
+      "run": "Esegui test",
+      "run_again": "Ripeti",
+      "toast_done": "Test degli header completato.",
+      "test_failed": "Il test non ha raggiunto il server. Controlla la connessione a internet e riprova.",
+      "sim_title": "Scheda SIM",
+      "sim_unreadable": "Impossibile leggere la scheda SIM.",
+      "id_title": "Numero abbonato su 5G",
+      "id_on": "Questa SIM cifra il tuo numero abbonato sulle reti 5G standalone.",
+      "id_off": "Questa SIM invia il tuo numero abbonato non cifrato, anche su 5G standalone. Solo l'operatore può cambiarlo, con una SIM più recente.",
+      "id_no_sa": "Questa SIM non è predisposta per il 5G standalone. Su 4G il numero abbonato può sempre essere richiesto non cifrato.",
+      "remote_title": "Comandi inviati alla SIM",
+      "remote_on": "Questa SIM accetta comandi inviati via SMS. Gli operatori li usano per gli aggiornamenti, ed è anche il canale degli attacchi alla SIM. Cell Guard segnala questi messaggi.",
+      "remote_off": "Questa SIM non accetta comandi inviati via SMS."
     }
   },
   "activityLog": {

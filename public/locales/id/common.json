@@ -2354,6 +2354,32 @@
       "discard": "Buang",
       "save": "Simpan",
       "toast_saved": "Pengaturan privasi disimpan."
+    },
+    "operator": {
+      "title": "Operator dan SIM",
+      "description": "Apa yang dilakukan operator pada lalu lintas Anda dan apa yang diizinkan kartu SIM Anda.",
+      "headers_title": "Header pelacakan yang ditambahkan",
+      "headers": {
+        "idle": "Beberapa operator menambahkan nomor telepon atau ID pelanggan Anda ke permintaan web yang tidak terenkripsi. Jalankan tes untuk memeriksa operator Anda.",
+        "clean": "Operator tidak menambahkan apa pun ke permintaan web yang tidak terenkripsi.",
+        "identity": "Operator menambahkan header yang dapat mengidentifikasi Anda ke situs yang Anda buka tanpa enkripsi.",
+        "proxy": "Lalu lintas web Anda yang tidak terenkripsi melewati proxy operator.",
+        "modified": "Sesuatu di antara modem dan internet mengubah permintaan.",
+        "unexpected": "Permintaan tiba dengan header tambahan yang bukan header pelacakan yang dikenal."
+      },
+      "run": "Jalankan tes",
+      "run_again": "Jalankan lagi",
+      "toast_done": "Tes header selesai.",
+      "test_failed": "Tes tidak dapat menjangkau servernya. Periksa koneksi internet dan coba lagi.",
+      "sim_title": "Kartu SIM",
+      "sim_unreadable": "Kartu SIM tidak dapat dibaca.",
+      "id_title": "Nomor pelanggan di 5G",
+      "id_on": "SIM ini mengenkripsi nomor pelanggan Anda di jaringan 5G standalone.",
+      "id_off": "SIM ini mengirim nomor pelanggan Anda tanpa enkripsi, bahkan di 5G standalone. Hanya operator yang dapat mengubahnya, dengan SIM yang lebih baru.",
+      "id_no_sa": "SIM ini belum disiapkan untuk 5G standalone. Di 4G nomor pelanggan selalu dapat diminta tanpa enkripsi.",
+      "remote_title": "Perintah yang dikirim ke SIM",
+      "remote_on": "SIM ini menerima perintah yang dikirim lewat SMS. Operator memakainya untuk pembaruan, dan ini juga jalur serangan SIM. Cell Guard melaporkan pesan seperti itu.",
+      "remote_off": "SIM ini tidak menerima perintah yang dikirim lewat SMS."
     }
   },
   "activityLog": {

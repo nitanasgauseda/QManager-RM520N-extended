@@ -2354,6 +2354,32 @@
       "discard": "Discard",
       "save": "Save",
       "toast_saved": "Privacy settings saved."
+    },
+    "operator": {
+      "title": "Operator and SIM",
+      "description": "What your operator does to your traffic and what your SIM card allows.",
+      "headers_title": "Added tracking headers",
+      "headers": {
+        "idle": "Some operators add your phone number or a subscriber ID to unencrypted web requests. Run the test to see if yours does.",
+        "clean": "Your operator added nothing to an unencrypted web request.",
+        "identity": "Your operator adds headers that can identify you to websites you open without encryption.",
+        "proxy": "Your unencrypted web traffic passes through an operator proxy.",
+        "modified": "Something between the modem and the internet rewrote the request.",
+        "unexpected": "The request arrived with extra headers that are not known tracking headers."
+      },
+      "run": "Run test",
+      "run_again": "Run again",
+      "toast_done": "Header test finished.",
+      "test_failed": "The test could not reach its server. Check the internet connection and try again.",
+      "sim_title": "SIM card",
+      "sim_unreadable": "The SIM card could not be read.",
+      "id_title": "Subscriber number on 5G",
+      "id_on": "This SIM encrypts your subscriber number on standalone 5G networks.",
+      "id_off": "This SIM sends your subscriber number unencrypted, even on standalone 5G. Only the operator can change this, with a newer SIM.",
+      "id_no_sa": "This SIM is not prepared for standalone 5G. On 4G the subscriber number can always be requested unencrypted.",
+      "remote_title": "Commands sent to the SIM",
+      "remote_on": "This SIM accepts commands sent by SMS. Operators use this for updates, and it is also how SIM attacks arrive. Cell Guard reports such messages.",
+      "remote_off": "This SIM does not accept commands sent by SMS."
     }
   },
   "activityLog": {

@@ -26,6 +26,7 @@ import { HintIcon } from "@/components/ui/hint-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tag } from "@/components/ui/tag";
 import { useSecurityCheck, type SecurityPort, type SecurityReport } from "@/hooks/use-security-check";
+import { useOperatorAudit } from "@/hooks/use-operator-audit";
 import { useWatch } from "@/hooks/use-watch";
 import { CardFoot } from "@/components/ui/card-foot";
 import { SaveButton } from "@/components/ui/save-button";
@@ -290,6 +291,80 @@ function DeviceCard({ r }: { r: SecurityReport }) {
           <DeviceRow ok={false} info title={t(`${K}.device.console_title`)} text={t(`${K}.device.console_on`)} />
         ) : null}
         {!d.https ? <DeviceRow ok={false} info title={t(`${K}.device.https_title`)} text={t(`${K}.device.https_off`)} /> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OperatorCard() {
+  const { t } = useTranslation("common");
+  const a = useOperatorAudit();
+  const O = `${K}.operator`;
+  const sim = a.sim;
+  const verdict = a.test?.result ?? null;
+
+  const onTest = async () => {
+    const r = await a.runHeaderTest();
+    if (r.ok) toast.success(t(`${O}.toast_done`));
+    else toast.error(t(`${O}.test_failed`));
+  };
+
+  return (
+    <Card className={CARD}>
+      <CardHeader className={PAD}>
+        <CardTitle className="text-lg leading-tight">{t(`${O}.title`)}</CardTitle>
+        <CardDescription className="text-on-surface-variant text-sm">{t(`${O}.description`)}</CardDescription>
+      </CardHeader>
+      <CardContent className={cn(PAD, "flex flex-col gap-[0.3125rem]")}>
+        <DeviceRow
+          ok={verdict === "clean"}
+          info={verdict === null || verdict === "unexpected"}
+          title={t(`${O}.headers_title`)}
+          text={t(`${O}.headers.${verdict ?? "idle"}`)}
+        >
+          {a.test && a.test.headers.length > 0 ? (
+            <code className="bg-surface rounded-field px-2 py-1 font-mono text-xs break-all">{a.test.headers.join(", ")}</code>
+          ) : null}
+          <div>
+            <Button type="button" variant="tonal-neutral" size="sm" disabled={a.testing} onClick={() => void onTest()}>
+              {a.testing ? <Loader2Icon className="size-3.5 animate-spin" aria-hidden /> : <GlobeIcon className="size-3.5" aria-hidden />}
+              {t(verdict === null ? `${O}.run` : `${O}.run_again`)}
+            </Button>
+          </div>
+        </DeviceRow>
+        {!sim ? (
+          a.failed ? (
+            <DeviceRow ok={false} info title={t(`${O}.sim_title`)} text={t(`${O}.sim_unreadable`)} />
+          ) : (
+            <Skeleton className="h-24 rounded-card" aria-busy="true" />
+          )
+        ) : !sim.readable ? (
+          <DeviceRow ok={false} info title={t(`${O}.sim_title`)} text={t(`${O}.sim_unreadable`)} />
+        ) : (
+          <>
+            <DeviceRow
+              ok={sim.id_privacy === true}
+              info={!sim.sa_ready}
+              title={t(`${O}.id_title`)}
+              text={t(sim.id_privacy ? `${O}.id_on` : sim.sa_ready ? `${O}.id_off` : `${O}.id_no_sa`)}
+            />
+            <DeviceRow
+              ok={!sim.sms_download}
+              info
+              title={t(`${O}.remote_title`)}
+              text={t(sim.sms_download ? `${O}.remote_on` : `${O}.remote_off`)}
+            >
+              {sim.sms_download ? (
+                <Link
+                  href="/monitoring/cell-guard"
+                  className="text-primary-on-surface text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  {t(`${K}.device.open_cell_guard`)}
+                </Link>
+              ) : null}
+            </DeviceRow>
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -583,6 +658,7 @@ export default function SecurityCheckComponent() {
             <div className="flex flex-col gap-5">
               <DeviceCard r={r} />
               <PublicIpCard />
+              <OperatorCard />
             </div>
           </div>
         </>
