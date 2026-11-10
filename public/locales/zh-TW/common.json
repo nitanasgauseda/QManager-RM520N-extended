@@ -2240,7 +2240,9 @@
       "description": "網際網路能存取模組上的哪些服務，以及值得查看的設定。",
       "run": "重新檢查",
       "retry": "重試",
-      "checked": "檢查於 {{time}}"
+      "checked": "檢查於 {{time}}",
+      "toast_checked": "安全檢查已完成。",
+      "toast_check_failed": "無法執行檢查。請再試一次。"
     },
     "errors": {
       "load_failed": "無法執行檢查",

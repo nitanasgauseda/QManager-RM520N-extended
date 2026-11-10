@@ -2240,7 +2240,9 @@
       "description": "互联网能访问到模组上的哪些服务，以及值得查看的设置。",
       "run": "重新检查",
       "retry": "重试",
-      "checked": "检查于 {{time}}"
+      "checked": "检查于 {{time}}",
+      "toast_checked": "安全检查已完成。",
+      "toast_check_failed": "无法运行检查。请重试。"
     },
     "errors": {
       "load_failed": "无法运行检查",

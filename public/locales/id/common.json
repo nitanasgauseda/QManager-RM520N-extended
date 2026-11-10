@@ -2240,7 +2240,9 @@
       "description": "Apa yang bisa dijangkau internet di modem Anda, dan pengaturan yang perlu dilihat.",
       "run": "Periksa lagi",
       "retry": "Coba lagi",
-      "checked": "Diperiksa pukul {{time}}"
+      "checked": "Diperiksa pukul {{time}}",
+      "toast_checked": "Pemeriksaan keamanan selesai.",
+      "toast_check_failed": "Pemeriksaan tidak dapat dijalankan. Coba lagi."
     },
     "errors": {
       "load_failed": "Pemeriksaan tidak dapat dijalankan",

@@ -584,6 +584,15 @@ export default function SecurityCheckComponent() {
   const { t, i18n } = useTranslation("common");
   const api = useSecurityCheck();
   const r = api.report;
+  const [rechecking, setRechecking] = useState(false);
+
+  const onRecheck = async () => {
+    setRechecking(true);
+    const ok = await api.run();
+    setRechecking(false);
+    if (ok) toast.success(t(`${K}.page.toast_checked`));
+    else toast.error(t(`${K}.page.toast_check_failed`));
+  };
 
   const failing = r ? r.ports.filter((p) => portSeverity(p) === "fail").length : 0;
   const warning = r ? r.ports.filter((p) => portSeverity(p) === "warn").length + deviceIssues(r) : 0;
@@ -603,8 +612,8 @@ export default function SecurityCheckComponent() {
               })}
             </span>
           ) : null}
-          <Button type="button" variant="outline" size="action" disabled={api.busy !== null} onClick={() => void api.run()}>
-            <RefreshCwIcon className="size-4" aria-hidden />
+          <Button type="button" variant="outline" size="action" disabled={api.busy !== null || rechecking} onClick={() => void onRecheck()}>
+            <RefreshCwIcon className={cn("size-4", rechecking && "animate-spin")} aria-hidden />
             {t(`${K}.page.run`)}
           </Button>
         </div>

@@ -2240,7 +2240,9 @@
       "description": "What the internet can reach on your modem, and settings worth a look.",
       "run": "Check again",
       "retry": "Try again",
-      "checked": "Checked at {{time}}"
+      "checked": "Checked at {{time}}",
+      "toast_checked": "Security check finished.",
+      "toast_check_failed": "The check could not be run. Try again."
     },
     "errors": {
       "load_failed": "The check could not run",

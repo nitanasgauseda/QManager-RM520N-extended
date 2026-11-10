@@ -2240,7 +2240,9 @@
       "description": "Cosa può raggiungere internet sul modem e le impostazioni da verificare.",
       "run": "Controlla di nuovo",
       "retry": "Riprova",
-      "checked": "Controllato alle {{time}}"
+      "checked": "Controllato alle {{time}}",
+      "toast_checked": "Controllo di sicurezza completato.",
+      "toast_check_failed": "Impossibile eseguire il controllo. Riprova."
     },
     "errors": {
       "load_failed": "Il controllo non è stato eseguito",

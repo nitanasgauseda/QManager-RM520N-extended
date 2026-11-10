@@ -42,16 +42,18 @@ export function useSecurityCheck() {
   const [busy, setBusy] = useState<string | null>(null);
   const mounted = useRef(true);
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (): Promise<boolean> => {
     try {
       const res = await authFetch(CGI);
       const json = await res.json();
-      if (!mounted.current) return;
+      if (!mounted.current) return true;
       if (!json?.success) throw new Error(json?.detail ?? "failed");
       setReport(json as SecurityReport);
       setError(null);
+      return true;
     } catch (e) {
       if (mounted.current) setError(e instanceof Error ? e.message : "failed");
+      return false;
     } finally {
       if (mounted.current) setIsLoading(false);
     }
