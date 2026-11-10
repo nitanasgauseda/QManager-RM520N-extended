@@ -36,21 +36,18 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         body=""
     done
     [ -n "$body" ] || { cgi_error "test_failed" "The test server could not be reached"; exit 0; }
-    printf '%s' "$body" | jq -c --arg ua "$UA" --arg exp "$EXPECTED" --arg idn "$IDENTITY" --arg prx "$PROXY" '
-        (.headers | with_entries(.key |= ascii_downcase)) as $h
-        | [$h | keys[] | select(test($exp) | not)] as $extra
-        | [$extra[] | select(test($idn))] as $identity
-        | [$extra[] | select(test($prx))] as $proxy
-        | (($h["user-agent"] // "") != $ua) as $modified
-        | {
-            success: true,
-            result: (if ($identity | length) > 0 then "identity"
-                     elif ($proxy | length) > 0 then "proxy"
-                     elif $modified then "modified"
-                     elif ($extra | length) > 0 then "unexpected"
-                     else "clean" end),
-            headers: ($extra | map(.[0:60]) | .[0:20])
-          }' 2>/dev/null || cgi_error "test_failed" "The test server sent an unreadable answer"
+    # Classified with grep, not jq regex: the modem's jq may be built without it.
+    names=$(printf '%s' "$body" | jq -r '.headers | keys[]' 2>/dev/null | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9_\n-' | cut -c1-60)
+    [ -n "$names" ] || { cgi_error "test_failed" "The test server sent an unreadable answer"; exit 0; }
+    got_ua=$(printf '%s' "$body" | jq -r '.headers | to_entries[] | select(.key | ascii_downcase == "user-agent") | .value' 2>/dev/null | head -n1)
+    extra=$(printf '%s\n' "$names" | grep -Ev "$EXPECTED" | head -n 20)
+    result="clean"
+    if printf '%s\n' "$extra" | grep -Eq "$IDENTITY"; then result="identity"
+    elif printf '%s\n' "$extra" | grep -Eq "$PROXY"; then result="proxy"
+    elif [ "$got_ua" != "$UA" ]; then result="modified"
+    elif [ -n "$extra" ]; then result="unexpected"
+    fi
+    printf '%s\n' "$extra" | jq -R . | jq -sc --arg r "$result" '{success: true, result: $r, headers: map(select(length > 0))}'
     exit 0
 fi
 
