@@ -89,7 +89,7 @@ esac
 run_op() {
     local out
     if [ "$1" = "nickname" ]; then
-        out=$(printf '%s' "$POST_DATA" | jq -r '.name // "" | gsub("[\r\n]"; " ")' | "$BRIDGE" nickname "$iccid" 2>/dev/null)
+        out=$(printf '%s' "$POST_DATA" | jq -r '.name // "" | split("\r") | join(" ") | split("\n") | join(" ")' | "$BRIDGE" nickname "$iccid" 2>/dev/null)
     else
         out=$("$BRIDGE" "$1" ${iccid:+"$iccid"} 2>/dev/null)
     fi

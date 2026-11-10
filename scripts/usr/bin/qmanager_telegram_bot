@@ -197,9 +197,10 @@ main() {
         fi
         backoff=5
         # One line per update: id, chat id, sender id, chat type, message time, text (tabs and newlines flattened).
+        # split/join, not gsub: the modem's jq is built without regex.
         lines=$(printf '%s' "$resp" | jq -r '.result[] | [.update_id, (.message.chat.id // ""), (.message.from.id // ""),
             (.message.chat.type // ""), (.message.date // 0),
-            ((.message.text // "") | gsub("[\t\n]"; " "))] | @tsv' 2>/dev/null)
+            ((.message.text // "") | split("\t") | join(" ") | split("\n") | join(" "))] | @tsv' 2>/dev/null)
         # A here-document keeps the loop in this shell, so the /reboot confirmation survives it.
         while IFS="$(printf '\t')" read -r uid chat from ctype when text; do
             [ -n "$uid" ] || continue
