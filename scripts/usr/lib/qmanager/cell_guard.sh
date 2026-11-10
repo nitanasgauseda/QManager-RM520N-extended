@@ -380,7 +380,9 @@ _cg_sms_reason_text() {
 _cg_check_sms() {
     [ "$_cg_sms" = "true" ] || return 0
     local up out line reasons sender pdu key sev list
-    up=$(_cg_up)
+    # Builtin read: this throttle runs every poll cycle and must not fork.
+    read -r up line < "$CG_UPTIME" 2>/dev/null || return 0
+    up=${up%%.*}
     case "$up" in ''|*[!0-9]*) return 0 ;; esac
     [ "$up" -ge "$_cg_sms_next" ] || return 0
     _cg_sms_next=$((up + CG_SMS_EVERY))

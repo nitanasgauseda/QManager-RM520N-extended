@@ -184,8 +184,10 @@ _dp_pk=-1
 _dp_q=-1
 
 dns_privacy_watch() {
-    local up
-    up=$(awk '{ print int($1) }' /proc/uptime 2>/dev/null)
+    local up _
+    # Builtin read: this throttle runs every poll cycle and must not fork.
+    read -r up _ < /proc/uptime 2>/dev/null || return 0
+    up=${up%%.*}
     case "$up" in ''|*[!0-9]*) return 0 ;; esac
     [ "$up" -ge "$_dp_next" ] || return 0
     _dp_next=$((up + 60))

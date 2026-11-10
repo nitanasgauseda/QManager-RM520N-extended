@@ -309,8 +309,10 @@ insights_check() {
     [ "${modem_reachable:-}" = "true" ] && _in_accumulate
     _in_check_temp
 
-    local up
-    up=$(_in_up); _in_int "$up" || return 0
+    local up _
+    # Builtin read: this throttle runs every poll cycle and must not fork.
+    read -r up _ < /proc/uptime 2>/dev/null || return 0
+    up=${up%%.*}; _in_int "$up" || return 0
     [ "$_in_next_min" -eq 0 ] && _in_next_min=$((up + 60))
     [ "$up" -ge "$_in_next_min" ] || return 0
     _in_next_min=$((up + 60))

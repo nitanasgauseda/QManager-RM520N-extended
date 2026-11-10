@@ -52,7 +52,13 @@ command -v qm_replace >/dev/null 2>&1 || qm_replace() {
 _wt_net=""; _wt_month_next=0; _wt_fw_next=0
 
 _wt_up() { local u r; read -r u r < /proc/uptime 2>/dev/null; printf '%s' "${u%%.*}"; }
-_wt_clock_ok() { [ "$(date +%s)" -ge 1700000000 ]; }
+# The clock is set once per boot and never goes back, so a good answer is remembered (no fork after).
+_wt_clock_good=0
+_wt_clock_ok() {
+    [ "$_wt_clock_good" = "1" ] && return 0
+    [ "$(date +%s)" -ge 1700000000 ] || return 1
+    _wt_clock_good=1
+}
 
 _wt_alert() {
     local event="$1" msg="$2" ch
