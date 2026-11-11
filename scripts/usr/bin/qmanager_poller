@@ -1298,6 +1298,7 @@ collect_boot_data() {
     if [ -n "$result" ]; then
         parse_ippt_mpdn_rule "$result"
         parse_ippt_nat "$result"
+        case "$result" in *'+QMAP: "MPDN_rule"'*) _qmap_boot_read=1 ;; esac
     fi
     sleep "$SIP_DELAY"
 
@@ -1380,6 +1381,30 @@ collect_boot_data() {
     log_info "Boot data: LTE_BANDS=$boot_supported_lte_bands NSA_BANDS=$boot_supported_nsa_nr5g_bands SA_BANDS=$boot_supported_sa_nr5g_bands"
     log_info "Boot data: IPPT mode=$boot_ippt_mode nat=$boot_ippt_nat usb=$boot_ippt_usbnet dns=$boot_ippt_dhcpv4dns"
     log_info "Boot data: LAN ip=$boot_lan_ip gateway=$boot_lan_gateway"
+}
+
+# The boot AT+QMAP reads are skipped while QCMAP is not up yet, which left IP Passthrough reported
+# as disabled until the next poller start. Tier 2 retries them until one answers (40 tries at most).
+_qmap_boot_read=0
+_qmap_boot_tries=0
+retry_boot_qmap() {
+    local result
+    [ "$_qmap_boot_read" = 1 ] && return 0
+    [ "$_qmap_boot_tries" -lt 40 ] || return 0
+    _qmap_boot_tries=$((_qmap_boot_tries + 1))
+    qcmap_up || return 0
+    result=$(QCMD_WAIT_MS=5000 qcmd 'AT+QMAP="MPDN_RULE";+QMAP="IPPT_NAT"' 2>/dev/null)
+    case "$result" in *'+QMAP: "MPDN_rule"'*) ;; *) return 0 ;; esac
+    parse_ippt_mpdn_rule "$result"
+    parse_ippt_nat "$result"
+    _qmap_boot_read=1
+    sleep "$SIP_DELAY"
+    result=$(QCMD_WAIT_MS=5000 qcmd 'AT+QMAP="LANIP"' 2>/dev/null)
+    [ -n "$result" ] && parse_lan_ip "$result"
+    sleep "$SIP_DELAY"
+    result=$(QCMD_WAIT_MS=5000 qcmd 'AT+QMAP="DHCPV4DNS"' 2>/dev/null)
+    [ -n "$result" ] && parse_ippt_dhcpv4dns "$result"
+    log_info "Boot data (retry $_qmap_boot_tries): IPPT mode=$boot_ippt_mode nat=$boot_ippt_nat dns=$boot_ippt_dhcpv4dns LAN gateway=$boot_lan_gateway"
 }
 
 # =============================================================================
@@ -1520,6 +1545,7 @@ append_ping_history() {
 
 poll_tier2() {
     local result
+    retry_boot_qmap
 
     # Compound AT: status queries in one call.
     # CPIN? is last — it can ERROR when SIM is absent; placing it last

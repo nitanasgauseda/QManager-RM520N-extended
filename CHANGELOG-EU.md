@@ -50,6 +50,7 @@ Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.
 
 ## 🐛 Fixes
 
+- **IP Passthrough is recognised even when the modem starts slowly.** After some boots QManager read the passthrough setting before the modem was ready and treated it as off until the next restart, so the router was not told to renew its address and stayed without internet. It now reads the setting again until the modem answers. (Measured on hardware: `ippt_mode` stayed `disabled` 12 minutes after boot.)
 - **Tailscale install script is no longer kept in a shared folder.** The script the installer runs as root now lives where only root can write. (`/run/qmanager_tailscale`, not `/tmp`.)
 - **Less background work on every poll.** Cell Guard, Data Plan, DNS Privacy and the watch checks no longer start helper programs each cycle just to read the time. (8 fewer process starts per cycle.)
 - **More state files are written safely.** The outage log, Cell Guard's learning and SMS lists, the IP Passthrough address and restored settings are written through random temporary names or refuse a planted link.

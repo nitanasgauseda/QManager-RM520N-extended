@@ -42,3 +42,4 @@ The poller sources `usr/lib/qmanager/watch.sh` and calls `watch_check` every cyc
 - `.router.alert == false` stops the probes (state `off`). Status `/tmp/qmanager_watch.json .router {state, since (epoch), address, auto}`.
 - It sees a router that is off, frozen or unplugged. A router that still forwards but whose DHCP or DNS has crashed answers ping and is not caught.
 - `monitoring/watch.sh` save merges into the existing `watch.json`, so keys the page does not edit (`ippt.renew`) are kept.
+- After a late boot read (`retry_boot_qmap`), `boot_ippt_mode` turns `eth` some cycles into the run; the first reading is then compared with `ippt_last_ip` as usual, so a new carrier IP after a reboot still triggers the renew.

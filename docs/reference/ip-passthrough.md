@@ -19,7 +19,7 @@
 | Types | `types/ip-passthrough.ts`, `types/lan-devices.ts` |
 | CGI | `scripts/www/cgi-bin/quecmanager/network/ip_passthrough.sh`; `network/lan_devices.sh` (read-only device list) |
 | Persisted config | `/etc/qmanager/ippt_config.json` (written by our own POST) |
-| Poller fallback | `/tmp/qmanager_status.json` → `.device.ippt_*`, set once at boot by `parse_ippt_*` in `scripts/usr/lib/qmanager/parse_at.sh` |
+| Poller fallback | `/tmp/qmanager_status.json` → `.device.ippt_*`, set at boot by `parse_ippt_*` in `scripts/usr/lib/qmanager/parse_at.sh`; if QCMAP was not up yet (the boot `AT+QMAP` reads are then skipped), `retry_boot_qmap` in the poller repeats them from Tier 2 until `MPDN_rule` answers, 40 tries at most |
 | i18n root | `ipPassthrough.*` (71 leaves × 5 locales) |
 | Apply semantics | **write all five settings, then reboot immediately** — there is no separate reboot action |
 
