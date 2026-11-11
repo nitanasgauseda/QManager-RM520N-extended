@@ -37,6 +37,8 @@ _wt_ip_next=0; _wt_ip_wan=""; _wt_ip_public=""; _wt_ip_seen=0
 _wt_ippt_on=true; _wt_ippt_ip=""; _wt_ippt_due=0; _wt_ippt_last_renew=-100000
 _wt_rt_on=true; _wt_rt_addr=""; _wt_rt_next=0; _wt_rt_seen=-1; _wt_rt_fails=0
 _wt_rt_state=unknown; _wt_rt_since=0; _wt_rt_target=""; _wt_up_now=0
+_wt_rt_hold=0; _wt_lan_sig=""; _wt_lan_next=0
+: "${WT_T2_FLAG:=/tmp/qmanager_tier2_refresh}"
 _wt_iccid=""; _wt_sim_in=""; _wt_sim_boot_done=0
 # qm_replace <dest> — stdin replaces <dest> atomically. The temp name comes from mktemp, so a
 # symlink planted at a guessable "<dest>.tmp" is never followed (root writes these files, some in
@@ -347,9 +349,24 @@ _wt_check_fw() {
 # IP Passthrough hands the carrier IPv4 to the router behind the modem. When the carrier gives a new
 # one (re-dial, modem reboot) the router keeps the old lease and loses the internet until it renews,
 # so the Ethernet link is bounced once (20 s after the change, at most every 10 min) to make it ask.
+# In IP Passthrough the LAN bridge carries an address next to the carrier IP, so a change there means
+# the carrier IP changed. One `ip` call every 20 s; a change asks the poller to re-read the WAN IP now.
+_wt_ippt_lan_watch() {
+    local sig
+    [ "$1" -ge "$_wt_lan_next" ] || return 0
+    _wt_lan_next=$(($1 + 20))
+    sig=$(ip -4 -o addr show dev "$WT_LAN_IF" 2>/dev/null)
+    [ -n "$sig" ] || return 0
+    if [ -n "$_wt_lan_sig" ] && [ "$sig" != "$_wt_lan_sig" ]; then
+        [ -L "$WT_T2_FLAG" ] || : > "$WT_T2_FLAG" 2>/dev/null
+    fi
+    _wt_lan_sig="$sig"
+}
+
 _wt_check_ippt() {
     local ip="${t2_wan_ipv4:-}" last=""
     [ "$_wt_ippt_on" = "true" ] && [ "${boot_ippt_mode:-}" = "eth" ] || return 0
+    _wt_ippt_lan_watch "$1"
     case "$ip" in ''|0.0.0.0|*[!0-9.]*) return 0 ;; esac
     if [ -z "$_wt_ippt_ip" ]; then
         # First reading since the poller started: compare with the address before the restart.
@@ -358,11 +375,12 @@ _wt_check_ippt() {
         [ "$last" = "$ip" ] && return 0
         printf '%s\n' "$ip" | qm_replace "$WT_IPPT_LAST"
         [ -n "$last" ] || return 0
-        _wt_ippt_due=$(($1 + 20))
+        _wt_ippt_due=$(($1 + 20)); _wt_rt_fails=0; _wt_rt_hold=$(($1 + 180))
     elif [ "$ip" != "$_wt_ippt_ip" ]; then
         last="$_wt_ippt_ip"; _wt_ippt_ip="$ip"
         printf '%s\n' "$ip" | qm_replace "$WT_IPPT_LAST"
-        _wt_ippt_due=$(($1 + 20))
+        # The router needs time to take the new address: its probe failures start from zero.
+        _wt_ippt_due=$(($1 + 20)); _wt_rt_fails=0; _wt_rt_hold=$(($1 + 180))
     fi
     [ "$_wt_ippt_due" -gt 0 ] && [ "$1" -ge "$_wt_ippt_due" ] || return 0
     # A second change within 10 minutes is not dropped: the renew waits until 10 minutes have passed.
@@ -393,8 +411,9 @@ _wt_router_probe() {
             t=$(ip -4 neigh show dev "$WT_LAN_IF" 2>/dev/null | awk '/lladdr/ && $1 !~ /^169\.254\./ { n++; a = $1 } END { if (n == 1) print a }')
         fi
         if [ -z "$t" ]; then r=none
-        elif ping -c 1 -W 2 -I "$WT_LAN_IF" "$t" >/dev/null 2>&1; then r=ok
+        # ARP first: a router answers it even when its firewall drops ping on that address.
         elif command -v arping >/dev/null 2>&1 && arping -c 1 -w 2 -I "$WT_LAN_IF" "$t" >/dev/null 2>&1; then r=ok
+        elif ping -c 1 -W 2 -I "$WT_LAN_IF" "$t" >/dev/null 2>&1; then r=ok
         else r=fail
         fi
         # Uptime in hundredths: two results are never stamped the same.
@@ -427,7 +446,16 @@ _wt_check_router() {
                 fi
                 ;;
             fail)
-                _wt_rt_fails=$((_wt_rt_fails + 1))
+                # Probed an address that is no longer the carrier IP, or the IP has just changed: not a verdict.
+                if [ -z "$_wt_rt_addr" ] && [ "${boot_ippt_mode:-}" = "eth" ]; then
+                    if [ "$tgt" != "${t2_wan_ipv4:-}" ] || [ "$1" -lt "$_wt_rt_hold" ]; then
+                        r=skip
+                    elif [ "$_wt_rt_fails" = 0 ]; then
+                        # First miss: the carrier IP may have changed unnoticed; have the poller re-read it.
+                        [ -L "$WT_T2_FLAG" ] || : > "$WT_T2_FLAG" 2>/dev/null
+                    fi
+                fi
+                [ "$r" = skip ] || _wt_rt_fails=$((_wt_rt_fails + 1))
                 # Right after boot the router may still be starting: no verdict in the first 5 minutes.
                 if [ "$_wt_rt_fails" -ge "$WT_ROUTER_FAILS" ] && [ "$prev" != "down" ] && [ "$1" -ge "$WT_ROUTER_GRACE" ]; then
                     _wt_rt_state=down; _wt_rt_since="$1"; changed=1

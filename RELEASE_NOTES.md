@@ -1,4 +1,4 @@
-# 🚀 QManager RM520N BETA v0.1.18-eu.5
+# 🚀 QManager RM520N BETA v0.1.18-eu.6
 
 A security release first: the Web Console now requires sign-in, SSH and the devices behind the modem are no longer reachable from the mobile network, and fresh installs no longer share a default SSH password. It also adds a setup wizard, encrypted config backup, a changeable web port and LAN address, and a faster SMS Center with conversations. The modem broker now runs on both the RM520N-GL and the RG501Q-EU, with lighter polling and fresher signal readings. The dashboard, Cellular, Local Network and System Settings pages are redesigned to match QManager on the RM551E.
 
@@ -13,6 +13,8 @@ A security release first: the Web Console now requires sign-in, SSH and the devi
 **In v0.1.18-eu.4:** less background work on every poll (Cell Guard, Data Plan, DNS Privacy and the watch checks no longer start helper programs each cycle), the Tailscale install script is kept where only root can write, and more state files are written safely.
 
 **Fixed in v0.1.18-eu.5:** after a modem restart in IP Passthrough the router could stay without internet until it was restarted itself, because QManager read the passthrough setting before the modem was ready; it now reads it again until the modem answers.
+
+**Fixed in v0.1.18-eu.6:** in IP Passthrough a carrier IP change no longer sends a false "router is not responding" alert, and the router is told to take the new address within about a minute instead of several.
 
 ## ✨ New Features
 
