@@ -1,4 +1,4 @@
-# 🚀 QManager RM520N BETA v0.1.18-eu.3
+# 🚀 QManager RM520N BETA v0.1.18-eu.4
 
 A security release first: the Web Console now requires sign-in, SSH and the devices behind the modem are no longer reachable from the mobile network, and fresh installs no longer share a default SSH password. It also adds a setup wizard, encrypted config backup, a changeable web port and LAN address, and a faster SMS Center with conversations. The modem broker now runs on both the RM520N-GL and the RG501Q-EU, with lighter polling and fresher signal readings. The dashboard, Cellular, Local Network and System Settings pages are redesigned to match QManager on the RM551E.
 
@@ -9,6 +9,8 @@ A security release first: the Web Console now requires sign-in, SSH and the devi
 **New in v0.1.18-eu.2:** an **Operator and SIM** card on **System Settings → Security Check** (does your operator add tracking headers, is your subscriber number encrypted on 5G, does the SIM accept commands by SMS) and **Hide personal data** for Telegram messages on **Monitoring → Alerts**.
 
 **Fixed in v0.1.18-eu.3:** the tracking headers test, Telegram bot commands and eSIM profile renaming failed on the modem (they needed a `jq` feature the modem does not have); **Check again** on Security Check now shows that it is running and confirms when it finishes.
+
+**In v0.1.18-eu.4:** less background work on every poll (Cell Guard, Data Plan, DNS Privacy and the watch checks no longer start helper programs each cycle), the Tailscale install script is kept where only root can write, and more state files are written safely.
 
 ## ✨ New Features
 
