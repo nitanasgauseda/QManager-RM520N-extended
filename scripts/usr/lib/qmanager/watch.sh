@@ -243,8 +243,25 @@ _wt_check_ip() {
 }
 
 # --- Outages -----------------------------------------------------------------------
+# Why the internet went: read from what the poller already knows at that moment, no AT command.
+_wt_outage_cause() {
+    local p="${lte_rsrp:-}" q="${lte_sinr:-}"
+    [ "${network_type:-}" = "5G-SA" ] && { p="${nr_rsrp:-}"; q="${nr_sinr:-}"; }
+    p=${p%%.*}; q=${q%%.*}
+    case "${p#-}" in ''|*[!0-9]*) p="" ;; esac
+    case "${q#-}" in ''|*[!0-9]*) q="" ;; esac
+    if [ "${modem_reachable:-true}" != "true" ]; then echo modem
+    elif [ "${t2_sim_inserted:-}" = "false" ]; then echo sim
+    elif [ "${service_status:-}" = "searching" ]; then echo no_network
+    elif [ "${service_status:-}" = "limited" ]; then echo not_registered
+    elif [ -n "$p" ] && [ "$p" -le -115 ]; then echo weak_signal
+    elif [ -n "$q" ] && [ "$q" -le -3 ]; then echo interference
+    else echo data_session
+    fi
+}
+
 _wt_check_outage() {
-    local now st enb net
+    local now st enb net cause
     case "${conn_internet_available:-}" in true|false) ;; *) return 0 ;; esac
     if [ -z "$_wt_net" ]; then
         # First reading: an outage open before a poller restart carries on.
@@ -255,11 +272,11 @@ _wt_check_outage() {
     _wt_clock_ok || { _wt_net="$conn_internet_available"; return 0; }
     now=$(date +%s)
     if [ "$conn_internet_available" = "false" ]; then
-        printf '%s %s %s\n' "$now" "${lte_enodeb_id:--}" "${network_type:--}" | qm_replace "$WT_OPEN"
+        printf '%s %s %s %s\n' "$now" "${lte_enodeb_id:--}" "${network_type:--}" "$(_wt_outage_cause)" | qm_replace "$WT_OPEN"
     elif [ -s "$WT_OPEN" ]; then
-        read -r st enb net < "$WT_OPEN"
+        read -r st enb net cause < "$WT_OPEN"
         case "$st" in ''|*[!0-9]*) ;; *)
-            [ "$now" -gt "$st" ] && qm_append_line "$WT_OUTAGES" "$st $now ${enb:--} ${net:--}"
+            [ "$now" -gt "$st" ] && qm_append_line "$WT_OUTAGES" "$st $now ${enb:--} ${net:--} ${cause:--}"
             if [ ! -L "$WT_OUTAGES" ] && [ "$(wc -l < "$WT_OUTAGES" 2>/dev/null)" -gt $((WT_OUTAGE_MAX + 200)) ]; then
                 tail -n "$WT_OUTAGE_MAX" "$WT_OUTAGES" | qm_replace "$WT_OUTAGES"
             fi

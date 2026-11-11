@@ -497,6 +497,44 @@ _cg_check_jam() {
     return 0
 }
 
+# --- Unexplained cell changes ---------------------------------------------------------------------
+# A network moves a modem off a cell when its signal gets poor. Leaving a strong cell for a clearly
+# weaker one, or hopping many times in a few minutes, is worth a note (info only, never an alert).
+CG_MV_GOOD_RSRP=-100
+CG_MV_GOOD_SINR=5
+CG_MV_DROP=8
+CG_MV_MANY=8
+_cg_mv_key=""; _cg_mv_p=""; _cg_mv_q=""; _cg_mv_n=0; _cg_mv_win=0; _cg_mv_said=-100000; _cg_mv_many_said=-100000
+
+_cg_check_move() {
+    local key p q up _
+    case "${lte_cell_id:-}" in ''|*[!0-9]*) return 0 ;; esac
+    [ "${network_type:-}" = "5G-SA" ] && return 0
+    key="${lte_enodeb_id:-?}/$lte_cell_id"
+    _cg_int p "${lte_rsrp:-}"; _cg_int q "${lte_sinr:-}"
+    if [ "$key" = "$_cg_mv_key" ] || [ -z "$_cg_mv_key" ]; then
+        _cg_mv_key="$key"
+        [ -n "$p" ] && _cg_mv_p="$p"
+        [ -n "$q" ] && _cg_mv_q="$q"
+        return 0
+    fi
+    read -r up _ < "$CG_UPTIME" 2>/dev/null || up=0
+    up=${up%%.*}
+    case "$up" in ''|*[!0-9]*) up=0 ;; esac
+    if [ $((up - _cg_mv_win)) -gt 600 ]; then _cg_mv_win="$up"; _cg_mv_n=0; fi
+    _cg_mv_n=$((_cg_mv_n + 1))
+    if [ -n "$p" ] && [ -n "$_cg_mv_p" ] && [ -n "$_cg_mv_q" ] \
+        && [ "$_cg_mv_p" -ge "$CG_MV_GOOD_RSRP" ] && [ "$_cg_mv_q" -ge "$CG_MV_GOOD_SINR" ] \
+        && [ $((_cg_mv_p - p)) -ge "$CG_MV_DROP" ] && [ $((up - _cg_mv_said)) -ge 600 ]; then
+        _cg_mv_said="$up"
+        _cg_finding "The network moved the modem from cell $_cg_mv_key ($_cg_mv_p dBm, $_cg_mv_q dB SINR) to the weaker cell $key ($p dBm) although the signal was good" "info"
+    elif [ "$_cg_mv_n" -ge "$CG_MV_MANY" ] && [ $((up - _cg_mv_many_said)) -ge 1800 ]; then
+        _cg_mv_many_said="$up"
+        _cg_finding "The serving cell changed $_cg_mv_n times in 10 minutes" "info"
+    fi
+    _cg_mv_key="$key"; _cg_mv_p="$p"; _cg_mv_q="$q"
+}
+
 # SMS findings are their own event type; warnings alert through the Cell Guard routing.
 # A flood of silent SMS logs every one but alerts at most once per CG_ALERT_GAP_SECS.
 _cg_sms_alert_up=-100000
@@ -530,6 +568,7 @@ cell_guard_check() {
     _cg_check_rayhunter
     _cg_check_sms
     _cg_check_jam
+    _cg_check_move
     if [ "$before" != "$_cg_last_sig$_cg_last_rat$_cg_rh_seen" ] || [ ! -f "$CG_STATUS" ] \
         || [ $((${cycle_count:-0} % 150)) -eq 0 ]; then
         _cg_status_write

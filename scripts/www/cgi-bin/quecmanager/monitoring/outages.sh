@@ -2,7 +2,7 @@
 . /usr/lib/qmanager/cgi_base.sh
 # outages.sh — internet outage statistics from the log watch.sh keeps (/etc/qmanager/outages.log).
 #   GET ?days=7|30|90   totals, availability, outages by hour of day and by cell, the latest 20
-# Log line: <start epoch> <end epoch> <eNB at the start> <network type>. One awk, no jq.
+# Log line: <start epoch> <end epoch> <eNB at the start> <network type> [cause]. One awk, no jq.
 
 qlog_init "cgi_outages"
 cgi_headers
@@ -31,7 +31,7 @@ case "$open_since" in ''|*[!0-9]*) open_since="" ;; esac
         n++; tot += d; if (d > mx) mx = d
         h = int((($1 + off) % 86400) / 3600); hc[h]++; hs[h] += d
         e = ($3 == "" ? "-" : $3); cc[e]++; cs[e] += d
-        k++; rs[k] = $1; re[k] = $2; ren[k] = e; rn[k] = ($4 == "" ? "-" : $4)
+        k++; rs[k] = $1; re[k] = $2; ren[k] = e; rn[k] = ($4 == "" ? "-" : $4); rc[k] = ($5 == "" ? "-" : $5)
     }
     function jstr(x) { gsub(/[^A-Za-z0-9._ -]/, "", x); return "\"" x "\"" }
     END {
@@ -55,7 +55,7 @@ case "$open_since" in ''|*[!0-9]*) open_since="" ;; esac
         printf "],\"recent\":["
         first = 1
         for (i = k; i >= 1 && i > k - 20; i--) {
-            printf "%s{\"start\":%d,\"end\":%d,\"enb\":%s,\"net\":%s}", (first ? "" : ","), rs[i], re[i], jstr(ren[i]), jstr(rn[i])
+            printf "%s{\"start\":%d,\"end\":%d,\"enb\":%s,\"net\":%s,\"cause\":%s}", (first ? "" : ","), rs[i], re[i], jstr(ren[i]), jstr(rn[i]), jstr(rc[i])
             first = 0
         }
         printf "]}\n"
