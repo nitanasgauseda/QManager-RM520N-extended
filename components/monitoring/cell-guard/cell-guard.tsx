@@ -57,6 +57,12 @@ function fmtTime(epochSec: number, locale: string) {
 export default function CellGuardComponent() {
   const { t, i18n } = useTranslation("common");
   const cg = useCellGuard();
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    await Promise.all([cg.refresh(), new Promise((r) => setTimeout(r, 400))]);
+    setRefreshing(false);
+  };
 
   const header = (
     <div className="flex flex-col gap-5 @3xl/main:flex-row @3xl/main:items-end">
@@ -65,8 +71,8 @@ export default function CellGuardComponent() {
         <p className="text-on-surface-variant text-sm leading-relaxed text-pretty">{t(`${K}.page.description`)}</p>
       </div>
       <div className="@3xl/main:ml-auto">
-        <Button type="button" variant="outline" size="action" onClick={() => void cg.refresh()}>
-          <RefreshCwIcon className="size-4" aria-hidden />
+        <Button type="button" variant="outline" size="action" disabled={refreshing} onClick={() => void refresh()}>
+          <RefreshCwIcon className={cn("size-4", refreshing && "animate-spin")} aria-hidden />
           {t(`${K}.page.refresh`)}
         </Button>
       </div>
