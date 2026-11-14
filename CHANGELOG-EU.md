@@ -41,6 +41,11 @@ Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.
 - **Scan an eSIM QR code.** **Cellular → Settings → eSIM** has a **Scan QR code** button: take a photo of the operator's QR code or pick a screenshot, and the activation code fills in by itself. The picture stays in your browser.
 - **Original v0.1.18 merged in.** Setup wizard, encrypted Config Backup, Device Access, Adaptive Polling, SMS conversations, the new sidebar and redesigned pages, plus its fixes (SSH and LAN devices closed to the mobile network, Web Console sign-in). The EU edition's own **Backup & Restore** page stays beside **Config Backup** for the EU settings. (The web server no longer gets raw iptables, so DNS Privacy and Security Check go through a fixed-verb root helper, `qmanager_eu_fw`.)
 
+- **Why the internet went.** **Monitoring → Connection Quality → Outages** now shows a reason next to each outage: weak signal, interference, no network, registration refused, no SIM, modem not answering, or a lost data session while the signal was fine. (Read from what the modem already reported at that moment; older outages have no reason.)
+- **Unusual cell changes in Cell Guard.** **Monitoring → Cell Guard → Findings** notes when the network moves the modem from a strong cell to a clearly weaker one, or switches cells 8 or more times in 10 minutes. (Information only, no alerts.)
+
+- **SIM card and SIM PIN.** **System Settings → Security** has a new **SIM card** card: the operator name stored on the SIM, the SMS centre, whether the PIN lock is on and how many attempts are left, and buttons to turn the PIN on or off, change it, or unlock the SIM. With **Unlock automatically after a restart** on, the modem enters the PIN itself after every restart, so the internet comes back without you; it never retries a PIN the SIM refused and never acts with fewer than two attempts left. (The PIN is kept where only root can read it.)
+
 ## 🛠️ Improvements
 
 - **Software Update installs the EU edition.** **System Settings → Software Update** and automatic updates now look for new versions in this repository instead of the original, so updating no longer replaces the EU edition with the original. (Versions `vX.Y.Z-eu.N` count as newer than `vX.Y.Z`; a release needs `qmanager.tar.gz` and `sha256sum.txt` from `qmanager-build/`.)

@@ -23,6 +23,8 @@ const glyph = (className: string) => <CheckIcon size={SEGMENTED.GLYPH} className
 
 type T = (k: string, o?: Record<string, unknown>) => string;
 
+const CAUSES = ["modem", "sim", "no_network", "not_registered", "weak_signal", "interference", "data_session"];
+
 function fmtDur(s: number, t: T) {
   if (s < 60) return t(`${K}.dur_s`, { n: Math.max(0, Math.round(s)) });
   const m = Math.round(s / 60);
@@ -155,6 +157,7 @@ function RecentCard({ d }: { d: OutageStats }) {
               <span className="text-on-surface-variant min-w-0 truncate text-right text-[0.8125rem] font-semibold tabular-nums">
                 {fmtDur(o.end - o.start, t)}
                 {o.enb !== "-" ? ` · eNB ${o.enb}` : ""}
+                {o.cause && CAUSES.includes(o.cause) ? ` · ${t(`${K}.cause.${o.cause}`)}` : ""}
               </span>
             </div>
           ))

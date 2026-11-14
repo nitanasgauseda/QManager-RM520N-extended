@@ -2382,6 +2382,59 @@
       "remote_title": "发送给 SIM 卡的命令",
       "remote_on": "此 SIM 卡接受通过短信发送的命令。运营商用它进行更新，这也是 SIM 卡攻击的途径。Cell Guard 会报告此类短信。",
       "remote_off": "此 SIM 卡不接受通过短信发送的命令。"
+    },
+    "sim": {
+      "title": "SIM 卡",
+      "description": "SIM 卡信息及其 PIN 锁。",
+      "operator": "SIM 卡运营商",
+      "smsc": "短信中心",
+      "pin": "PIN 锁",
+      "pin_on": "已开启",
+      "pin_off": "已关闭",
+      "state_locked": "等待输入 PIN",
+      "state_puk": "已锁定 (PUK)",
+      "attempts": "剩余尝试次数",
+      "attempts_value": "{{pin}} 次 PIN · {{puk}} 次 PUK",
+      "auto_unlock": "重启后解锁",
+      "auto_on": "PIN 已保存在调制解调器",
+      "auto_off": "手动输入",
+      "auto_stopped": "已停止：保存的 PIN 被拒绝",
+      "puk_hint": "SIM 卡已锁定。请在手机中用 PUK 码解锁后再放回。",
+      "last_try_hint": "仅剩一次 PIN 尝试。请在手机中输入，以免出错锁定 SIM 卡。",
+      "unknown_hint": "调制解调器未报告剩余 PIN 尝试次数，因此此处无法更改 PIN。",
+      "unlock_hint": "SIM 卡正在等待 PIN，输入前无法上网。",
+      "on_hint": "输入当前 PIN 以关闭，或选择更改 PIN。",
+      "off_hint": "没有 PIN 时，任何拿到 SIM 卡的人都能使用。输入 SIM 卡的 PIN 以开启锁定。",
+      "current_pin": "当前 PIN",
+      "pin_placeholder": "SIM PIN",
+      "new_pin": "新 PIN",
+      "remember": "重启后自动解锁",
+      "unlock": "解锁",
+      "cancel": "取消",
+      "change": "更改 PIN",
+      "turn_off": "关闭 PIN",
+      "turn_on": "开启 PIN",
+      "forget": "删除已保存的 PIN",
+      "toast": {
+        "enable": "SIM PIN 已开启。",
+        "disable": "SIM PIN 已关闭。",
+        "change": "SIM PIN 已更改。",
+        "unlock": "SIM 卡已解锁。",
+        "forget": "已从调制解调器删除保存的 PIN。"
+      },
+      "errors": {
+        "load_failed": "无法读取 SIM 卡",
+        "failed": "无法更改 SIM PIN。",
+        "wrong_pin": "PIN 错误。剩余尝试次数：{{n}}。",
+        "invalid_pin": "PIN 必须为 4 到 8 位数字。",
+        "retries_unknown": "调制解调器未报告剩余尝试次数。",
+        "last_attempt": "仅剩一次尝试，请在手机中输入 PIN。",
+        "sim_puk": "SIM 卡已锁定，需要 PUK。",
+        "already_enabled": "SIM PIN 已开启。",
+        "already_disabled": "SIM PIN 已关闭。",
+        "pin_off": "请先开启 SIM PIN。",
+        "not_locked": "SIM 卡未在等待 PIN。"
+      }
     }
   },
   "activityLog": {
@@ -2522,6 +2575,15 @@
     "recent": {
       "title": "最近断网",
       "description": "最近 20 次，最新的在前。"
+    },
+    "cause": {
+      "modem": "调制解调器无响应",
+      "sim": "无 SIM 卡",
+      "no_network": "未找到网络",
+      "not_registered": "网络拒绝注册",
+      "weak_signal": "信号弱",
+      "interference": "信号干扰",
+      "data_session": "信号正常，数据连接中断"
     }
   }
 }

@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tag } from "@/components/ui/tag";
 import { useSecurityCheck, type SecurityPort, type SecurityReport } from "@/hooks/use-security-check";
 import { useOperatorAudit } from "@/hooks/use-operator-audit";
+import { SimCardCard } from "@/components/system-settings/security/sim-card";
 import { useWatch } from "@/hooks/use-watch";
 import { CardFoot } from "@/components/ui/card-foot";
 import { SaveButton } from "@/components/ui/save-button";
@@ -668,6 +669,7 @@ export default function SecurityCheckComponent() {
               <DeviceCard r={r} />
               <PublicIpCard />
               <OperatorCard />
+              <SimCardCard />
             </div>
           </div>
         </>

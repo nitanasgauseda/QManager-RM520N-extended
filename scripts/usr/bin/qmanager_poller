@@ -1539,6 +1539,36 @@ append_ping_history() {
 # TIER 2: WARM DATA (every N cycles)
 # =============================================================================
 
+# The SIM asks for its PIN after a restart: enter the PIN saved from the SIM card page. One try per
+# 5 minutes, never with fewer than 2 attempts left, and never again after the SIM refused it.
+SIMPIN_FILE="/etc/qmanager-secrets/sim_pin"
+SIMPIN_STOP="/etc/qmanager-secrets/sim_pin_failed"
+_simpin_next=0
+sim_pin_autounlock() {
+    local pin left up _
+    [ -s "$SIMPIN_FILE" ] && [ ! -L "$SIMPIN_FILE" ] && [ ! -e "$SIMPIN_STOP" ] || return 0
+    read -r up _ < /proc/uptime; up=${up%%.*}
+    [ "$up" -ge "$_simpin_next" ] || return 0
+    _simpin_next=$((up + 300))
+    if [ "${1:-}" = "check" ]; then
+        qcmd 'AT+CPIN?' 2>/dev/null | grep -q '+CPIN: SIM PIN' || return 0
+    fi
+    left=$(QCMD_QUIET=1 qcmd 'AT+QPINC="SC"' 2>/dev/null | tr -d '\r' | sed -n 's/^+QPINC: *"SC",\([0-9]*\),.*/\1/p')
+    case "$left" in
+        ''|*[!0-9]*|0|1) log_warn "SIM PIN: auto-unlock skipped (attempts left: ${left:-unknown})"; return 0 ;;
+    esac
+    read -r pin < "$SIMPIN_FILE" || return 0
+    if QCMD_QUIET=1 qcmd "AT+CPIN=\"$pin\"" >/dev/null 2>&1; then
+        log_info "SIM PIN: unlocked with the saved PIN"
+        command -v append_event >/dev/null 2>&1 && append_event "sim_change" "SIM card unlocked with the saved PIN" "info"
+    else
+        : > "$SIMPIN_STOP"
+        log_warn "SIM PIN: the saved PIN was refused; auto-unlock stopped until a PIN is saved again"
+        command -v append_event >/dev/null 2>&1 && append_event "sim_change" "The saved SIM PIN was refused; enter the PIN on the SIM card page" "warning"
+    fi
+    pin=""
+}
+
 poll_tier2() {
     local result
     retry_boot_qmap
@@ -1573,9 +1603,12 @@ poll_tier2() {
         cpin_line=$(printf '%s\n' "$result" | grep '+CPIN:' | head -1)
         if [ -n "$cpin_line" ]; then
             parse_sim_status "$cpin_line"
+            [ "$t2_sim_status" = "pin_required" ] && sim_pin_autounlock
         elif printf '%s\n' "$result" | grep -q 'CME ERROR'; then
             t2_sim_status="error"
             errors="sim_not_inserted"
+            # A locked SIM can error +CNUM and abort the compound before +CPIN? answers.
+            sim_pin_autounlock check
         fi
 
         # Registry refresh (c): scoped carrier/phone_number update on the

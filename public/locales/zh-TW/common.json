@@ -2382,6 +2382,59 @@
       "remote_title": "傳送給 SIM 卡的指令",
       "remote_on": "此 SIM 卡接受透過簡訊傳送的指令。電信業者用它進行更新，這也是 SIM 卡攻擊的途徑。Cell Guard 會回報此類簡訊。",
       "remote_off": "此 SIM 卡不接受透過簡訊傳送的指令。"
+    },
+    "sim": {
+      "title": "SIM 卡",
+      "description": "SIM 卡資訊及其 PIN 鎖。",
+      "operator": "SIM 卡電信業者",
+      "smsc": "簡訊中心",
+      "pin": "PIN 鎖",
+      "pin_on": "已開啟",
+      "pin_off": "已關閉",
+      "state_locked": "等待輸入 PIN",
+      "state_puk": "已鎖定 (PUK)",
+      "attempts": "剩餘嘗試次數",
+      "attempts_value": "{{pin}} 次 PIN · {{puk}} 次 PUK",
+      "auto_unlock": "重新啟動後解鎖",
+      "auto_on": "PIN 已儲存在數據機",
+      "auto_off": "手動輸入",
+      "auto_stopped": "已停止：儲存的 PIN 被拒絕",
+      "puk_hint": "SIM 卡已鎖定。請在手機中用 PUK 碼解鎖後再放回。",
+      "last_try_hint": "僅剩一次 PIN 嘗試。請在手機中輸入，以免出錯鎖定 SIM 卡。",
+      "unknown_hint": "數據機未回報剩餘 PIN 嘗試次數，因此此處無法變更 PIN。",
+      "unlock_hint": "SIM 卡正在等待 PIN，輸入前無法上網。",
+      "on_hint": "輸入目前 PIN 以關閉，或選擇變更 PIN。",
+      "off_hint": "沒有 PIN 時，任何拿到 SIM 卡的人都能使用。輸入 SIM 卡的 PIN 以開啟鎖定。",
+      "current_pin": "目前 PIN",
+      "pin_placeholder": "SIM PIN",
+      "new_pin": "新 PIN",
+      "remember": "重新啟動後自動解鎖",
+      "unlock": "解鎖",
+      "cancel": "取消",
+      "change": "變更 PIN",
+      "turn_off": "關閉 PIN",
+      "turn_on": "開啟 PIN",
+      "forget": "刪除已儲存的 PIN",
+      "toast": {
+        "enable": "SIM PIN 已開啟。",
+        "disable": "SIM PIN 已關閉。",
+        "change": "SIM PIN 已變更。",
+        "unlock": "SIM 卡已解鎖。",
+        "forget": "已從數據機刪除儲存的 PIN。"
+      },
+      "errors": {
+        "load_failed": "無法讀取 SIM 卡",
+        "failed": "無法變更 SIM PIN。",
+        "wrong_pin": "PIN 錯誤。剩餘嘗試次數：{{n}}。",
+        "invalid_pin": "PIN 必須為 4 到 8 位數字。",
+        "retries_unknown": "數據機未回報剩餘嘗試次數。",
+        "last_attempt": "僅剩一次嘗試，請在手機中輸入 PIN。",
+        "sim_puk": "SIM 卡已鎖定，需要 PUK。",
+        "already_enabled": "SIM PIN 已開啟。",
+        "already_disabled": "SIM PIN 已關閉。",
+        "pin_off": "請先開啟 SIM PIN。",
+        "not_locked": "SIM 卡未在等待 PIN。"
+      }
     }
   },
   "activityLog": {
@@ -2522,6 +2575,15 @@
     "recent": {
       "title": "最近斷線",
       "description": "最近 20 次，最新的在前。"
+    },
+    "cause": {
+      "modem": "數據機無回應",
+      "sim": "無 SIM 卡",
+      "no_network": "找不到網路",
+      "not_registered": "網路拒絕註冊",
+      "weak_signal": "訊號弱",
+      "interference": "訊號干擾",
+      "data_session": "訊號正常，數據連線中斷"
     }
   }
 }

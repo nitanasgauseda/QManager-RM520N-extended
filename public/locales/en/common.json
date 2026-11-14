@@ -2382,6 +2382,59 @@
       "remote_title": "Commands sent to the SIM",
       "remote_on": "This SIM accepts commands sent by SMS. Operators use this for updates, and it is also how SIM attacks arrive. Cell Guard reports such messages.",
       "remote_off": "This SIM does not accept commands sent by SMS."
+    },
+    "sim": {
+      "title": "SIM card",
+      "description": "What the SIM reports, and its PIN lock.",
+      "operator": "Operator on SIM",
+      "smsc": "SMS centre",
+      "pin": "PIN lock",
+      "pin_on": "On",
+      "pin_off": "Off",
+      "state_locked": "Waiting for PIN",
+      "state_puk": "Blocked (PUK)",
+      "attempts": "Attempts left",
+      "attempts_value": "{{pin}} PIN · {{puk}} PUK",
+      "auto_unlock": "Unlock after restart",
+      "auto_on": "PIN saved on the modem",
+      "auto_off": "Enter by hand",
+      "auto_stopped": "Stopped: saved PIN refused",
+      "puk_hint": "The SIM is blocked. Unblock it with its PUK code in a phone, then put it back.",
+      "last_try_hint": "Only one PIN attempt is left. Enter the PIN in a phone so a mistake does not block the SIM.",
+      "unknown_hint": "The modem did not report how many PIN attempts are left, so PIN changes are turned off here.",
+      "unlock_hint": "The SIM is waiting for its PIN; the internet is off until it is entered.",
+      "on_hint": "Enter the current PIN to turn it off, or choose Change PIN.",
+      "off_hint": "Without a PIN, anyone who takes the SIM can use it. Enter the SIM's PIN to turn the lock on.",
+      "current_pin": "Current PIN",
+      "pin_placeholder": "SIM PIN",
+      "new_pin": "New PIN",
+      "remember": "Unlock automatically after a restart",
+      "unlock": "Unlock",
+      "cancel": "Cancel",
+      "change": "Change PIN",
+      "turn_off": "Turn PIN off",
+      "turn_on": "Turn PIN on",
+      "forget": "Forget saved PIN",
+      "toast": {
+        "enable": "SIM PIN turned on.",
+        "disable": "SIM PIN turned off.",
+        "change": "SIM PIN changed.",
+        "unlock": "SIM unlocked.",
+        "forget": "Saved PIN removed from the modem."
+      },
+      "errors": {
+        "load_failed": "Could not read the SIM",
+        "failed": "The SIM PIN could not be changed.",
+        "wrong_pin": "Wrong PIN. Attempts left: {{n}}.",
+        "invalid_pin": "The PIN must be 4 to 8 digits.",
+        "retries_unknown": "The modem did not report how many attempts are left.",
+        "last_attempt": "Only one attempt left; enter the PIN in a phone.",
+        "sim_puk": "The SIM is blocked and needs its PUK.",
+        "already_enabled": "The SIM PIN is already on.",
+        "already_disabled": "The SIM PIN is already off.",
+        "pin_off": "Turn the SIM PIN on first.",
+        "not_locked": "The SIM is not waiting for its PIN."
+      }
     }
   },
   "activityLog": {
@@ -2522,6 +2575,15 @@
     "recent": {
       "title": "Latest outages",
       "description": "The 20 most recent, newest first."
+    },
+    "cause": {
+      "modem": "Modem not answering",
+      "sim": "No SIM card",
+      "no_network": "No network found",
+      "not_registered": "Network refused registration",
+      "weak_signal": "Weak signal",
+      "interference": "Interference",
+      "data_session": "Signal fine, data session lost"
     }
   }
 }

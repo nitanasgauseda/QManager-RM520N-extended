@@ -21,7 +21,8 @@ export interface OutageStats {
   by_hour: number[];
   by_hour_s: number[];
   cells: { enb: string; count: number; downtime_s: number }[];
-  recent: { start: number; end: number; enb: string; net: string }[];
+  /** cause: what the poller saw when the internet went (absent or "-" on older log lines). */
+  recent: { start: number; end: number; enb: string; net: string; cause?: string }[];
 }
 
 export function useOutages(range: OutageRange) {

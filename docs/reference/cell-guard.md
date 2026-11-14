@@ -52,3 +52,10 @@ Alerts are rate-limited to one per 10 minutes (monotonic clock); suppressed find
 - Warning (`suspicious_cell`, alert routing as other Cell Guard findings): 18 samples in a row (3 min) with SINR ≥ 10 dB below the baseline while RSRP is at most 4 dB weaker. The message adds the RSSI rise when it is ≥ 3 dB. One warning per episode.
 - Recovery: SINR back within 5 dB of the baseline for 6 samples gives an `info` finding "back to normal".
 - State is in memory only; a poller restart relearns for 5 minutes. A real signal drop (RSRP falls with SINR) is not reported.
+
+## Unexplained cell changes
+
+- `_cg_check_move` (every poll cycle, LTE serving cell, skipped in 5G SA, 0 forks in steady state) compares each new serving cell with the last readings of the previous one.
+- **Moved off a good cell:** previous cell RSRP ≥ -100 dBm and SINR ≥ 5 dB, new cell ≥ 8 dB weaker in RSRP → `info` finding, at most one per 10 minutes.
+- **Hopping:** 8 or more serving-cell changes inside a 10-minute window → `info` finding, at most one per 30 minutes.
+- Both are `suspicious_cell` events with severity `info`, so they show in **Findings** but never send an alert.

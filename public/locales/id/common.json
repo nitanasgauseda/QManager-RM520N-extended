@@ -2382,6 +2382,59 @@
       "remote_title": "Perintah yang dikirim ke SIM",
       "remote_on": "SIM ini menerima perintah yang dikirim lewat SMS. Operator memakainya untuk pembaruan, dan ini juga jalur serangan SIM. Cell Guard melaporkan pesan seperti itu.",
       "remote_off": "SIM ini tidak menerima perintah yang dikirim lewat SMS."
+    },
+    "sim": {
+      "title": "Kartu SIM",
+      "description": "Informasi SIM dan kunci PIN-nya.",
+      "operator": "Operator di SIM",
+      "smsc": "Pusat SMS",
+      "pin": "Kunci PIN",
+      "pin_on": "Aktif",
+      "pin_off": "Nonaktif",
+      "state_locked": "Menunggu PIN",
+      "state_puk": "Terblokir (PUK)",
+      "attempts": "Sisa percobaan",
+      "attempts_value": "{{pin}} PIN · {{puk}} PUK",
+      "auto_unlock": "Buka kunci setelah mulai ulang",
+      "auto_on": "PIN disimpan di modem",
+      "auto_off": "Masukkan manual",
+      "auto_stopped": "Berhenti: PIN tersimpan ditolak",
+      "puk_hint": "SIM terblokir. Buka dengan kode PUK di ponsel, lalu pasang kembali.",
+      "last_try_hint": "Hanya tersisa satu percobaan. Masukkan PIN di ponsel agar kesalahan tidak memblokir SIM.",
+      "unknown_hint": "Modem tidak melaporkan sisa percobaan PIN, jadi perubahan PIN dinonaktifkan di sini.",
+      "unlock_hint": "SIM menunggu PIN; internet mati sampai PIN dimasukkan.",
+      "on_hint": "Masukkan PIN saat ini untuk menonaktifkan, atau pilih Ubah PIN.",
+      "off_hint": "Tanpa PIN, siapa pun yang mengambil SIM dapat memakainya. Masukkan PIN SIM untuk mengaktifkan kunci.",
+      "current_pin": "PIN saat ini",
+      "pin_placeholder": "PIN SIM",
+      "new_pin": "PIN baru",
+      "remember": "Buka otomatis setelah mulai ulang",
+      "unlock": "Buka kunci",
+      "cancel": "Batal",
+      "change": "Ubah PIN",
+      "turn_off": "Nonaktifkan PIN",
+      "turn_on": "Aktifkan PIN",
+      "forget": "Hapus PIN tersimpan",
+      "toast": {
+        "enable": "PIN SIM diaktifkan.",
+        "disable": "PIN SIM dinonaktifkan.",
+        "change": "PIN SIM diubah.",
+        "unlock": "SIM terbuka.",
+        "forget": "PIN tersimpan dihapus dari modem."
+      },
+      "errors": {
+        "load_failed": "Tidak dapat membaca SIM",
+        "failed": "PIN SIM tidak dapat diubah.",
+        "wrong_pin": "PIN salah. Sisa percobaan: {{n}}.",
+        "invalid_pin": "PIN harus 4 sampai 8 digit.",
+        "retries_unknown": "Modem tidak melaporkan sisa percobaan.",
+        "last_attempt": "Hanya tersisa satu percobaan; masukkan PIN di ponsel.",
+        "sim_puk": "SIM terblokir dan memerlukan PUK.",
+        "already_enabled": "PIN SIM sudah aktif.",
+        "already_disabled": "PIN SIM sudah nonaktif.",
+        "pin_off": "Aktifkan PIN SIM terlebih dahulu.",
+        "not_locked": "SIM tidak sedang menunggu PIN."
+      }
     }
   },
   "activityLog": {
@@ -2522,6 +2575,15 @@
     "recent": {
       "title": "Gangguan terbaru",
       "description": "20 terbaru, yang terbaru di atas."
+    },
+    "cause": {
+      "modem": "Modem tidak merespons",
+      "sim": "Tidak ada kartu SIM",
+      "no_network": "Jaringan tidak ditemukan",
+      "not_registered": "Jaringan menolak pendaftaran",
+      "weak_signal": "Sinyal lemah",
+      "interference": "Interferensi",
+      "data_session": "Sinyal baik, sesi data terputus"
     }
   }
 }

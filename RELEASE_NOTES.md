@@ -6,6 +6,8 @@ This release fixes fresh installs, which v0.1.18 stopped partway through with a 
 
 **EU edition:** this is the original v0.1.19 plus everything the EU edition adds (Telegram alerts and commands, Tower Map, Cell Guard with jamming detection, eSIM, DNS Privacy, Security Check, Signal History, Outages, router watch and IP Passthrough renew, and more). The full list is in [CHANGELOG-EU.md](CHANGELOG-EU.md).
 
+**New in v0.1.19-eu.1:** a **SIM card** card on **System Settings → Security** (SIM PIN on/off, change, unlock, and automatic unlock after a restart), the reason for each outage on **Monitoring → Connection Quality → Outages**, and unusual cell changes in **Cell Guard**.
+
 ## 🛠️ Improvements
 
 - **Faster, steadier internet check** — When the first probe target stops answering, the other three are now tried at the same time, so a failing check takes about 4 seconds instead of up to 13, and the **sensitive** profile reacts much sooner. (`qmanager_ping` runs the fallback legs in parallel, uses fewer process forks per cycle, and times the debounce from the start of the first failing probe.)
