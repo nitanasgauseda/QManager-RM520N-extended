@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
 import type {
   CellScanResult,
+  CellScanDiff,
   CellScanStatusResponse,
   ScanStatus,
 } from "@/types/cell-scanner";
@@ -32,6 +33,7 @@ const MAX_POLL_FAILURES = 5;
 interface UseCellScannerReturn {
   status: ScanStatus;
   results: CellScanResult[];
+  diff: CellScanDiff | null;
   error: string | null;
   elapsedSeconds: number;
   startScan: () => Promise<void>;
@@ -42,6 +44,7 @@ export function useCellScanner(): UseCellScannerReturn {
 
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [results, setResults] = useState<CellScanResult[]>([]);
+  const [diff, setDiff] = useState<CellScanDiff | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -145,6 +148,7 @@ export function useCellScanner(): UseCellScannerReturn {
           const cells = data.results ?? [];
           setStatus("complete");
           setResults(cells);
+          setDiff(data.diff ?? null);
           setError(null);
           finishScan();
           if (cells.length > 0) {
@@ -294,5 +298,5 @@ export function useCellScanner(): UseCellScannerReturn {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [status]);
 
-  return { status, results, error, elapsedSeconds, startScan };
+  return { status, results, diff, error, elapsedSeconds, startScan };
 }

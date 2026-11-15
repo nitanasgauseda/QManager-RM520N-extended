@@ -626,6 +626,17 @@
         "several_bands_one": "{{count}} banda può trasportare questo canale.",
         "several_bands_other": "{{count}} bande possono trasportare questo canale."
       }
+    },
+    "diff": {
+      "title": "Modifiche dall'ultima scansione",
+      "description": "Celle sentite ora ma non l'ultima volta, e celle non più sentite.",
+      "description_at": "Confronto con la scansione del {{when}}.",
+      "same": "Stesse celle dell'ultima volta",
+      "new_chip": "Nuova",
+      "gone_chip": "Sparita",
+      "pci": "PCI {{pci}}",
+      "earfcn": "EARFCN {{earfcn}}",
+      "nrarfcn": "NR-ARFCN {{earfcn}}"
     }
   },
   "core_settings": {

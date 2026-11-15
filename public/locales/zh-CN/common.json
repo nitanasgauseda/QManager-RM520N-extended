@@ -2435,6 +2435,26 @@
         "pin_off": "请先开启 SIM PIN。",
         "not_locked": "SIM 卡未在等待 PIN。"
       }
+    },
+    "snapshot": {
+      "refresh": "刷新",
+      "failed": "暂时无法读取"
+    },
+    "blocked": {
+      "title": "来自互联网的拦截",
+      "description": "自防火墙规则上次应用以来，调制解调器丢弃的来自互联网的数据包。",
+      "none": "目前没有拦截",
+      "total": "数据包总数",
+      "port": "{{proto}} 端口 {{port}}",
+      "ping": "Ping（隐身模式）",
+      "lan6": "发往您设备的未请求 IPv6"
+    },
+    "conns": {
+      "title": "连接概览",
+      "description": "当前经过调制解调器的连接，按发起地址分组。",
+      "none": "没有打开的连接",
+      "unavailable": "此调制解调器无法提供连接列表",
+      "count": "连接：{{n}}"
     }
   },
   "activityLog": {

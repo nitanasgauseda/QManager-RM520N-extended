@@ -2435,6 +2435,26 @@
         "pin_off": "Attiva prima il PIN della SIM.",
         "not_locked": "La SIM non sta attendendo il PIN."
       }
+    },
+    "snapshot": {
+      "refresh": "Aggiorna",
+      "failed": "Impossibile leggere ora"
+    },
+    "blocked": {
+      "title": "Bloccato da internet",
+      "description": "Pacchetti da internet scartati dal modem dall'ultima applicazione delle regole firewall.",
+      "none": "Nessun blocco finora",
+      "total": "Pacchetti totali",
+      "port": "{{proto}} porta {{port}}",
+      "ping": "Ping (modalità stealth)",
+      "lan6": "IPv6 non richiesto verso i tuoi dispositivi"
+    },
+    "conns": {
+      "title": "Chi parla con chi",
+      "description": "Connessioni aperte ora attraverso il modem, per indirizzo di origine.",
+      "none": "Nessuna connessione aperta",
+      "unavailable": "Elenco connessioni non disponibile su questo modem",
+      "count": "Connessioni: {{n}}"
     }
   },
   "activityLog": {

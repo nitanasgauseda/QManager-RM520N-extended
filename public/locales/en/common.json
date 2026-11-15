@@ -2435,6 +2435,26 @@
         "pin_off": "Turn the SIM PIN on first.",
         "not_locked": "The SIM is not waiting for its PIN."
       }
+    },
+    "snapshot": {
+      "refresh": "Refresh",
+      "failed": "Could not read this right now"
+    },
+    "blocked": {
+      "title": "Blocked from the internet",
+      "description": "Packets from the internet the modem dropped since its firewall rules were last applied.",
+      "none": "Nothing blocked so far",
+      "total": "Total packets",
+      "port": "{{proto}} port {{port}}",
+      "ping": "Pings (stealth mode)",
+      "lan6": "Unrequested IPv6 to your devices"
+    },
+    "conns": {
+      "title": "Who is talking to whom",
+      "description": "Open connections through the modem right now, by the address that opened them.",
+      "none": "No open connections",
+      "unavailable": "Connection list is not available on this modem",
+      "count": "Connections: {{n}}"
     }
   },
   "activityLog": {

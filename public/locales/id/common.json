@@ -2435,6 +2435,26 @@
         "pin_off": "Aktifkan PIN SIM terlebih dahulu.",
         "not_locked": "SIM tidak sedang menunggu PIN."
       }
+    },
+    "snapshot": {
+      "refresh": "Muat ulang",
+      "failed": "Tidak dapat dibaca sekarang"
+    },
+    "blocked": {
+      "title": "Diblokir dari internet",
+      "description": "Paket dari internet yang dibuang modem sejak aturan firewall terakhir diterapkan.",
+      "none": "Belum ada yang diblokir",
+      "total": "Total paket",
+      "port": "{{proto}} port {{port}}",
+      "ping": "Ping (mode siluman)",
+      "lan6": "IPv6 tak diminta ke perangkat Anda"
+    },
+    "conns": {
+      "title": "Siapa terhubung ke mana",
+      "description": "Koneksi terbuka melalui modem saat ini, menurut alamat pembukanya.",
+      "none": "Tidak ada koneksi terbuka",
+      "unavailable": "Daftar koneksi tidak tersedia di modem ini",
+      "count": "Koneksi: {{n}}"
     }
   },
   "activityLog": {

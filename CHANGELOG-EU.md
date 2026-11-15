@@ -46,6 +46,11 @@ Install: copy `qmanager.tar.gz` to the modem, then `cd /tmp && tar xzf qmanager.
 
 - **SIM card and SIM PIN.** **System Settings → Security** has a new **SIM card** card: the operator name stored on the SIM, the SMS centre, whether the PIN lock is on and how many attempts are left, and buttons to turn the PIN on or off, change it, or unlock the SIM. With **Unlock automatically after a restart** on, the modem enters the PIN itself after every restart, so the internet comes back without you; it never retries a PIN the SIM refused and never acts with fewer than two attempts left. (The PIN is kept where only root can read it.)
 
+- **See what the internet throws at the modem.** **System Settings → Security** has a **Blocked from the internet** card: how many packets the firewall dropped, by port, hidden pings and unrequested IPv6 to your devices. (Read from the firewall's own counters when you open the page; no new firewall rules.)
+- **Who is talking to whom.** A second new card on the same page lists the connections open through the modem right now, per device, with the addresses and ports each one talks to. (In IP Passthrough every flow shows under your router's address.)
+- **Changes since the last scan.** **Cellular → Cell Scanner** now lists cells that appeared or disappeared since your previous full scan.
+- **Cell Guard: same cell, new distance.** Cell Guard notes when the cell you are on suddenly measures about a kilometre nearer or farther without a cell change, which a copied cell identity can cause (shown in **Findings**, never alerted).
+
 ## 🛠️ Improvements
 
 - **Software Update installs the EU edition.** **System Settings → Software Update** and automatic updates now look for new versions in this repository instead of the original, so updating no longer replaces the EU edition with the original. (Versions `vX.Y.Z-eu.N` count as newer than `vX.Y.Z`; a release needs `qmanager.tar.gz` and `sha256sum.txt` from `qmanager-build/`.)

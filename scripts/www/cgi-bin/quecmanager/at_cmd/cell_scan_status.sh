@@ -63,7 +63,13 @@ fi
 # already removed RESULT_FILE and the worker that failed never wrote one.
 if [ -f "$RESULT_FILE" ]; then
     # Stream the results directly — no need to copy into a wrapper
-    jq -n --slurpfile results "$RESULT_FILE" '{"status":"complete","results":$results[0]}'
+    DIFF_FILE="/tmp/qmanager_cell_scan_diff.json"
+    if [ -s "$DIFF_FILE" ]; then
+        jq -n --slurpfile results "$RESULT_FILE" --slurpfile diff "$DIFF_FILE" \
+            '{"status":"complete","results":$results[0],"diff":$diff[0]}'
+    else
+        jq -n --slurpfile results "$RESULT_FILE" '{"status":"complete","results":$results[0]}'
+    fi
     exit 0
 fi
 

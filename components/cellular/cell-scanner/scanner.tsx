@@ -28,6 +28,7 @@ import type { CellScanResult } from "@/types/cell-scanner";
 import LockCellDialog, { type LockCellTarget } from "./lock-cell-dialog";
 import RunHero from "./run-hero";
 import LedgerRows, { type LedgerRow } from "./run-summary";
+import ScanDiffCard from "./scan-diff";
 import ScanResultView from "./scan-result";
 import { ScanErrorState } from "./scan-states";
 import { ScannerSkeleton } from "./scanner-skeleton";
@@ -136,7 +137,7 @@ function formatDbm(value: number | null): string | null {
 
 export function FullScanner() {
   const { t } = useTranslation("cellular");
-  const { status, results, error, elapsedSeconds, startScan } =
+  const { status, results, diff, error, elapsedSeconds, startScan } =
     useCellScanner();
 
   // The SIM's home PLMN, from its IMSI. Rows on any other network keep a
@@ -409,6 +410,12 @@ export function FullScanner() {
           </Card>
         </motion.div>
       )}
+
+      {posture === "complete" && diff ? (
+        <motion.div variants={staggerItem} initial="hidden" animate="visible">
+          <ScanDiffCard diff={diff} />
+        </motion.div>
+      ) : null}
 
       <LockCellDialog
         target={lockTarget}

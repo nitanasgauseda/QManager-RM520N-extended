@@ -59,3 +59,4 @@ Alerts are rate-limited to one per 10 minutes (monotonic clock); suppressed find
 - **Moved off a good cell:** previous cell RSRP ≥ -100 dBm and SINR ≥ 5 dB, new cell ≥ 8 dB weaker in RSRP → `info` finding, at most one per 10 minutes.
 - **Hopping:** 8 or more serving-cell changes inside a 10-minute window → `info` finding, at most one per 30 minutes.
 - Both are `suspicious_cell` events with severity `info`, so they show in **Findings** but never send an alert.
+- **Same cell, new distance:** `_cg_check_ta` — the LTE timing advance of an unchanged serving cell differs by ≥ 13 steps (~1 km) from the last steady reading for ≥ 60 s → `info` finding, at most one per 30 minutes. TA 0 is "no reading". `lte_ta` is refreshed in Tier 2 only, hence a time hold rather than a reading count.

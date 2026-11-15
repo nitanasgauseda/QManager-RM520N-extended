@@ -626,6 +626,17 @@
         "several_bands_one": "有 {{count}} 个频段可以承载该信道。",
         "several_bands_other": "有 {{count}} 个频段可以承载该信道。"
       }
+    },
+    "diff": {
+      "title": "与上次扫描相比的变化",
+      "description": "本次听到但上次没有的小区，以及不再听到的小区。",
+      "description_at": "与 {{when}} 的扫描相比。",
+      "same": "与上次相同的小区",
+      "new_chip": "新",
+      "gone_chip": "消失",
+      "pci": "PCI {{pci}}",
+      "earfcn": "EARFCN {{earfcn}}",
+      "nrarfcn": "NR-ARFCN {{earfcn}}"
     }
   },
   "core_settings": {

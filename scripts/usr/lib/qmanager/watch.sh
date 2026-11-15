@@ -363,6 +363,93 @@ _wt_check_fw() {
     [ -x "${WT_FIREWALL:-/usr/bin/qmanager_firewall}" ] && "${WT_FIREWALL:-/usr/bin/qmanager_firewall}" ensure >/dev/null 2>&1
 }
 
+# On-demand snapshots for System Settings -> Security. The CGI (www-data) drops a request flag;
+# root answers on the next cycle, since iptables counters and /proc/net/nf_conntrack need root.
+: "${WT_SNAP_FW_REQ:=/tmp/qmanager_netsnap_fw}"
+: "${WT_SNAP_CT_REQ:=/tmp/qmanager_netsnap_ct}"
+: "${WT_SNAP_FW:=/tmp/qmanager_fw_blocked.json}"
+: "${WT_SNAP_CT:=/tmp/qmanager_conntrack.json}"
+: "${WT_CONNTRACK:=/proc/net/nf_conntrack}"
+_wt_snap_fw_up=-100; _wt_snap_ct_up=-100
+
+# Inbound packets QManager's own chains dropped, grouped by kind and port (counters reset when
+# the rules are rebuilt). ip6tables -L has an empty "opt" column, so only $1-$4 are positional.
+_wt_snap_fw() {
+    { "${WT_IPT:-iptables}" -w 5 -L -n -v -x 2>/dev/null
+      ip6tables -w 5 -L -n -v -x 2>/dev/null; } | awk -v now="$1" '
+        /^Chain / { ch = $2; chains = 1; next }
+        $1 !~ /^[0-9]+$/ || ($3 != "DROP" && $3 != "REJECT") { next }
+        ch == "QMANAGER_FW" || ch == "QMANAGER_WAN" { kind = "port" }
+        ch == "QMANAGER_STEALTH" { kind = "ping" }
+        ch == "QMANAGER_FWD6" { kind = "lan6" }
+        ch != "QMANAGER_FW" && ch != "QMANAGER_WAN" && ch != "QMANAGER_STEALTH" && ch != "QMANAGER_FWD6" { next }
+        {
+            port = ""
+            if (kind == "port" && match($0, /dpt:[0-9]+/)) port = substr($0, RSTART + 4, RLENGTH - 4)
+            pr = (kind == "port") ? $4 : ""
+            k = kind "|" pr "|" port
+            if (!(k in pk)) { keys[++n] = k; pk[k] = 0; by[k] = 0 }
+            pk[k] += $1; by[k] += $2
+        }
+        END {
+            printf "{\"updated\":%d,\"ok\":%s,\"rows\":[", now, chains ? "true" : "false"
+            for (i = 1; i <= n; i++) {
+                split(keys[i], a, "|")
+                printf "%s{\"kind\":\"%s\",\"proto\":\"%s\",\"port\":%s,\"packets\":%.0f,\"bytes\":%.0f}", \
+                    (i > 1 ? "," : ""), a[1], a[2], (a[3] == "" ? "null" : a[3]), pk[keys[i]], by[keys[i]]
+            }
+            print "]}"
+        }' | qm_replace "$WT_SNAP_FW"
+}
+
+# Live connections grouped by the address that opened them (LAN devices, the modem itself), with
+# each one's busiest destinations. Byte counts appear only when the kernel's conntrack accounting is on.
+_wt_snap_ct() {
+    if [ ! -r "$WT_CONNTRACK" ]; then
+        printf '{"updated":%d,"ok":false,"clients":[]}\n' "$1" | qm_replace "$WT_SNAP_CT"
+        return 0
+    fi
+    awk '{
+            pr = $3; s = ""; d = ""; dp = ""; b = 0; seen = 0
+            for (i = 4; i <= NF; i++) {
+                if ($i ~ /^src=/) { if (++seen > 1) continue; s = substr($i, 5) }
+                else if ($i ~ /^dst=/ && d == "") d = substr($i, 5)
+                else if ($i ~ /^dport=/ && dp == "") dp = substr($i, 7)
+                else if ($i ~ /^bytes=/) b += substr($i, 7)
+            }
+            if (s == "" || d == "" || s ~ /^127\./ || s == "::1" || d ~ /^127\./ || d == "::1") next
+            k = s " " d " " (dp == "" ? "-" : dp) " " pr
+            c[k]++; by[k] += b
+        }
+        END { for (k in c) print k, c[k], by[k] }' "$WT_CONNTRACK" 2>/dev/null \
+    | sort -k1,1 -k6,6nr -k5,5nr 2>/dev/null \
+    | awk -v now="$1" -v acct="$(cat /proc/sys/net/netfilter/nf_conntrack_acct 2>/dev/null)" '
+        function flush() {
+            if (cur == "") return
+            printf "%s{\"src\":\"%s\",\"connections\":%d,\"bytes\":%.0f,\"top\":[%s]}", (nc++ ? "," : ""), cur, tc, tb, top
+        }
+        $1 != cur { flush(); cur = $1; tc = 0; tb = 0; top = ""; nt = 0; if (nc >= 30) { cur = ""; skip = 1 } else skip = 0 }
+        skip { next }
+        {
+            tc += $5; tb += $6
+            if (nt < 15) top = top sprintf("%s{\"dst\":\"%s\",\"port\":%s,\"proto\":\"%s\",\"connections\":%d,\"bytes\":%.0f}", \
+                (nt++ ? "," : ""), $2, ($3 == "-" ? "null" : $3), $4, $5, $6)
+        }
+        BEGIN { printf "{\"updated\":%d,\"ok\":true,\"bytes_counted\":%s,\"clients\":[", now, (acct == "1" ? "true" : "false") }
+        END { flush(); print "]}" }' | qm_replace "$WT_SNAP_CT"
+}
+
+_wt_check_snap() {
+    if [ -e "$WT_SNAP_FW_REQ" ] && [ $(($1 - _wt_snap_fw_up)) -ge 3 ]; then
+        rm -f "$WT_SNAP_FW_REQ" 2>/dev/null; _wt_snap_fw_up="$1"
+        _wt_snap_fw "$1"
+    fi
+    if [ -e "$WT_SNAP_CT_REQ" ] && [ $(($1 - _wt_snap_ct_up)) -ge 3 ]; then
+        rm -f "$WT_SNAP_CT_REQ" 2>/dev/null; _wt_snap_ct_up="$1"
+        _wt_snap_ct "$1"
+    fi
+}
+
 # IP Passthrough hands the carrier IPv4 to the router behind the modem. When the carrier gives a new
 # one (re-dial, modem reboot) the router keeps the old lease and loses the internet until it renews,
 # so the Ethernet link is bounced once (20 s after the change, at most every 10 min) to make it ask.
@@ -514,6 +601,7 @@ watch_check() {
     _wt_check_ip "$up"
     _wt_check_month "$up"
     _wt_check_fw "$up"
+    _wt_check_snap "$up"
     _wt_check_ippt "$up"
     _wt_up_now="$up"
     _wt_check_router "$up"

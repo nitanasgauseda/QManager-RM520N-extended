@@ -626,6 +626,17 @@
         "several_bands_one": "{{count}} band can carry this channel.",
         "several_bands_other": "{{count}} bands can carry this channel."
       }
+    },
+    "diff": {
+      "title": "Changes since the last scan",
+      "description": "Cells heard now but not last time, and cells no longer heard.",
+      "description_at": "Compared with the scan of {{when}}.",
+      "same": "Same cells as last time",
+      "new_chip": "New",
+      "gone_chip": "Gone",
+      "pci": "PCI {{pci}}",
+      "earfcn": "EARFCN {{earfcn}}",
+      "nrarfcn": "NR-ARFCN {{earfcn}}"
     }
   },
   "core_settings": {

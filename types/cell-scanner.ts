@@ -49,6 +49,21 @@ export interface CellScanStatusResponse {
   status: ScanStatus;
   results?: CellScanResult[];
   message?: string;
+  /** Present when an earlier sweep exists to compare against. */
+  diff?: CellScanDiff;
+}
+
+/** One cell in the sweep-to-sweep comparison. */
+export type CellScanDiffCell = Pick<
+  CellScanResult,
+  "networkType" | "provider" | "band" | "earfcn" | "pci" | "signalStrength"
+>;
+
+export interface CellScanDiff {
+  /** Unix seconds of the earlier sweep; null when the clock was not set then. */
+  previous_at: number | null;
+  new: CellScanDiffCell[];
+  gone: CellScanDiffCell[];
 }
 
 // -----------------------------------------------------------------------------

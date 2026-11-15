@@ -2435,6 +2435,26 @@
         "pin_off": "請先開啟 SIM PIN。",
         "not_locked": "SIM 卡未在等待 PIN。"
       }
+    },
+    "snapshot": {
+      "refresh": "重新整理",
+      "failed": "目前無法讀取"
+    },
+    "blocked": {
+      "title": "來自網際網路的封鎖",
+      "description": "自防火牆規則上次套用以來，數據機丟棄的來自網際網路的封包。",
+      "none": "目前沒有封鎖",
+      "total": "封包總數",
+      "port": "{{proto}} 連接埠 {{port}}",
+      "ping": "Ping（隱身模式）",
+      "lan6": "傳往您裝置的未請求 IPv6"
+    },
+    "conns": {
+      "title": "連線概覽",
+      "description": "目前經過數據機的連線，依發起位址分組。",
+      "none": "沒有開啟的連線",
+      "unavailable": "此數據機無法提供連線清單",
+      "count": "連線：{{n}}"
     }
   },
   "activityLog": {

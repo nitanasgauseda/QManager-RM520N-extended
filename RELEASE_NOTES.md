@@ -6,7 +6,7 @@ This release fixes fresh installs, which v0.1.18 stopped partway through with a 
 
 **EU edition:** this is the original v0.1.19 plus everything the EU edition adds (Telegram alerts and commands, Tower Map, Cell Guard with jamming detection, eSIM, DNS Privacy, Security Check, Signal History, Outages, router watch and IP Passthrough renew, and more). The full list is in [CHANGELOG-EU.md](CHANGELOG-EU.md).
 
-**New in v0.1.19-eu.1:** a **SIM card** card on **System Settings → Security** (SIM PIN on/off, change, unlock, and automatic unlock after a restart), the reason for each outage on **Monitoring → Connection Quality → Outages**, and unusual cell changes in **Cell Guard**.
+**New in v0.1.19-eu.1:** a **SIM card** card on **System Settings → Security** (SIM PIN on/off, change, unlock, and automatic unlock after a restart), the reason for each outage on **Monitoring → Connection Quality → Outages**, unusual cell changes and sudden distance jumps in **Cell Guard**, **Blocked from the internet** and **Who is talking to whom** cards on **System Settings → Security**, and changes since the last scan in **Cell Scanner**.
 
 ## 🛠️ Improvements
 

@@ -28,6 +28,7 @@ import { Tag } from "@/components/ui/tag";
 import { useSecurityCheck, type SecurityPort, type SecurityReport } from "@/hooks/use-security-check";
 import { useOperatorAudit } from "@/hooks/use-operator-audit";
 import { SimCardCard } from "@/components/system-settings/security/sim-card";
+import { BlockedCard, ConnectionsCard } from "@/components/system-settings/security/net-snapshot";
 import { useWatch } from "@/hooks/use-watch";
 import { CardFoot } from "@/components/ui/card-foot";
 import { SaveButton } from "@/components/ui/save-button";
@@ -664,6 +665,8 @@ export default function SecurityCheckComponent() {
             <div className="flex flex-col gap-5">
               <PortsCard r={r} api={api} />
               <PrivacyCard r={r} api={api} />
+              <BlockedCard />
+              <ConnectionsCard />
             </div>
             <div className="flex flex-col gap-5">
               <DeviceCard r={r} />

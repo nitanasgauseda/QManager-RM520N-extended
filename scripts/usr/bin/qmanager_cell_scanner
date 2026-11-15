@@ -269,5 +269,31 @@ fi
 # Atomic rename
 mv "${RESULT_FILE}.tmp" "$RESULT_FILE"
 
+# Compare with the previous sweep: cells that appeared or are no longer heard. The previous sweep
+# lives in /etc/qmanager (a few KB, written once per manual scan); the diff in /tmp for the CGI.
+PREV_FILE="/etc/qmanager/cell_scan_prev.json"
+DIFF_FILE="/tmp/qmanager_cell_scan_diff.json"
+now=$(date +%s)
+rm -f "$DIFF_FILE"
+if [ -s "$PREV_FILE" ]; then
+    jq -c --slurpfile prev "$PREV_FILE" '
+        def k: "\(.networkType)|\(.mcc)|\(.mnc)|\(.earfcn)|\(.pci)";
+        def slim: {networkType, provider, band, earfcn, pci, signalStrength};
+        ($prev[0].cells // []) as $p | (map(k)) as $now | ($p | map(.key)) as $was |
+        {previous_at: ($prev[0].at // null),
+         new: [.[] | select(k as $x | $was | index($x) | not) | slim],
+         gone: [$p[] | select(.key as $x | $now | index($x) | not) | del(.key)]}
+    ' "$RESULT_FILE" > "${DIFF_FILE}.tmp" 2>/dev/null && mv "${DIFF_FILE}.tmp" "$DIFF_FILE"
+    rm -f "${DIFF_FILE}.tmp"
+fi
+if [ "$(jq 'length' "$RESULT_FILE" 2>/dev/null)" != "0" ]; then
+    jq -c --argjson at "$now" '
+        {at: (if $at > 1000000000 then $at else null end),
+         cells: map({key: "\(.networkType)|\(.mcc)|\(.mnc)|\(.earfcn)|\(.pci)",
+                     networkType, provider, band, earfcn, pci, signalStrength})}
+    ' "$RESULT_FILE" > "${PREV_FILE}.tmp" 2>/dev/null && mv "${PREV_FILE}.tmp" "$PREV_FILE"
+    rm -f "${PREV_FILE}.tmp"
+fi
+
 cell_count=$(jq 'length' "$RESULT_FILE" 2>/dev/null || echo "?")
 qlog_info "Cell scanner complete — $cell_count cells found"

@@ -626,6 +626,17 @@
         "several_bands_one": "有 {{count}} 個頻段可以承載此通道。",
         "several_bands_other": "有 {{count}} 個頻段可以承載此通道。"
       }
+    },
+    "diff": {
+      "title": "與上次掃描相比的變化",
+      "description": "本次聽到但上次沒有的基地台，以及不再聽到的基地台。",
+      "description_at": "與 {{when}} 的掃描相比。",
+      "same": "與上次相同的基地台",
+      "new_chip": "新",
+      "gone_chip": "消失",
+      "pci": "PCI {{pci}}",
+      "earfcn": "EARFCN {{earfcn}}",
+      "nrarfcn": "NR-ARFCN {{earfcn}}"
     }
   },
   "core_settings": {

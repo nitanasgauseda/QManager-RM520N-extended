@@ -535,6 +535,40 @@ _cg_check_move() {
     _cg_mv_key="$key"; _cg_mv_p="$p"; _cg_mv_q="$q"
 }
 
+# The same LTE cell suddenly "moving" by >= ~1 km (13 TA steps of 78 m) for at least 60 s can mean
+# a second transmitter copying its identity. TA 0 means no reading. Info only, 0 forks.
+CG_TA_JUMP=13
+CG_TA_HOLD=60
+_cg_ta_key=""; _cg_ta_ref=""; _cg_ta_since=""; _cg_ta_said=-100000
+
+_cg_check_ta() {
+    local key ta d up dir _
+    case "${lte_cell_id:-}" in ''|*[!0-9]*) return 0 ;; esac
+    key="${lte_enodeb_id:-?}/$lte_cell_id"
+    _cg_int ta "${lte_ta:-}"
+    case "$ta" in ''|-*|0) return 0 ;; esac
+    if [ "$key" != "$_cg_ta_key" ] || [ -z "$_cg_ta_ref" ]; then
+        _cg_ta_key="$key"; _cg_ta_ref="$ta"; _cg_ta_since=""
+        return 0
+    fi
+    d=$((ta - _cg_ta_ref)); d=${d#-}
+    if [ "$d" -lt "$CG_TA_JUMP" ]; then
+        _cg_ta_ref="$ta"; _cg_ta_since=""
+        return 0
+    fi
+    read -r up _ < "$CG_UPTIME" 2>/dev/null || up=0
+    up=${up%%.*}
+    case "$up" in ''|*[!0-9]*) up=0 ;; esac
+    [ -n "$_cg_ta_since" ] || _cg_ta_since="$up"
+    [ $((up - _cg_ta_since)) -ge "$CG_TA_HOLD" ] || return 0
+    if [ $((up - _cg_ta_said)) -ge 1800 ]; then
+        _cg_ta_said="$up"
+        dir=closer; [ "$ta" -gt "$_cg_ta_ref" ] && dir=farther
+        _cg_finding "Cell $key now looks about $((d * 78)) m $dir than a moment ago (timing advance $_cg_ta_ref -> $ta) without a cell change" "info"
+    fi
+    _cg_ta_ref="$ta"; _cg_ta_since=""
+}
+
 # SMS findings are their own event type; warnings alert through the Cell Guard routing.
 # A flood of silent SMS logs every one but alerts at most once per CG_ALERT_GAP_SECS.
 _cg_sms_alert_up=-100000
@@ -569,6 +603,7 @@ cell_guard_check() {
     _cg_check_sms
     _cg_check_jam
     _cg_check_move
+    _cg_check_ta
     if [ "$before" != "$_cg_last_sig$_cg_last_rat$_cg_rh_seen" ] || [ ! -f "$CG_STATUS" ] \
         || [ $((${cycle_count:-0} % 150)) -eq 0 ]; then
         _cg_status_write

@@ -78,6 +78,10 @@ The rationale for the individual design moves lives in the commits (`a2394ee`, `
 
 The frequency calculator issues **nothing**. It has no fetch and no AT contact, which is why it has no posture chip, no elapsed clock, no spinner and no cost statement — nothing is spent. It *does* take the family's anchor card, at `rounded-hero`, via `CALC_HERO` and its own `CALC_SPLIT` — see [The calculator takes the anchor, not the run](#the-calculator-takes-the-anchor-not-the-run).
 
+## Changes since the last sweep (EU edition)
+
+After a sweep with at least one cell, `qmanager_cell_scanner` (www-data) compares it with `/etc/qmanager/cell_scan_prev.json` (keys `networkType|mcc|mnc|earfcn|pci`), writes `/tmp/qmanager_cell_scan_diff.json` `{previous_at, new[], gone[]}` and replaces the previous file. An empty sweep keeps the previous one. `cell_scan_status.sh` adds the diff as `diff` to a `complete` reply; `scan-diff.tsx` shows it under the results. `previous_at` is null when the clock was not set (pre-2001 epoch).
+
 ## The cost asymmetry, and why the routes are not merged
 
 `qcmd` serialises every AT command in the product on `flock` over `/run/qmanager_at/at.lock` (see [at-command-transport.md > qcmd serialization](at-command-transport.md#qcmd-serialization)). "flock" is an advisory file lock — a do-not-disturb sign on the file that only one process may hold at a time — so while a sweep holds it, nothing else on the device can reach the modem.

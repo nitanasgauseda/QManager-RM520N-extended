@@ -626,6 +626,17 @@
         "several_bands_one": "{{count}} band bisa membawa kanal ini.",
         "several_bands_other": "{{count}} band bisa membawa kanal ini."
       }
+    },
+    "diff": {
+      "title": "Perubahan sejak pemindaian terakhir",
+      "description": "Sel yang terdengar sekarang tetapi tidak sebelumnya, dan sel yang tidak lagi terdengar.",
+      "description_at": "Dibandingkan dengan pemindaian {{when}}.",
+      "same": "Sel sama seperti sebelumnya",
+      "new_chip": "Baru",
+      "gone_chip": "Hilang",
+      "pci": "PCI {{pci}}",
+      "earfcn": "EARFCN {{earfcn}}",
+      "nrarfcn": "NR-ARFCN {{earfcn}}"
     }
   },
   "core_settings": {
